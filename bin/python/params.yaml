@@ -1,0 +1,22 @@
+---
+#ICE parameters based on Accord 2010
+air_density:                1.2256      # kg/m^3
+drag_coefficient:           0.30      # unitless
+driveline_efficiency:       .92       # unitless
+epsilon:                    .000001   # unitless
+engine_displacement:        2.354     # liter
+frontal_area:               2.32      # m^2
+fuel_lower_heating_value:   43000000  # J/kg
+fuel_economy_city:          22        # mpg
+fuel_economy_hwy:           31        # mpg
+gravitational_acceleration: 9.81      # m/s^2
+idling_mean_fuel_pressure:  400000    # N/m^2
+idling_speed:               700       # rpm
+number_of_engine_cylinders: 4
+rolling_coefficient:        1.75      # unitless
+rolling_resistance_coef1:   0.0328    # unitless
+rolling_resistance_coef2:   4.575     # unitless
+vehicle_mass:               1453      # kg
+alpha_0: 0.0005657549078125339
+alpha_1: 4.6435314306651986e-05
+alpha_2: 1.0000000000000002e-06
