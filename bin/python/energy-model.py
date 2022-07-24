@@ -100,7 +100,7 @@ def power_e(df_input):
             factor.append(np.exp(-(0.0411/abs(a))))
         else:
             factor.append(1)
-    P_t_e=np.array(factor)*P_t
+    P_t_e=np.array(factor, dtype=object)*P_t
     return P_t_e
 
 # Define fuel rate function for diesel vehicle
