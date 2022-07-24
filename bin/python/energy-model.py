@@ -89,19 +89,10 @@ def power_e(df_input):
     v = df.Speed
     a = df.Acceleration
     m = df.Vehicle_mass+(df.Onboard*179)
-    P_t = (eta_batt/eta_m*eta_d_beb)*(1/float(3600*eta_d_beb))*((1./25.92)*rho*C_D*A_f*v*v + m*g*C_r*(c1*v + c2)/1000 + 1.1*m*a)*v
-    #if a <0:
-    #    factor=np.exp(-(0.0411/abs(a)))
-    #else:
-    #    factor=1
-    factor=[]
-    for index, value in a.items():
-        if value<0:
-            factor.append(np.exp(-(0.0411/abs(a))))
-        else:
-            factor.append(1)
-    P_t_e=np.array(factor, dtype=object)*P_t
-    return P_t_e
+    factor = df.Acceleration.apply(lambda a: 1 if a >= 0 else np.exp(-(0.0411/abs(a))))
+    P_t = factor*(eta_batt/eta_m*eta_d_beb)*(1/float(3600*eta_d_beb))*((1./25.92)*rho*C_D*A_f*v*v + m*g*C_r*(c1*v + c2)/1000 + 1.1*m*a)*v
+    return P_t
+
 
 # Define fuel rate function for diesel vehicle
 def EnergyConsumption_e(df_input):
