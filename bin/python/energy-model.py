@@ -22,6 +22,7 @@ df = pd.read_csv(r'../../results/trajectories-mapped-powertrain-weight.csv', del
 df.speed = df.speed *1.60934 # takes speed in km/h (Convert from mph to km/h)
 df.rename(columns={"speed": "Speed", "acc": "Acceleration", "VehiclWeight(lb)": "Vehicle_mass"}, inplace=True)
 df = df.fillna(0)
+print(len(df['Vehicle'].unique()))
 
 
 # Subsetting data frame for "Conventional", "hybrid", and "electric" buses
@@ -132,7 +133,7 @@ df_final.sort_values(by=['Vehicle','ServiceDateTime'], ascending=True, inplace=T
 ### I had to run this part in Jupyter "modify-fuel-rates"
 ### You need to run "modify-fuel-rates.ipynb" after this
 
-        
+print(len(df_final['Vehicle'].unique()))
 # Save df_final
 df_final.to_csv(r'../../results/computed-fuel-rates.csv')
 
