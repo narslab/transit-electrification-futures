@@ -84,6 +84,17 @@ def fuelRate_d(df_input, hybrid=False):
         FC_t = P_t.apply(lambda x: a0 + a1*x +a2*x*x if x >= 0 else a0)  
     return FC_t
 
+
+# Define Energy consumption function for electric vehicle
+def energyConsumption_d(df_input, hybrid=False):
+	# Estimates energy consumed (Liters)     
+    df = df_input
+    t = df.time_delta_in_seconds
+    FC_t = fuelRate_d(df_input, hybrid)
+    E_t = FC_t * t
+    return E_t
+
+
 # Define power function for electric vehicle
 def power_e(df_input):
     df = df_input
@@ -95,19 +106,21 @@ def power_e(df_input):
     return P_t
 
 
-# Define fuel rate function for diesel vehicle
-def EnergyConsumption_e(df_input):
+# Define Energy consumption function for electric vehicle
+def energyConsumption_e(df_input):
 	# Estimates energy consumed (KWh)     
     df = df_input
     t = df.time_delta_in_seconds/3600
     P_t = power_e(df_input)
-    FC_t = P_t * t
-    return FC_t
+    E_t = P_t * t
+    return E_t
 
-# Compute fuel rate for "Conventional", and "hybrid" buses
-df_conventional['FuelRate/Energy']=fuelRate_d(df_conventional)
-df_hybrid['FuelRate/Energy']=fuelRate_d(df_hybrid, hybrid=True)
-df_electric['FuelRate/Energy']=EnergyConsumption_e(df_electric)
+# Compute energy consumption for "Conventional", "hybrid" and "electric" buses
+#df_conventional['FuelRate(L/s)']=fuelRate_d(df_conventional)
+df_conventional['Energy']=energyConsumption_e(df_conventional)
+#df_hybrid['FuelRate/Energy']=fuelRate_d(df_hybrid, hybrid=True)
+df_hybrid['Energy']=energyConsumption_d(df_hybrid, hybrid=True)
+df_electric['Energy']=energyConsumption_e(df_electric)
 
 
 
