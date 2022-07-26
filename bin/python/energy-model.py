@@ -22,7 +22,6 @@ df = pd.read_csv(r'../../results/trajectories-mapped-powertrain-weight.csv', del
 df.speed = df.speed *1.60934 # takes speed in km/h (Convert from mph to km/h)
 df.rename(columns={"speed": "Speed", "acc": "Acceleration", "VehiclWeight(lb)": "Vehicle_mass"}, inplace=True)
 df = df.fillna(0)
-print(len(df['Vehicle'].unique()))
 
 
 # Subsetting data frame for "Conventional", "hybrid", and "electric" buses
@@ -56,7 +55,7 @@ a1_cdb = p.alpha_1_cdb
 a2 = p.alpha_2
 a0_heb = p.alpha_0_heb
 a1_heb = p.alpha_1_heb
-
+b=p.beta
 
 # Define power function for diesel vehicle
 def power_d(df_input):
@@ -76,7 +75,7 @@ def fuelRate_d(df_input, hybrid=False):
         a1 = a1_heb        
         P_t = power_d(df_input)
         FC_t = P_t.apply(lambda x: a0 + a1*x +a2*x*x if x >= 0 else a0)
-        FC_t=FC_t*0.85
+        FC_t=FC_t*b
     else:
         a0 = a0_cdb
         a1 = a1_cdb
@@ -87,11 +86,11 @@ def fuelRate_d(df_input, hybrid=False):
 
 # Define Energy consumption function for electric vehicle
 def energyConsumption_d(df_input, hybrid=False):
-	# Estimates energy consumed (Liters)     
+	# Estimates energy consumed (gallons)     
     df = df_input
     t = df.time_delta_in_seconds
     FC_t = fuelRate_d(df_input, hybrid)
-    E_t = FC_t * t
+    E_t = FC_t * t/3.78541
     return E_t
 
 
@@ -130,24 +129,7 @@ df_final=pd.concat([df_conventional, df_hybrid, df_electric])
 # Sort dataframe
 df_final.sort_values(by=['Vehicle','ServiceDateTime'], ascending=True, inplace=True)
 
-# Change mistakenly computed fuel rates to zero
-# =============================================================================
-# for i in df_final.index:
-#     if i==0:
-#         df_final.at[i , 'FuelRate(L/s)'] = 0
-#     else:
-#         if df_final['Vehicle'].loc[i]==df_final['Vehicle'].loc[i-1]:
-#             if df_final['Date'].loc[i]!=df_final['Date'].loc[i-1]:
-#                 df_final.at[i , 'FuelRate(L/s)'] = 0
-#         else:
-#             df_final.at[i , 'FuelRate(L/s)'] = 0  
-# =============================================================================
-### This resulted an error in the script so,
-### I had to run this part in Jupyter "modify-fuel-rates"
-### You need to run "modify-fuel-rates.ipynb" after this
 
-print(len(df_final['Vehicle'].unique()))
-# Save df_final
 df_final.to_csv(r'../../results/computed-fuel-rates.csv')
 
 

@@ -8,27 +8,41 @@ Created on Tue Jul 19 10:39:25 2022
 import yaml
 import pandas as pd
 import numpy as np
+from sklearn.metrics import mean_squared_error
+import math
+from sklearn.model_selection import train_test_split
+
+
+
 
 f = open('params.yaml')
 parameters = yaml.safe_load(f)
 f.close()
 
 class vehicleParams():
-	def __init__(self, **entries):
-		self.__dict__.update(entries)
+    def __init__(self, **entries):
+        self.__dict__.update(entries)
+    
+    def modify_parameter(self, parameter, new_value):
+        self.parameter=new_value
+        return (self.parameter)
+    
 
 # Read trajectories df
 df = pd.read_csv(r'../../results/trajectories-mapped-powertrain-weight.csv', delimiter=',', skiprows=0, low_memory=False)
 df.speed = df.speed *1.60934 # takes speed in km/h (Convert from mph to km/h)
 df.rename(columns={"speed": "Speed", "acc": "Acceleration", "VehiclWeight(lb)": "Vehicle_mass"}, inplace=True)
 df = df.fillna(0)
-print(len(df['Vehicle'].unique()))
 
 
 # Subsetting data frame for "Conventional", "hybrid", and "electric" buses
-df_conventional=df.loc[df['Powertrain'] == 'conventional'].copy()
-df_hybrid=df.loc[df['Powertrain'] == 'hybrid'].copy()
-df_electric=df.loc[df['Powertrain'] == 'electric'].copy()
+#df_conventional=df.loc[df['Powertrain'] == 'conventional'].copy()
+#df_hybrid=df.loc[df['Powertrain'] == 'hybrid'].copy()
+#df_electric=df.loc[df['Powertrain'] == 'electric'].copy()
+#df_conventional['Date']=pd.to_datetime(df_conventional['Date'])
+#df_hybrid['Date']=pd.to_datetime(df_hybrid['Date'])
+#df_electric['Date']=pd.to_datetime(df_electric['Date'])
+
 
 # Define model parameters
 p = vehicleParams(**parameters)
@@ -56,7 +70,7 @@ a1_cdb = p.alpha_1_cdb
 a2 = p.alpha_2
 a0_heb = p.alpha_0_heb
 a1_heb = p.alpha_1_heb
-
+b=p.beta
 
 # Define power function for diesel vehicle
 def power_d(df_input):
@@ -76,7 +90,7 @@ def fuelRate_d(df_input, hybrid=False):
         a1 = a1_heb        
         P_t = power_d(df_input)
         FC_t = P_t.apply(lambda x: a0 + a1*x +a2*x*x if x >= 0 else a0)
-        FC_t=FC_t*0.85
+        FC_t=FC_t*b
     else:
         a0 = a0_cdb
         a1 = a1_cdb
@@ -87,11 +101,11 @@ def fuelRate_d(df_input, hybrid=False):
 
 # Define Energy consumption function for electric vehicle
 def energyConsumption_d(df_input, hybrid=False):
-	# Estimates energy consumed (Liters)     
+	# Estimates energy consumed (gallons)     
     df = df_input
     t = df.time_delta_in_seconds
     FC_t = fuelRate_d(df_input, hybrid)
-    E_t = FC_t * t
+    E_t = FC_t * t/3.78541
     return E_t
 
 
@@ -115,39 +129,67 @@ def energyConsumption_e(df_input):
     E_t = P_t * t
     return E_t
 
-# Compute energy consumption for "Conventional", "hybrid" and "electric" buses
-#df_conventional['FuelRate(L/s)']=fuelRate_d(df_conventional)
-df_conventional['Energy']=energyConsumption_e(df_conventional)
-#df_hybrid['FuelRate/Energy']=fuelRate_d(df_hybrid, hybrid=True)
+
+# read validation df
+df_validation = pd.read_csv(r'../../data/tidy/energy_validation_april2022.csv', delimiter=',', skiprows=0, low_memory=False)
+df_validation['date']=pd.to_datetime(df_validation['date'])
+df_validation.rename(
+    columns={"equipment_id":"Vehicle",
+                "date":"Date",
+                "gallons":"Real_Energy"}
+          ,inplace=True)
+df_validation=df_validation[['Vehicle','Date','Real_Energy']]
+
+
+### calibrating hybrid model for parameter b
+b_values=[0.5, 0.6, 0.7, 0.8, 0.9]
+RMSE=[]
+for i in b_values:
+    b=i
+    df_hybrid=df.loc[df['Powertrain'] == 'hybrid'].copy()
+    df_hybrid['Date']=pd.to_datetime(df_hybrid['Date'])
+    df_hybrid['Energy']=energyConsumption_d(df_hybrid, hybrid=True)
+    train_hybrid, test_hybrid = train_test_split(df_hybrid, test_size=0.2, random_state=(42))    
+    train_hybrid = train_hybrid.groupby(['Vehicle', 'Date']).agg({'Energy': ['sum'] ,'Powertrain': ['max'], 'dist': ['sum']}).reset_index()
+    train_hybrid.columns = train_hybrid.columns.droplevel()
+    train_hybrid.columns =['Vehicle', 'Date', 'Energy', 'Powertrain', 'Distance']
+    cols = ['Vehicle', 'Date']
+    df_integrated_hybrid=train_hybrid.join(df_validation.set_index(cols), on=cols)
+    df_integrated_hybrid['Fuel/energy_economy']=df_integrated_hybrid['Distance']/df_integrated_hybrid['Energy']
+    df_integrated_hybrid['Real_Fuel/energy_economy']=df_integrated_hybrid['Distance']/df_integrated_hybrid['Real_Energy']
+    df_integrated_hybrid=df_integrated_hybrid.dropna()
+    df_integrated_hybrid = df_integrated_hybrid.reset_index()
+    MSE = np.square(np.subtract(df_integrated_hybrid['Real_Fuel/energy_economy'],df_integrated_hybrid['Fuel/energy_economy'])).mean() 
+    rmse_hybrid = math.sqrt(MSE)
+    #rmse_hybrid = mean_squared_error(df_integrated_hybrid['Real_Fuel/energy_economy'], df_integrated_hybrid['Fuel/energy_economy'], squared=False)
+    RMSE.append(rmse_hybrid)
+    print(rmse_hybrid)
+print(RMSE)
+
+# Get RMSE on test set
+b = 0.9
+b=i
+df_hybrid=df.loc[df['Powertrain'] == 'hybrid'].copy()
+df_hybrid['Date']=pd.to_datetime(df_hybrid['Date'])
 df_hybrid['Energy']=energyConsumption_d(df_hybrid, hybrid=True)
-df_electric['Energy']=energyConsumption_e(df_electric)
+train_hybrid, test_hybrid = train_test_split(df_hybrid, test_size=0.2, random_state=(42))    
+test_hybrid = test_hybrid.groupby(['Vehicle', 'Date']).agg({'Energy': ['sum'] ,'Powertrain': ['max'], 'dist': ['sum']}).reset_index()
+test_hybrid.columns = test_hybrid.columns.droplevel()
+test_hybrid.columns =['Vehicle', 'Date', 'Energy', 'Powertrain', 'Distance']
+cols = ['Vehicle', 'Date']
+df_integrated_hybrid=test_hybrid.join(df_validation.set_index(cols), on=cols)
+df_integrated_hybrid['Fuel/energy_economy']=df_integrated_hybrid['Distance']/df_integrated_hybrid['Energy']
+df_integrated_hybrid['Real_Fuel/energy_economy']=df_integrated_hybrid['Distance']/df_integrated_hybrid['Real_Energy']
+df_integrated_hybrid=df_integrated_hybrid.dropna()
+df_integrated_hybrid = df_integrated_hybrid.reset_index()
+MSE = np.square(np.subtract(df_integrated_hybrid['Real_Fuel/energy_economy'],df_integrated_hybrid['Fuel/energy_economy'])).mean() 
+rmse_hybrid = math.sqrt(MSE)
+print('RMSE on the test set for b=.9:', rmse_hybrid)
 
-
-
-#megre subset dataframes 
-df_final=pd.concat([df_conventional, df_hybrid, df_electric])
-
-# Sort dataframe
-df_final.sort_values(by=['Vehicle','ServiceDateTime'], ascending=True, inplace=True)
-
-# Change mistakenly computed fuel rates to zero
-# =============================================================================
-# for i in df_final.index:
-#     if i==0:
-#         df_final.at[i , 'FuelRate(L/s)'] = 0
-#     else:
-#         if df_final['Vehicle'].loc[i]==df_final['Vehicle'].loc[i-1]:
-#             if df_final['Date'].loc[i]!=df_final['Date'].loc[i-1]:
-#                 df_final.at[i , 'FuelRate(L/s)'] = 0
-#         else:
-#             df_final.at[i , 'FuelRate(L/s)'] = 0  
-# =============================================================================
-### This resulted an error in the script so,
-### I had to run this part in Jupyter "modify-fuel-rates"
-### You need to run "modify-fuel-rates.ipynb" after this
-
-print(len(df_final['Vehicle'].unique()))
 # Save df_final
-df_final.to_csv(r'../../results/computed-fuel-rates.csv')
+#df_final.to_csv(r'../../results/computed-fuel-rates.csv')
+
+
+
 
 
