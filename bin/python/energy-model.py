@@ -33,7 +33,10 @@ df_electric=df.loc[df['Powertrain'] == 'electric'].copy()
 p = vehicleParams(**parameters)
 rho = p.air_density
 C_D = p.drag_coefficient
-A_f = p.frontal_area
+C_h= p.altitude_correction_factor
+A_f_cdb = p.frontal_area_cdb
+A_f_heb = p.frontal_area_heb
+A_f_beb = p.frontal_area_beb
 g = p.gravitational_acceleration
 C_r = p.rolling_coefficient
 c1 = p.rolling_resistance_coef1
@@ -58,12 +61,16 @@ a1_heb = p.alpha_1_heb
 b=p.beta
 
 # Define power function for diesel vehicle
-def power_d(df_input):
+def power_d(df_input, hybrid=False):
+    if hybrid == True:
+       A_f_d=A_f_heb
+    else:
+       A_f_d=A_f_cdb        
     df = df_input
     v = df.Speed
     a = df.Acceleration
-    m = df.Vehicle_mass+(df.Onboard*179)
-    P_t = (1/float(3600*eta_d_dis))*((1./25.92)*rho*C_D*A_f*v*v + m*g*C_r*(c1*v + c2)/1000 + 1.1*m*a)*v
+    m = (df.Vehicle_mass+df.Onboard*179)*0.453592 # converts lb to kg
+    P_t = (1/float(3600*eta_d_dis))*((1./25.92)*rho*C_D*C_h*A_f_d*v*v + m*g*C_r*(c1*v + c2)/1000 + 1.1*m*a)*v
     return P_t
 
 
@@ -73,13 +80,13 @@ def fuelRate_d(df_input, hybrid=False):
     if hybrid == True:
         a0 = a0_heb 
         a1 = a1_heb        
-        P_t = power_d(df_input)
+        P_t = power_d(df_input, hybrid=True)
         FC_t = P_t.apply(lambda x: a0 + a1*x +a2*x*x if x >= 0 else a0)
         FC_t=FC_t*b
     else:
         a0 = a0_cdb
         a1 = a1_cdb
-        P_t = power_d(df_input)
+        P_t = power_d(df_input, hybrid=False)
         FC_t = P_t.apply(lambda x: a0 + a1*x +a2*x*x if x >= 0 else a0)  
     return FC_t
 
@@ -90,7 +97,7 @@ def energyConsumption_d(df_input, hybrid=False):
     df = df_input
     t = df.time_delta_in_seconds
     FC_t = fuelRate_d(df_input, hybrid)
-    E_t = FC_t * t/3.78541
+    E_t = (FC_t * t)/3.78541
     return E_t
 
 
@@ -99,9 +106,9 @@ def power_e(df_input):
     df = df_input
     v = df.Speed
     a = df.Acceleration
-    m = df.Vehicle_mass+(df.Onboard*179)
+    m = df.Vehicle_mass+(df.Onboard*179)*0.453592 # converts lb to kg
     factor = df.Acceleration.apply(lambda a: 1 if a >= 0 else np.exp(-(0.0411/abs(a))))
-    P_t = factor*(eta_batt/eta_m*eta_d_beb)*(1/float(3600*eta_d_beb))*((1./25.92)*rho*C_D*A_f*v*v + m*g*C_r*(c1*v + c2)/1000 + 1.1*m*a)*v
+    P_t = factor*(eta_batt/eta_m*eta_d_beb)*(1/float(3600*eta_d_beb))*((1./25.92)*rho*C_D*C_h*A_f_beb*v*v + m*g*C_r*(c1*v + c2)/1000 + 1.1*m*a)*v
     return P_t
 
 
@@ -116,7 +123,7 @@ def energyConsumption_e(df_input):
 
 # Compute energy consumption for "Conventional", "hybrid" and "electric" buses
 #df_conventional['FuelRate(L/s)']=fuelRate_d(df_conventional)
-df_conventional['Energy']=energyConsumption_e(df_conventional)
+df_conventional['Energy']=energyConsumption_d(df_conventional)
 #df_hybrid['FuelRate/Energy']=fuelRate_d(df_hybrid, hybrid=True)
 df_hybrid['Energy']=energyConsumption_d(df_hybrid, hybrid=True)
 df_electric['Energy']=energyConsumption_e(df_electric)
