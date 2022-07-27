@@ -24,7 +24,7 @@ def get_elevation(lat = None, lon = None):
 	return elevation
 
 def main():
-	for i in df.index[1:5]:
+	for i in df.index:
 		elevation = get_elevation(lat = df.loc[i , 'lat'], lon = df.loc[i , 'lon'])
 		df.at[i, 'elevation'] = elevation
 	df.to_csv('../../results/stop-elevations.csv')
