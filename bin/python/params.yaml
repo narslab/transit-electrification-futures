@@ -16,7 +16,7 @@ rolling_resistance_coef1:   0.0328      # unitless
 rolling_resistance_coef2:   4.575       # unitless
 vehicle_mass:               1453        # kg
 altitude_correction_factor:  0.01       # km
-beta:                       0.80        # unitless
+beta:                       0.7561       # unitless
 
 #Parameters specific to CDB/HEB
 driveline_efficiency_d_dis: 0.94        # unitless
