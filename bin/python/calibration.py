@@ -10,8 +10,7 @@ import pandas as pd
 import numpy as np
 import math
 from sklearn.model_selection import train_test_split
-import energy-model
-
+#import model
 
 
 f = open('params.yaml')
@@ -27,27 +26,14 @@ class vehicleParams():
         return (self.parameter)
     
 
-# Read trajectories df
-df = pd.read_csv(r'../../results/trajectories-mapped-powertrain-weight.csv', delimiter=',', skiprows=0, low_memory=False)
-df.speed = df.speed *1.60934 # takes speed in km/h (Convert from mph to km/h)
-df.rename(columns={"speed": "Speed", "acc": "Acceleration", "VehiclWeight(lb)": "Vehicle_mass"}, inplace=True)
-df = df.fillna(0)
-
-
-# Subsetting data frame for "Conventional", "hybrid", and "electric" buses
-#df_conventional=df.loc[df['Powertrain'] == 'conventional'].copy()
-#df_hybrid=df.loc[df['Powertrain'] == 'hybrid'].copy()
-#df_electric=df.loc[df['Powertrain'] == 'electric'].copy()
-#df_conventional['Date']=pd.to_datetime(df_conventional['Date'])
-#df_hybrid['Date']=pd.to_datetime(df_hybrid['Date'])
-#df_electric['Date']=pd.to_datetime(df_electric['Date'])
-
-
 # Define model parameters
 p = vehicleParams(**parameters)
 rho = p.air_density
 C_D = p.drag_coefficient
-A_f = p.frontal_area
+C_h= p.altitude_correction_factor
+A_f_cdb = p.frontal_area_cdb
+A_f_heb = p.frontal_area_heb
+A_f_beb = p.frontal_area_beb
 g = p.gravitational_acceleration
 C_r = p.rolling_coefficient
 c1 = p.rolling_resistance_coef1
@@ -70,52 +56,60 @@ a2 = p.alpha_2
 a0_heb = p.alpha_0_heb
 a1_heb = p.alpha_1_heb
 b=p.beta
+gamma=p.gamma
 
 # Define power function for diesel vehicle
-def power_d(df_input):
+def power_d(df_input, hybrid=False):
+    if hybrid == True:
+       A_f_d=A_f_heb
+    else:
+       A_f_d=A_f_cdb        
     df = df_input
-    v = df.Speed
-    a = df.Acceleration
-    m = df.Vehicle_mass+(df.Onboard*179)
-    P_t = (1/float(3600*eta_d_dis))*((1./25.92)*rho*C_D*A_f*v*v + m*g*C_r*(c1*v + c2)/1000 + 1.1*m*a)*v
+    v = df.speed
+    a = df.acc
+    gr = df.grade
+    m = (df.Vehicle_mass+df.Onboard*179)*0.453592 # converts lb to kg
+    P_t = (1/float(3600*eta_d_dis))*((1./25.92)*rho*C_D*C_h*A_f_d*v*v + m*g*C_r*(c1*v + c2)/1000 + 1.2*m*a+m*g*gr)*v
     return P_t
 
 
 # Define fuel rate function for diesel vehicle
 def fuelRate_d(df_input, hybrid=False):
-	# Estimates fuel consumed (liters per second) 
+	# Estimates fuel consumed (liters per second)
     if hybrid == True:
-        a0 = a0_heb 
+        a0 = a0_heb
+        print(a0)
         a1 = a1_heb        
-        P_t = power_d(df_input)
+        P_t = power_d(df_input, hybrid=True)
         FC_t = P_t.apply(lambda x: a0 + a1*x +a2*x*x if x >= 0 else a0)
         FC_t=FC_t*b
     else:
         a0 = a0_cdb
         a1 = a1_cdb
-        P_t = power_d(df_input)
+        P_t = power_d(df_input, hybrid=False)
         FC_t = P_t.apply(lambda x: a0 + a1*x +a2*x*x if x >= 0 else a0)  
     return FC_t
 
 
 # Define Energy consumption function for electric vehicle
-def energyConsumption_d(df_input, hybrid=False):
-	# Estimates energy consumed (gallons)     
+def energyConsumption_d(df_input,  hybrid=False):
+	# Estimates energy consumed (gallons)
     df = df_input
     t = df.time_delta_in_seconds
-    FC_t = fuelRate_d(df_input, hybrid)
-    E_t = FC_t * t/3.78541
+    FC_t = fuelRate_d(df_input , hybrid)
+    E_t = (FC_t * t)/3.78541
     return E_t
 
 
 # Define power function for electric vehicle
 def power_e(df_input):
     df = df_input
-    v = df.Speed
-    a = df.Acceleration
-    m = df.Vehicle_mass+(df.Onboard*179)
-    factor = df.Acceleration.apply(lambda a: 1 if a >= 0 else np.exp(-(0.0411/abs(a))))
-    P_t = factor*(eta_batt/eta_m*eta_d_beb)*(1/float(3600*eta_d_beb))*((1./25.92)*rho*C_D*A_f*v*v + m*g*C_r*(c1*v + c2)/1000 + 1.1*m*a)*v
+    v = df.speed
+    a = df.acc
+    gr = df.grade
+    m = df.Vehicle_mass+(df.Onboard*179)*0.453592 # converts lb to kg
+    factor = df.acc.apply(lambda a: 1 if a >= 0 else np.exp(-(gamma/abs(a))))
+    P_t = factor*(eta_batt/eta_m*eta_d_beb)*(1/float(3600*eta_d_beb))*((1./25.92)*rho*C_D*C_h*A_f_beb*v*v + m*g*C_r*(c1*v + c2)/1000 + 1.2*m*a+m*g*gr)*v
     return P_t
 
 
@@ -129,6 +123,20 @@ def energyConsumption_e(df_input):
     return E_t
 
 
+
+# Read trajectories df
+df_trajectories = pd.read_csv(r'../../results/trajectories-mapped-powertrain-weight-grade.csv', delimiter=',', skiprows=0, low_memory=False)
+#df_trajectories.rename(columns={"acc": "Acceleration", "VehiclWeight(lb)": "Vehicle_mass"}, inplace=True)
+df_trajectories['Date']=pd.to_datetime(df_trajectories['Date'])
+df_trajectories = df_trajectories.fillna(0)
+
+# Subsetting data frame for "Conventional", "hybrid", and "electric" buses
+df_conventional=df_trajectories.loc[df_trajectories['Powertrain'] == 'conventional'].copy()
+df_hybrid=df_trajectories.loc[df_trajectories['Powertrain'] == 'hybrid'].copy()
+df_electric=df_trajectories.loc[df_trajectories['Powertrain'] == 'electric'].copy()
+
+
+
 # read validation df
 df_validation = pd.read_csv(r'../../data/tidy/energy_validation_april2022.csv', delimiter=',', skiprows=0, low_memory=False)
 df_validation['date']=pd.to_datetime(df_validation['date'])
@@ -138,57 +146,117 @@ df_validation.rename(
                 "gallons":"Real_Energy"}
           ,inplace=True)
 df_validation=df_validation[['Vehicle','Date','Real_Energy']]
+df_validation['Date']=pd.to_datetime(df_validation['Date'])
 
 
 ### calibrating hybrid model for parameter b
-b_values=[0.5, 0.6, 0.7, 0.8, 0.9]
-RMSE=[]
-for i in b_values:
-    b=i
-    df_hybrid=df.loc[df['Powertrain'] == 'hybrid'].copy()
-    df_hybrid['Date']=pd.to_datetime(df_hybrid['Date'])
-    df_hybrid['Energy']=energyConsumption_d(df_hybrid, hybrid=True)
-    train_hybrid, test_hybrid = train_test_split(df_hybrid, test_size=0.2, random_state=(42))    
-    train_hybrid = train_hybrid.groupby(['Vehicle', 'Date']).agg({'Energy': ['sum'] ,'Powertrain': ['max'], 'dist': ['sum']}).reset_index()
-    train_hybrid.columns = train_hybrid.columns.droplevel()
-    train_hybrid.columns =['Vehicle', 'Date', 'Energy', 'Powertrain', 'Distance']
-    cols = ['Vehicle', 'Date']
-    df_integrated_hybrid=train_hybrid.join(df_validation.set_index(cols), on=cols)
-    df_integrated_hybrid['Fuel/energy_economy']=df_integrated_hybrid['Distance']/df_integrated_hybrid['Energy']
-    df_integrated_hybrid['Real_Fuel/energy_economy']=df_integrated_hybrid['Distance']/df_integrated_hybrid['Real_Energy']
-    df_integrated_hybrid=df_integrated_hybrid.dropna()
-    df_integrated_hybrid = df_integrated_hybrid.reset_index()
-    MSE = np.square(np.subtract(df_integrated_hybrid['Real_Fuel/energy_economy'],df_integrated_hybrid['Fuel/energy_economy'])).mean() 
-    rmse_hybrid = math.sqrt(MSE)
-    #rmse_hybrid = mean_squared_error(df_integrated_hybrid['Real_Fuel/energy_economy'], df_integrated_hybrid['Fuel/energy_economy'], squared=False)
-    RMSE.append(rmse_hybrid)
-    print(rmse_hybrid)
-print(RMSE)
+def calibrate_parameter(start1, stop1, start2, stop2, hybrid=False, electric=False):
+    parameter1_values=[]
+    parameter2_values=[]
+    RMSE_Economy=[]
+    RMSE_Energy=[]
+    if hybrid==True:
+        df=df_hybrid
+        df.speed = df.speed *1.60934 # takes speed in km/h (Convert from mph to km/h)
+        #parameter1=a0_heb
+        #parameter2=a1_heb
+        for i in np.linspace(start1, stop1, 50):
+            for j in np.linspace(start2, stop2, 50):
+                global a0_heb
+                a0_heb=i
+                global a1_heb
+                a1_heb=j
+                df_new=df.copy()
+                df_new['Energy']=energyConsumption_d(df, hybrid=True)
+                df_grouped = df_new.groupby(['Vehicle', 'Date']).agg({'Energy': ['sum'] ,'Powertrain': ['max'], 'dist': ['sum']}).reset_index()
+                df_grouped.columns = df_grouped.columns.droplevel()
+                df_grouped.columns =['Vehicle', 'Date', 'Energy', 'Powertrain', 'Distance']
+                cols = ['Vehicle', 'Date']
+                df_integrated=df_grouped.join(df_validation.set_index(cols), on=cols)
+                df_integrated['Fuel/energy_economy']=df_integrated['Distance']/df_integrated['Energy']
+                df_integrated['Real_Fuel/energy_economy']=df_integrated['Distance']/df_integrated['Real_Energy']
+                df_integrated=df_integrated.dropna()
+                df_integrated = df_integrated.reset_index()
+                train, test = train_test_split(df_integrated, test_size=0.2, random_state=(42))    
+                MSE_Economy = np.square(np.subtract(train['Real_Fuel/energy_economy'],train['Fuel/energy_economy'])).mean() 
+                RMSE_Economy_current = math.sqrt(MSE_Economy)
+                MSE_Energy = np.square(np.subtract(train['Real_Energy'],train['Energy'])).mean() 
+                RMSE_Energy_current = math.sqrt(MSE_Energy)
+                parameter1_values.append(i)
+                parameter2_values.append(j)
+                RMSE_Economy.append(RMSE_Economy_current)
+                RMSE_Energy.append(RMSE_Energy_current)
+    else:
+        if electric==False:
+            #parameter1=a0_cdb
+            #parameter2=a1_cdb
+            df=df_conventional
+            df.speed = df.speed *1.60934 # takes speed in km/h (Convert from mph to km/h)
+            for i in np.linspace(start1, stop1, 50):
+                for j in np.linspace(start2, stop2, 50):
+                    global a0_cdb
+                    a0_cdb=i
+                    global a1_cdb
+                    a1_cdb=j
+                    df_new=df.copy()
+                    df_new['Energy']=energyConsumption_d(df, hybrid=False)
+                    df_grouped = df_new.groupby(['Vehicle', 'Date']).agg({'Energy': ['sum'] ,'Powertrain': ['max'], 'dist': ['sum']}).reset_index()
+                    df_grouped.columns = df_grouped.columns.droplevel()
+                    df_grouped.columns =['Vehicle', 'Date', 'Energy', 'Powertrain', 'Distance']
+                    cols = ['Vehicle', 'Date']
+                    df_integrated=df_grouped.join(df_validation.set_index(cols), on=cols)
+                    df_integrated['Fuel/energy_economy']=df_integrated['Distance']/df_integrated['Energy']
+                    df_integrated['Real_Fuel/energy_economy']=df_integrated['Distance']/df_integrated['Real_Energy']
+                    df_integrated=df_integrated.dropna()
+                    df_integrated = df_integrated.reset_index()
+                    train, test = train_test_split(df_integrated, test_size=0.2, random_state=(42))    
+                    MSE_Economy = np.square(np.subtract(train['Real_Fuel/energy_economy'],train['Fuel/energy_economy'])).mean() 
+                    RMSE_Economy_current = math.sqrt(MSE_Economy)
+                    MSE_Energy = np.square(np.subtract(train['Real_Energy'],train['Energy'])).mean() 
+                    RMSE_Energy_current = math.sqrt(MSE_Energy)
+                    parameter1_values.append(i)
+                    parameter2_values.append(j)
+                    RMSE_Economy.append(RMSE_Economy_current)
+                    RMSE_Energy.append(RMSE_Energy_current)
+        else:
+            df=df_electric
+            #parameter1=gamma
+            #parameter2=eta_batt
+            df.speed = df.speed *1.60934 # takes speed in km/h (Convert from mph to km/h)
+            for i in np.linspace(start1, stop1, 50):
+                for j in np.linspace(start2, stop2, 50):
+                    global gamma
+                    gamma=i
+                    global eta_batt
+                    eta_batt=j
+                    df_new=df.copy()
+                    df_new['Energy']=energyConsumption_e(df)
+                    df_grouped = df_new.groupby(['Vehicle', 'Date']).agg({'Energy': ['sum'] ,'Powertrain': ['max'], 'dist': ['sum']}).reset_index()
+                    df_grouped.columns = df_grouped.columns.droplevel()
+                    df_grouped.columns =['Vehicle', 'Date', 'Energy', 'Powertrain', 'Distance']
+                    cols = ['Vehicle', 'Date']
+                    df_integrated=df_grouped.join(df_validation.set_index(cols), on=cols)
+                    df_integrated['Fuel/energy_economy']=df_integrated['Distance']/df_integrated['Energy']
+                    df_integrated['Real_Fuel/energy_economy']=df_integrated['Distance']/df_integrated['Real_Energy']
+                    df_integrated=df_integrated.dropna()
+                    df_integrated = df_integrated.reset_index()
+                    train, test = train_test_split(df_integrated, test_size=0.2, random_state=(42))    
+                    MSE_Economy = np.square(np.subtract(0.437,train['Fuel/energy_economy'])).mean() 
+                    RMSE_Economy_current = math.sqrt(MSE_Economy)
+                    MSE_Energy = 0 
+                    RMSE_Energy_current = 0
+                    parameter1_values.append(i)
+                    parameter2_values.append(j)
+                    RMSE_Economy.append(RMSE_Economy_current)
+                    RMSE_Energy.append(RMSE_Energy_current)
+    results = pd.DataFrame(list(zip(parameter1_values, parameter2_values, RMSE_Economy, RMSE_Energy)),
+               columns =['parameter1_values', 'parameter2_values', 'RMSE_Economy','RMSE_Energy'])
+    results.to_csv(r'../../results/calibration-results.csv')
 
-# Get RMSE on test set
-b = 0.9
-b=i
-df_hybrid=df.loc[df['Powertrain'] == 'hybrid'].copy()
-df_hybrid['Date']=pd.to_datetime(df_hybrid['Date'])
-df_hybrid['Energy']=energyConsumption_d(df_hybrid, hybrid=True)
-train_hybrid, test_hybrid = train_test_split(df_hybrid, test_size=0.2, random_state=(42))    
-test_hybrid = test_hybrid.groupby(['Vehicle', 'Date']).agg({'Energy': ['sum'] ,'Powertrain': ['max'], 'dist': ['sum']}).reset_index()
-test_hybrid.columns = test_hybrid.columns.droplevel()
-test_hybrid.columns =['Vehicle', 'Date', 'Energy', 'Powertrain', 'Distance']
-cols = ['Vehicle', 'Date']
-df_integrated_hybrid=test_hybrid.join(df_validation.set_index(cols), on=cols)
-df_integrated_hybrid['Fuel/energy_economy']=df_integrated_hybrid['Distance']/df_integrated_hybrid['Energy']
-df_integrated_hybrid['Real_Fuel/energy_economy']=df_integrated_hybrid['Distance']/df_integrated_hybrid['Real_Energy']
-df_integrated_hybrid=df_integrated_hybrid.dropna()
-df_integrated_hybrid = df_integrated_hybrid.reset_index()
-MSE = np.square(np.subtract(df_integrated_hybrid['Real_Fuel/energy_economy'],df_integrated_hybrid['Fuel/energy_economy'])).mean() 
-rmse_hybrid = math.sqrt(MSE)
-print('RMSE on the test set for b=.9:', rmse_hybrid)
-
-# Save df_final
-#df_final.to_csv(r'../../results/computed-fuel-rates.csv')
-
-
-
-
+#hybrid
+#calibrate_parameter(0.000138, 0.0138, 0.00000622, 0.000622, hybrid=True, electric=False)
+#conventional
+calibrate_parameter(0.00166, 0.00266, 0.0000868, 0.0001008, hybrid=False, electric=False)
+#electric
+#calibrate_parameter(0.0111, 0.0166, 0.00000968, 0.000968, hybrid=False, electric=True)
 

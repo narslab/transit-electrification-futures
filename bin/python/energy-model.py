@@ -18,7 +18,7 @@ class vehicleParams():
 		self.__dict__.update(entries)
 
 # Read trajectories df
-df = pd.read_csv(r'../../results/trajectories-mapped-powertrain-weight.csv', delimiter=',', skiprows=0, low_memory=False)
+df = pd.read_csv(r'../../results/trajectories-mapped-powertrain-weight-grade.csv', delimiter=',', skiprows=0, low_memory=False)
 df.speed = df.speed *1.60934 # takes speed in km/h (Convert from mph to km/h)
 df.rename(columns={"speed": "Speed", "acc": "Acceleration", "VehiclWeight(lb)": "Vehicle_mass"}, inplace=True)
 df = df.fillna(0)
@@ -69,8 +69,9 @@ def power_d(df_input, hybrid=False):
     df = df_input
     v = df.Speed
     a = df.Acceleration
+    gr = df.grade
     m = (df.Vehicle_mass+df.Onboard*179)*0.453592 # converts lb to kg
-    P_t = (1/float(3600*eta_d_dis))*((1./25.92)*rho*C_D*C_h*A_f_d*v*v + m*g*C_r*(c1*v + c2)/1000 + 1.1*m*a)*v
+    P_t = (1/float(3600*eta_d_dis))*((1./25.92)*rho*C_D*C_h*A_f_d*v*v + m*g*C_r*(c1*v + c2)/1000 + 1.1*m*a+m*g*gr)*v
     return P_t
 
 
@@ -106,9 +107,10 @@ def power_e(df_input):
     df = df_input
     v = df.Speed
     a = df.Acceleration
+    gr = df.grade
     m = df.Vehicle_mass+(df.Onboard*179)*0.453592 # converts lb to kg
     factor = df.Acceleration.apply(lambda a: 1 if a >= 0 else np.exp(-(0.0411/abs(a))))
-    P_t = factor*(eta_batt/eta_m*eta_d_beb)*(1/float(3600*eta_d_beb))*((1./25.92)*rho*C_D*C_h*A_f_beb*v*v + m*g*C_r*(c1*v + c2)/1000 + 1.1*m*a)*v
+    P_t = factor*(eta_batt/eta_m*eta_d_beb)*(1/float(3600*eta_d_beb))*((1./25.92)*rho*C_D*C_h*A_f_beb*v*v + m*g*C_r*(c1*v + c2)/1000 + 1.1*m*a+m*g*gr)*v
     return P_t
 
 
