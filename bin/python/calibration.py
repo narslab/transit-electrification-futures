@@ -10,6 +10,8 @@ import pandas as pd
 import numpy as np
 import math
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_squared_error
+
 #import model
 
 
@@ -85,6 +87,7 @@ def fuelRate_d(df_input, hybrid=False):
         FC_t=FC_t*b
     else:
         a0 = a0_cdb
+        print(a0)
         a1 = a1_cdb
         P_t = power_d(df_input, hybrid=False)
         FC_t = P_t.apply(lambda x: a0 + a1*x +a2*x*x if x >= 0 else a0)  
@@ -128,6 +131,7 @@ def energyConsumption_e(df_input):
 df_trajectories = pd.read_csv(r'../../results/trajectories-mapped-powertrain-weight-grade.csv', delimiter=',', skiprows=0, low_memory=False)
 #df_trajectories.rename(columns={"acc": "Acceleration", "VehiclWeight(lb)": "Vehicle_mass"}, inplace=True)
 df_trajectories['Date']=pd.to_datetime(df_trajectories['Date'])
+df_trajectories.speed = df_trajectories.speed *1.60934 # takes speed in km/h (Convert from mph to km/h)
 df_trajectories = df_trajectories.fillna(0)
 
 # Subsetting data frame for "Conventional", "hybrid", and "electric" buses
@@ -140,12 +144,15 @@ df_electric=df_trajectories.loc[df_trajectories['Powertrain'] == 'electric'].cop
 # read validation df
 df_validation = pd.read_csv(r'../../data/tidy/energy_validation_april2022.csv', delimiter=',', skiprows=0, low_memory=False)
 df_validation['date']=pd.to_datetime(df_validation['date'])
-df_validation.rename(
-    columns={"equipment_id":"Vehicle",
-                "date":"Date",
-                "gallons":"Real_Energy"}
-          ,inplace=True)
-df_validation=df_validation[['Vehicle','Date','Real_Energy']]
+df_validation = df_validation.groupby(['equipment_id', 'date']).agg({'gallons': ['sum']}).reset_index()
+df_validation.columns = df_validation.columns.droplevel()
+df_validation.columns =['Vehicle', 'Date', 'Real_Energy']
+#df_validation.rename(
+#    columns={"equipment_id":"Vehicle",
+#                "date":"Date",
+#                "gallons":"Real_Energy"}
+#          ,inplace=True)
+#df_validation=df_validation[['Vehicle','Date','Real_Energy']]
 df_validation['Date']=pd.to_datetime(df_validation['Date'])
 
 
@@ -157,11 +164,10 @@ def calibrate_parameter(start1, stop1, start2, stop2, hybrid=False, electric=Fal
     RMSE_Energy=[]
     if hybrid==True:
         df=df_hybrid
-        df.speed = df.speed *1.60934 # takes speed in km/h (Convert from mph to km/h)
         #parameter1=a0_heb
         #parameter2=a1_heb
-        for i in np.linspace(start1, stop1, 50):
-            for j in np.linspace(start2, stop2, 50):
+        for i in np.linspace(start1, stop1, 100):
+            for j in np.linspace(start2, stop2, 100):
                 global a0_heb
                 a0_heb=i
                 global a1_heb
@@ -188,10 +194,9 @@ def calibrate_parameter(start1, stop1, start2, stop2, hybrid=False, electric=Fal
                 RMSE_Energy.append(RMSE_Energy_current)
     else:
         if electric==False:
+            df=df_conventional
             #parameter1=a0_cdb
             #parameter2=a1_cdb
-            df=df_conventional
-            df.speed = df.speed *1.60934 # takes speed in km/h (Convert from mph to km/h)
             for i in np.linspace(start1, stop1, 50):
                 for j in np.linspace(start2, stop2, 50):
                     global a0_cdb
@@ -212,6 +217,7 @@ def calibrate_parameter(start1, stop1, start2, stop2, hybrid=False, electric=Fal
                     train, test = train_test_split(df_integrated, test_size=0.2, random_state=(42))    
                     MSE_Economy = np.square(np.subtract(train['Real_Fuel/energy_economy'],train['Fuel/energy_economy'])).mean() 
                     RMSE_Economy_current = math.sqrt(MSE_Economy)
+                    #RMSE_Economy_current = mean_squared_error(train['Real_Fuel/energy_economy'], train['Fuel/energy_economy'], squared=False)
                     MSE_Energy = np.square(np.subtract(train['Real_Energy'],train['Energy'])).mean() 
                     RMSE_Energy_current = math.sqrt(MSE_Energy)
                     parameter1_values.append(i)
@@ -222,7 +228,6 @@ def calibrate_parameter(start1, stop1, start2, stop2, hybrid=False, electric=Fal
             df=df_electric
             #parameter1=gamma
             #parameter2=eta_batt
-            df.speed = df.speed *1.60934 # takes speed in km/h (Convert from mph to km/h)
             for i in np.linspace(start1, stop1, 50):
                 for j in np.linspace(start2, stop2, 50):
                     global gamma
@@ -256,7 +261,7 @@ def calibrate_parameter(start1, stop1, start2, stop2, hybrid=False, electric=Fal
 #hybrid
 #calibrate_parameter(0.000138, 0.0138, 0.00000622, 0.000622, hybrid=True, electric=False)
 #conventional
-calibrate_parameter(0.00166, 0.00266, 0.0000868, 0.0001008, hybrid=False, electric=False)
+calibrate_parameter(0.00066, 0.00266, 0.0000868, 0.0001008, hybrid=False, electric=False)
 #electric
 #calibrate_parameter(0.0111, 0.0166, 0.00000968, 0.000968, hybrid=False, electric=True)
 
