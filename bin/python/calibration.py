@@ -166,12 +166,14 @@ def calibrate_parameter(start1, stop1, start2, stop2, hybrid=False, electric=Fal
         df=df_hybrid
         #parameter1=a0_heb
         #parameter2=a1_heb
-        for i in np.linspace(start1, stop1, 100):
-            for j in np.linspace(start2, stop2, 100):
+        for i in np.linspace(start1, stop1, 1):
+            for j in np.linspace(start2, stop2, 10):
                 global a0_heb
                 a0_heb=i
-                global a1_heb
-                a1_heb=j
+                #global a1_heb
+                #a1_heb=j
+                global b
+                b=j
                 df_new=df.copy()
                 df_new['Energy']=energyConsumption_d(df, hybrid=True)
                 df_grouped = df_new.groupby(['Vehicle', 'Date']).agg({'Energy': ['sum'] ,'Powertrain': ['max'], 'dist': ['sum']}).reset_index()
@@ -197,8 +199,8 @@ def calibrate_parameter(start1, stop1, start2, stop2, hybrid=False, electric=Fal
             df=df_conventional
             #parameter1=a0_cdb
             #parameter2=a1_cdb
-            for i in np.linspace(start1, stop1, 50):
-                for j in np.linspace(start2, stop2, 50):
+            for i in np.linspace(start1, stop1, 100):
+                for j in np.linspace(start2, stop2, 100):
                     global a0_cdb
                     a0_cdb=i
                     global a1_cdb
@@ -228,8 +230,8 @@ def calibrate_parameter(start1, stop1, start2, stop2, hybrid=False, electric=Fal
             df=df_electric
             #parameter1=gamma
             #parameter2=eta_batt
-            for i in np.linspace(start1, stop1, 50):
-                for j in np.linspace(start2, stop2, 50):
+            for i in np.linspace(start1, stop1, 200):
+                for j in np.linspace(start2, stop2, 20):
                     global gamma
                     gamma=i
                     global eta_batt
@@ -259,9 +261,11 @@ def calibrate_parameter(start1, stop1, start2, stop2, hybrid=False, electric=Fal
     results.to_csv(r'../../results/calibration-results.csv')
 
 #hybrid
-#calibrate_parameter(0.000138, 0.0138, 0.00000622, 0.000622, hybrid=True, electric=False)
+#calibrate_parameter(0.000008, 0.0168, 0.0000011, 0.000411, hybrid=True, electric=False)
+calibrate_parameter(0.002043, 0.002043, 0.5 , 0.95 , hybrid=True, electric=False)
+
 #conventional
-calibrate_parameter(0.00066, 0.00266, 0.0000868, 0.0001008, hybrid=False, electric=False)
+#calibrate_parameter(0.00066, 0.00475, 0.0000868, 0.0005008, hybrid=False, electric=False)
 #electric
-#calibrate_parameter(0.0111, 0.0166, 0.00000968, 0.000968, hybrid=False, electric=True)
+#calibrate_parameter(0.0299, 5 , 0.75, 0.95, hybrid=False, electric=True)
 
