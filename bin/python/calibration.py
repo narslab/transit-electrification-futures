@@ -248,7 +248,7 @@ def calibrate_parameter(start1, stop1, start2, stop2, hybrid=False, electric=Fal
                     df_integrated=df_integrated.dropna()
                     df_integrated = df_integrated.reset_index()
                     train, test = train_test_split(df_integrated, test_size=0.2, random_state=(42))    
-                    MSE_Economy = np.square(np.subtract(0.437,train['Fuel/energy_economy'])).mean() 
+                    MSE_Economy = np.square(np.subtract(0.438,train['Fuel/energy_economy'])).mean() 
                     RMSE_Economy_current = math.sqrt(MSE_Economy)
                     MSE_Energy = 0 
                     RMSE_Energy_current = 0
@@ -262,10 +262,10 @@ def calibrate_parameter(start1, stop1, start2, stop2, hybrid=False, electric=Fal
 
 #hybrid
 #calibrate_parameter(0.000008, 0.0168, 0.0000011, 0.000411, hybrid=True, electric=False)
-calibrate_parameter(0.002043, 0.002043, 0.5 , 0.95 , hybrid=True, electric=False)
+#calibrate_parameter(0.001195, 0.001195, 0.5 , 0.95 , hybrid=True, electric=False)
 
 #conventional
 #calibrate_parameter(0.00066, 0.00475, 0.0000868, 0.0005008, hybrid=False, electric=False)
 #electric
-#calibrate_parameter(0.0299, 5 , 0.75, 0.95, hybrid=False, electric=True)
+calibrate_parameter(0.0299, 5 , 0.75, 0.95, hybrid=False, electric=True)
 
