@@ -71,7 +71,7 @@ def power_d(df_input, hybrid=False):
     a = df.Acceleration
     gr = df.grade
     m = (df.Vehicle_mass+df.Onboard*179)*0.453592 # converts lb to kg
-    P_t = (1/float(3600*eta_d_dis))*((1./25.92)*rho*C_D*C_h*A_f_d*v*v + m*g*C_r*(c1*v + c2)/1000 + 1.1*m*a+m*g*gr)*v
+    P_t = (1/float(3600*eta_d_dis))*((1./25.92)*rho*C_D*C_h*A_f_d*v*v + m*g*C_r*(c1*v + c2)/1000 + 1.2*m*a+m*g*gr)*v
     return P_t
 
 
@@ -92,7 +92,7 @@ def fuelRate_d(df_input, hybrid=False):
     return FC_t
 
 
-# Define Energy consumption function for electric vehicle
+# Define Energy consumption function for diesei vehicle
 def energyConsumption_d(df_input, hybrid=False):
 	# Estimates energy consumed (gallons)     
     df = df_input
@@ -134,11 +134,14 @@ df_electric['Energy']=energyConsumption_e(df_electric)
 
 #megre subset dataframes 
 df_final=pd.concat([df_conventional, df_hybrid, df_electric])
+#print(len(df_final['Vehicle'].unique()))
 
 # Sort dataframe
 df_final.sort_values(by=['Vehicle','ServiceDateTime'], ascending=True, inplace=True)
+#print(len(df_final['Vehicle'].unique()))
 
 
 df_final.to_csv(r'../../results/computed-fuel-rates.csv')
+#print(len(df_final['Vehicle'].unique()))
 
 

@@ -5,12 +5,6 @@ Created on Tue Nov 29 20:07:21 2022
 @author: Mahsa
 """
 
-# -*- coding: utf-8 -*-
-"""
-Created on Tue Jul 19 10:39:25 2022
-
-@author: Mahsa
-"""
 
 import yaml
 import pandas as pd
@@ -135,6 +129,7 @@ def energyConsumption_e(df_input):
 # Read trajectories df
 df_trajectories = pd.read_csv(r'../../results/trajectories-mapped-powertrain-weight-grade.csv', delimiter=',', skiprows=0, low_memory=False)
 #df_trajectories.rename(columns={"acc": "Acceleration", "VehiclWeight(lb)": "Vehicle_mass"}, inplace=True)
+df_trajectories.rename(columns={"VehiclWeight(lb)": "Vehicle_mass"}, inplace=True)
 df_trajectories['Date']=pd.to_datetime(df_trajectories['Date'])
 df_trajectories.speed = df_trajectories.speed *1.60934 # takes speed in km/h (Convert from mph to km/h)
 df_trajectories = df_trajectories.fillna(0)
@@ -180,13 +175,19 @@ def compute_model_performance(hybrid=False, electric=False):
         df_integrated['Real_Fuel/energy_economy']=df_integrated['Distance']/df_integrated['Real_Energy']
         df_integrated=df_integrated.dropna()
         df_integrated = df_integrated.reset_index()
-        train, test = train_test_split(df_integrated, test_size=0.2, random_state=(42))    
-        MSE_Economy = np.square(np.subtract(train['Real_Fuel/energy_economy'],train['Fuel/energy_economy'])).mean() 
+        MSE_Economy = np.square(np.subtract(df_integrated['Real_Fuel/energy_economy'],df_integrated['Fuel/energy_economy'])).mean() 
         RMSE_Economy_current = math.sqrt(MSE_Economy)
-        MSE_Energy = np.square(np.subtract(train['Real_Energy'],train['Energy'])).mean() 
+        MSE_Energy = np.square(np.subtract(df_integrated['Real_Energy'],df_integrated['Energy'])).mean() 
         RMSE_Energy_current = math.sqrt(MSE_Energy)
+        #RMSE_Economy_current = mean_squared_error(df_integrated['Real_Fuel/energy_economy'], df_integrated['Fuel/energy_economy'], squared=False)
         RMSE_Economy=RMSE_Economy_current
         RMSE_Energy=RMSE_Energy_current
+        MAPE_Energy = np.mean(np.abs((df_integrated['Real_Energy'] - df_integrated['Energy']) / df_integrated['Real_Energy'])) * 100
+        #print('hybrid')
+        df_integrated['difference']=df_integrated['Real_Energy']-df_integrated['Energy']
+        #print(df_integrated.nlargest(10,'difference'))
+        #print(df_integrated.nsmallest(10,'difference'))
+
     else:
         if electric==False:
             powertrain='conventional'
@@ -202,14 +203,18 @@ def compute_model_performance(hybrid=False, electric=False):
             df_integrated['Real_Fuel/energy_economy']=df_integrated['Distance']/df_integrated['Real_Energy']
             df_integrated=df_integrated.dropna()
             df_integrated = df_integrated.reset_index()
-            train, test = train_test_split(df_integrated, test_size=0.2, random_state=(42))    
-            MSE_Economy = np.square(np.subtract(train['Real_Fuel/energy_economy'],train['Fuel/energy_economy'])).mean() 
+            MSE_Economy = np.square(np.subtract(df_integrated['Real_Fuel/energy_economy'],df_integrated['Fuel/energy_economy'])).mean() 
             RMSE_Economy_current = math.sqrt(MSE_Economy)
             #RMSE_Economy_current = mean_squared_error(train['Real_Fuel/energy_economy'], train['Fuel/energy_economy'], squared=False)
-            MSE_Energy = np.square(np.subtract(train['Real_Energy'],train['Energy'])).mean() 
+            MSE_Energy = np.square(np.subtract(df_integrated['Real_Energy'],df_integrated['Energy'])).mean() 
             RMSE_Energy_current = math.sqrt(MSE_Energy)
             RMSE_Economy=RMSE_Economy_current
             RMSE_Energy=RMSE_Energy_current
+            MAPE_Energy = np.mean(np.abs((df_integrated['Real_Energy'] - df_integrated['Energy']) / df_integrated['Real_Energy'])) * 100
+            #print('conventional')
+            df_integrated['difference']=df_integrated['Real_Energy']-df_integrated['Energy']
+            #print(df_integrated.nlargest(10,'difference'))
+            #print(df_integrated.nsmallest(10,'difference'))
         else:
             powertrain='electric'
             df=df_electric
@@ -224,14 +229,14 @@ def compute_model_performance(hybrid=False, electric=False):
             df_integrated['Real_Fuel/energy_economy']=df_integrated['Distance']/df_integrated['Real_Energy']
             df_integrated=df_integrated.dropna()
             df_integrated = df_integrated.reset_index()
-            train, test = train_test_split(df_integrated, test_size=0.2, random_state=(42))    
-            MSE_Economy = np.square(np.subtract(0.438,train['Fuel/energy_economy'])).mean() 
+            MSE_Economy = np.square(np.subtract(0.438,df_integrated['Fuel/energy_economy'])).mean() 
             RMSE_Economy_current = math.sqrt(MSE_Economy)
             MSE_Energy = 0 
             RMSE_Energy_current = 0
             RMSE_Economy=RMSE_Economy_current
             RMSE_Energy=RMSE_Energy_current
-    return("powertrain",powertrain,"RMSE_Economy",RMSE_Economy,"RMSE_Energy",RMSE_Energy)
+            MAPE_Energy = np.mean(np.abs((df_integrated['Real_Energy'] - df_integrated['Energy']) / df_integrated['Real_Energy'])) * 100
+    return("powertrain",powertrain,"RMSE_Economy",RMSE_Economy,"RMSE_Energy",RMSE_Energy, "MAPE_Enery", MAPE_Energy)
 
 
 
