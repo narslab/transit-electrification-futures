@@ -163,12 +163,13 @@ def calibrate_parameter(start1, stop1, start2, stop2, hybrid=False, electric=Fal
     parameter2_values=[]
     RMSE_Economy=[]
     RMSE_Energy=[]
+    MAPE_Energy=[]
     if hybrid==True:
         df=df_hybrid
         #parameter1=a0_heb
         #parameter2=a1_heb
-        for i in np.linspace(start1, stop1, 50):
-            for j in np.linspace(start2, stop2, 50):
+        for i in np.linspace(start1, stop1, 100):
+            for j in np.linspace(start2, stop2, 100):
                 global a0_heb
                 a0_heb=i
                 global a1_heb
@@ -186,22 +187,30 @@ def calibrate_parameter(start1, stop1, start2, stop2, hybrid=False, electric=Fal
                 df_integrated['Real_Fuel/energy_economy']=df_integrated['Distance']/df_integrated['Real_Energy']
                 df_integrated=df_integrated.dropna()
                 df_integrated = df_integrated.reset_index()
-                train, test = train_test_split(df_integrated, test_size=0.2, random_state=(42))    
+                #train, test = train_test_split(df_integrated, test_size=0.2, random_state=(42))    
+                train_dates=['2022-04-01','2022-04-02','2022-04-03','2022-04-04','2022-04-05','2022-04-06','2022-04-07','2022-04-08','2022-04-09','2022-04-10','2022-04-11','2022-04-12','2022-04-13', '2022-04-14','2022-04-15','2022-04-16','2022-04-17','2022-04-18','2022-04-19','2022-04-20','2022-04-21','2022-04-22','2022-04-23']
+                train = df_integrated[df_integrated.Date.isin(train_dates)]
+                print('train',train['Date'].unique())
+                test_dates=['2022-04-24','2022-04-25','2022-04-26','2022-04-27','2022-04-28','2022-04-29','2022-04-30']
+                test = df_integrated[df_integrated.Date.isin(test_dates)]
+                print('test',test['Date'].unique())
                 MSE_Economy = np.square(np.subtract(train['Real_Fuel/energy_economy'],train['Fuel/energy_economy'])).mean() 
                 RMSE_Economy_current = math.sqrt(MSE_Economy)
                 MSE_Energy = np.square(np.subtract(train['Real_Energy'],train['Energy'])).mean() 
                 RMSE_Energy_current = math.sqrt(MSE_Energy)
+                MAPE_Energy_current = np.mean(np.abs((train['Real_Energy'] - train['Energy']) / train['Real_Energy'])) * 100
                 parameter1_values.append(i)
                 parameter2_values.append(j)
                 RMSE_Economy.append(RMSE_Economy_current)
                 RMSE_Energy.append(RMSE_Energy_current)
+                MAPE_Energy.append(MAPE_Energy_current)
     else:
         if electric==False:
             df=df_conventional
             #parameter1=a0_cdb
             #parameter2=a1_cdb
-            for i in np.linspace(start1, stop1, 50):
-                for j in np.linspace(start2, stop2, 50):
+            for i in np.linspace(start1, stop1, 200):
+                for j in np.linspace(start2, stop2, 200):
                     global a0_cdb
                     a0_cdb=i
                     global a1_cdb
@@ -217,16 +226,24 @@ def calibrate_parameter(start1, stop1, start2, stop2, hybrid=False, electric=Fal
                     df_integrated['Real_Fuel/energy_economy']=df_integrated['Distance']/df_integrated['Real_Energy']
                     df_integrated=df_integrated.dropna()
                     df_integrated = df_integrated.reset_index()
-                    train, test = train_test_split(df_integrated, test_size=0.2, random_state=(42))    
+                    #train, test = train_test_split(df_integrated, test_size=0.2, random_state=(42))    
+                    train_dates=['2022-04-01','2022-04-02','2022-04-03','2022-04-04','2022-04-05','2022-04-06','2022-04-07','2022-04-08','2022-04-09','2022-04-10','2022-04-11','2022-04-12','2022-04-13', '2022-04-14','2022-04-15','2022-04-16','2022-04-17','2022-04-18','2022-04-19','2022-04-20','2022-04-21','2022-04-22','2022-04-23']
+                    train = df_integrated[df_integrated.Date.isin(train_dates)]
+                    print('train',train['Date'].unique())
+                    test_dates=['2022-04-24','2022-04-25','2022-04-26','2022-04-27','2022-04-28','2022-04-29','2022-04-30']
+                    test = df_integrated[df_integrated.Date.isin(test_dates)]
+                    print('test',test['Date'].unique())
                     MSE_Economy = np.square(np.subtract(train['Real_Fuel/energy_economy'],train['Fuel/energy_economy'])).mean() 
                     RMSE_Economy_current = math.sqrt(MSE_Economy)
                     #RMSE_Economy_current = mean_squared_error(train['Real_Fuel/energy_economy'], train['Fuel/energy_economy'], squared=False)
                     MSE_Energy = np.square(np.subtract(train['Real_Energy'],train['Energy'])).mean() 
                     RMSE_Energy_current = math.sqrt(MSE_Energy)
+                    MAPE_Energy_current = np.mean(np.abs((train['Real_Energy'] - train['Energy']) / train['Real_Energy'])) * 100
                     parameter1_values.append(i)
                     parameter2_values.append(j)
                     RMSE_Economy.append(RMSE_Economy_current)
                     RMSE_Energy.append(RMSE_Energy_current)
+                    MAPE_Energy.append(MAPE_Energy_current)
         else:
             df=df_electric
             #parameter1=gamma
@@ -264,11 +281,11 @@ def calibrate_parameter(start1, stop1, start2, stop2, hybrid=False, electric=Fal
 #hybrid
 #calibrate_parameter(0.000008, 0.0168, 0.0000011, 0.000411, hybrid=True, electric=False)
 #calibrate_parameter(0.001195, 0.001195, 0.5 , 0.95 , hybrid=True, electric=False)
-calibrate_parameter(0.0001, 0.002, 0.00001, 0.0002, hybrid=True, electric=False)
+#calibrate_parameter(0.0001, 0.002, 0.00001, 0.0002, hybrid=True, electric=False)
 
 
 #conventional
-#calibrate_parameter(0.00066, 0.00475, 0.0000868, 0.0005008, hybrid=False, electric=False)
+calibrate_parameter(0.0001, 0.01, 0.000001, 0.0001, hybrid=False, electric=False)
 
 #electric
 #calibrate_parameter(0.0299, 5 , 0.75, 0.95, hybrid=False, electric=True)
