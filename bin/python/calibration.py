@@ -190,10 +190,10 @@ def calibrate_parameter(start1, stop1, start2, stop2, hybrid=False, electric=Fal
                 #train, test = train_test_split(df_integrated, test_size=0.2, random_state=(42))    
                 train_dates=['2022-04-01','2022-04-02','2022-04-03','2022-04-04','2022-04-05','2022-04-06','2022-04-07','2022-04-08','2022-04-09','2022-04-10','2022-04-11','2022-04-12','2022-04-13', '2022-04-14','2022-04-15','2022-04-16','2022-04-17','2022-04-18','2022-04-19','2022-04-20','2022-04-21','2022-04-22','2022-04-23']
                 train = df_integrated[df_integrated.Date.isin(train_dates)]
-                print('train',train['Date'].unique())
+                #print('train',train['Date'].unique())
                 test_dates=['2022-04-24','2022-04-25','2022-04-26','2022-04-27','2022-04-28','2022-04-29','2022-04-30']
                 test = df_integrated[df_integrated.Date.isin(test_dates)]
-                print('test',test['Date'].unique())
+                #print('test',test['Date'].unique())
                 MSE_Economy = np.square(np.subtract(train['Real_Fuel/energy_economy'],train['Fuel/energy_economy'])).mean() 
                 RMSE_Economy_current = math.sqrt(MSE_Economy)
                 MSE_Energy = np.square(np.subtract(train['Real_Energy'],train['Energy'])).mean() 
@@ -229,10 +229,10 @@ def calibrate_parameter(start1, stop1, start2, stop2, hybrid=False, electric=Fal
                     #train, test = train_test_split(df_integrated, test_size=0.2, random_state=(42))    
                     train_dates=['2022-04-01','2022-04-02','2022-04-03','2022-04-04','2022-04-05','2022-04-06','2022-04-07','2022-04-08','2022-04-09','2022-04-10','2022-04-11','2022-04-12','2022-04-13', '2022-04-14','2022-04-15','2022-04-16','2022-04-17','2022-04-18','2022-04-19','2022-04-20','2022-04-21','2022-04-22','2022-04-23']
                     train = df_integrated[df_integrated.Date.isin(train_dates)]
-                    print('train',train['Date'].unique())
+                    #print('train',train['Date'].unique())
                     test_dates=['2022-04-24','2022-04-25','2022-04-26','2022-04-27','2022-04-28','2022-04-29','2022-04-30']
                     test = df_integrated[df_integrated.Date.isin(test_dates)]
-                    print('test',test['Date'].unique())
+                    #print('test',test['Date'].unique())
                     MSE_Economy = np.square(np.subtract(train['Real_Fuel/energy_economy'],train['Fuel/energy_economy'])).mean() 
                     RMSE_Economy_current = math.sqrt(MSE_Economy)
                     #RMSE_Economy_current = mean_squared_error(train['Real_Fuel/energy_economy'], train['Fuel/energy_economy'], squared=False)
