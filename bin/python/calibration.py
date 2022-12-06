@@ -11,6 +11,8 @@ import numpy as np
 import math
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
+import time
+
 
 #import model
 
@@ -87,7 +89,7 @@ def fuelRate_d(df_input, hybrid=False):
         FC_t=FC_t*b
     else:
         a0 = a0_cdb
-        #print(a0)
+        print(a0)
         a1 = a1_cdb
         P_t = power_d(df_input, hybrid=False)
         FC_t = P_t.apply(lambda x: a0 + a1*x +a2*x*x if x >= 0 else a0)  
@@ -159,6 +161,7 @@ df_validation['Date']=pd.to_datetime(df_validation['Date'])
 
 ### calibrating hybrid model for parameter b
 def calibrate_parameter(start1, stop1, start2, stop2, hybrid=False, electric=False):
+    start_time = time.time()
     parameter1_values=[]
     parameter2_values=[]
     RMSE_Economy=[]
@@ -209,8 +212,8 @@ def calibrate_parameter(start1, stop1, start2, stop2, hybrid=False, electric=Fal
             df=df_conventional
             #parameter1=a0_cdb
             #parameter2=a1_cdb
-            for i in np.linspace(start1, stop1, 100):
-                for j in np.linspace(start2, stop2, 100):
+            for i in np.linspace(start1, stop1, 50):
+                for j in np.linspace(start2, stop2, 50):
                     global a0_cdb
                     a0_cdb=i
                     global a1_cdb
@@ -277,7 +280,7 @@ def calibrate_parameter(start1, stop1, start2, stop2, hybrid=False, electric=Fal
     results = pd.DataFrame(list(zip(parameter1_values, parameter2_values, RMSE_Economy, RMSE_Energy)),
                columns =['parameter1_values', 'parameter2_values', 'RMSE_Economy','RMSE_Energy'])
     results.to_csv(r'../../results/calibration-results.csv')
-
+    print("--- %s seconds ---" % (time.time() - start_time))
 #hybrid
 #calibrate_parameter(0.000008, 0.0168, 0.0000011, 0.000411, hybrid=True, electric=False)
 #calibrate_parameter(0.001195, 0.001195, 0.5 , 0.95 , hybrid=True, electric=False)
@@ -286,6 +289,7 @@ def calibrate_parameter(start1, stop1, start2, stop2, hybrid=False, electric=Fal
 
 #conventional
 calibrate_parameter(0.0001, 0.01, 0.000001, 0.0001, hybrid=False, electric=False)
+
 
 #electric
 #calibrate_parameter(0.0299, 5 , 0.75, 0.95, hybrid=False, electric=True)
