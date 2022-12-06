@@ -87,7 +87,7 @@ def fuelRate_d(df_input, hybrid=False):
         FC_t=FC_t*b
     else:
         a0 = a0_cdb
-        print(a0)
+        #print(a0)
         a1 = a1_cdb
         P_t = power_d(df_input, hybrid=False)
         FC_t = P_t.apply(lambda x: a0 + a1*x +a2*x*x if x >= 0 else a0)  
@@ -209,8 +209,8 @@ def calibrate_parameter(start1, stop1, start2, stop2, hybrid=False, electric=Fal
             df=df_conventional
             #parameter1=a0_cdb
             #parameter2=a1_cdb
-            for i in np.linspace(start1, stop1, 200):
-                for j in np.linspace(start2, stop2, 200):
+            for i in np.linspace(start1, stop1, 100):
+                for j in np.linspace(start2, stop2, 100):
                     global a0_cdb
                     a0_cdb=i
                     global a1_cdb
