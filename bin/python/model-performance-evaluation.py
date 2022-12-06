@@ -175,16 +175,18 @@ def compute_model_performance(hybrid=False, electric=False):
         df_integrated['Real_Fuel/energy_economy']=df_integrated['Distance']/df_integrated['Real_Energy']
         df_integrated=df_integrated.dropna()
         df_integrated = df_integrated.reset_index()
-        MSE_Economy = np.square(np.subtract(df_integrated['Real_Fuel/energy_economy'],df_integrated['Fuel/energy_economy'])).mean() 
+        test_dates=['2022-04-24','2022-04-25','2022-04-26','2022-04-27','2022-04-28','2022-04-29','2022-04-30']
+        test = df_integrated[df_integrated.Date.isin(test_dates)]
+        MSE_Economy = np.square(np.subtract(test['Real_Fuel/energy_economy'],test['Fuel/energy_economy'])).mean() 
         RMSE_Economy_current = math.sqrt(MSE_Economy)
-        MSE_Energy = np.square(np.subtract(df_integrated['Real_Energy'],df_integrated['Energy'])).mean() 
+        MSE_Energy = np.square(np.subtract(test['Real_Energy'],test['Energy'])).mean() 
         RMSE_Energy_current = math.sqrt(MSE_Energy)
         #RMSE_Economy_current = mean_squared_error(df_integrated['Real_Fuel/energy_economy'], df_integrated['Fuel/energy_economy'], squared=False)
         RMSE_Economy=RMSE_Economy_current
         RMSE_Energy=RMSE_Energy_current
-        MAPE_Energy = np.mean(np.abs((df_integrated['Real_Energy'] - df_integrated['Energy']) / df_integrated['Real_Energy'])) * 100
+        MAPE_Energy = np.mean(np.abs((test['Real_Energy'] - test['Energy']) / test['Real_Energy'])) * 100
         #print('hybrid')
-        df_integrated['difference']=df_integrated['Real_Energy']-df_integrated['Energy']
+        #test['difference']=test['Real_Energy']-df_integrated['Energy']
         #print(df_integrated.nlargest(10,'difference'))
         #print(df_integrated.nsmallest(10,'difference'))
 
@@ -203,16 +205,18 @@ def compute_model_performance(hybrid=False, electric=False):
             df_integrated['Real_Fuel/energy_economy']=df_integrated['Distance']/df_integrated['Real_Energy']
             df_integrated=df_integrated.dropna()
             df_integrated = df_integrated.reset_index()
-            MSE_Economy = np.square(np.subtract(df_integrated['Real_Fuel/energy_economy'],df_integrated['Fuel/energy_economy'])).mean() 
+            test_dates=['2022-04-24','2022-04-25','2022-04-26','2022-04-27','2022-04-28','2022-04-29','2022-04-30']
+            test = df_integrated[df_integrated.Date.isin(test_dates)]
+            MSE_Economy = np.square(np.subtract(test['Real_Fuel/energy_economy'],test['Fuel/energy_economy'])).mean() 
             RMSE_Economy_current = math.sqrt(MSE_Economy)
             #RMSE_Economy_current = mean_squared_error(train['Real_Fuel/energy_economy'], train['Fuel/energy_economy'], squared=False)
-            MSE_Energy = np.square(np.subtract(df_integrated['Real_Energy'],df_integrated['Energy'])).mean() 
+            MSE_Energy = np.square(np.subtract(test['Real_Energy'],test['Energy'])).mean() 
             RMSE_Energy_current = math.sqrt(MSE_Energy)
             RMSE_Economy=RMSE_Economy_current
             RMSE_Energy=RMSE_Energy_current
-            MAPE_Energy = np.mean(np.abs((df_integrated['Real_Energy'] - df_integrated['Energy']) / df_integrated['Real_Energy'])) * 100
+            MAPE_Energy = np.mean(np.abs((test['Real_Energy'] - test['Energy']) / df_integrated['Real_Energy'])) * 100
             #print('conventional')
-            df_integrated['difference']=df_integrated['Real_Energy']-df_integrated['Energy']
+            #df_integrated['difference']=df_integrated['Real_Energy']-df_integrated['Energy']
             #print(df_integrated.nlargest(10,'difference'))
             #print(df_integrated.nsmallest(10,'difference'))
         else:
@@ -229,13 +233,15 @@ def compute_model_performance(hybrid=False, electric=False):
             df_integrated['Real_Fuel/energy_economy']=df_integrated['Distance']/df_integrated['Real_Energy']
             df_integrated=df_integrated.dropna()
             df_integrated = df_integrated.reset_index()
-            MSE_Economy = np.square(np.subtract(0.438,df_integrated['Fuel/energy_economy'])).mean() 
+            test_dates=['2022-04-24','2022-04-25','2022-04-26','2022-04-27','2022-04-28','2022-04-29','2022-04-30']
+            test = df_integrated[df_integrated.Date.isin(test_dates)]
+            MSE_Economy = np.square(np.subtract(0.438,test['Fuel/energy_economy'])).mean() 
             RMSE_Economy_current = math.sqrt(MSE_Economy)
             MSE_Energy = 0 
             RMSE_Energy_current = 0
             RMSE_Economy=RMSE_Economy_current
             RMSE_Energy=RMSE_Energy_current
-            MAPE_Energy = np.mean(np.abs((df_integrated['Real_Energy'] - df_integrated['Energy']) / df_integrated['Real_Energy'])) * 100
+            MAPE_Energy = np.mean(np.abs((0.438 - test['Fuel/energy_economy']) / 0.438)) * 100
     return("powertrain",powertrain,"RMSE_Economy",RMSE_Economy,"RMSE_Energy",RMSE_Energy, "MAPE_Enery", MAPE_Energy)
 
 
