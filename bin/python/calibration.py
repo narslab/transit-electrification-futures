@@ -288,7 +288,7 @@ def calibrate_parameter(start1, stop1, start2, stop2, hybrid=False, electric=Fal
 
 
 #conventional
-calibrate_parameter(0.0001, 0.01, 0.000001, 0.0001, hybrid=False, electric=False)
+#calibrate_parameter(0.0001, 0.01, 0.000001, 0.0001, hybrid=False, electric=False)
 
 
 #electric
