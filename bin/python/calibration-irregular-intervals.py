@@ -171,8 +171,8 @@ def calibrate_parameter(start1, stop1, start2, stop2, hybrid=False):
         validation=df_validation
         #parameter1=a0_heb
         #parameter2=a1_heb
-        for i in np.linspace(start1, stop1, 200):
-            for j in np.linspace(start2, stop2, 200):
+        for i in np.linspace(start1, stop1, 100):
+            for j in np.linspace(start2, stop2, 100):
                 global a0_heb
                 a0_heb=i
                 global a1_heb
@@ -184,7 +184,7 @@ def calibrate_parameter(start1, stop1, start2, stop2, hybrid=False):
                 df_new['Energy']=energyConsumption_d(df, hybrid=True)
                 df_new.sort_values(by=['Vehicle','ServiceDateTime'], inplace=True)
                 df_new['ServiceDateTime']=pd.to_datetime(df_new['ServiceDateTime'])
-                df_integrated_hybrid = validation_new[(validation_new.Powertrain == 'hybrid')]
+                df_integrated_hybrid = validation_new[(validation_new.Powertrain == 'hybrid')].copy()
                 df_integrated_hybrid.sort_values(by=['Vehicle','ServiceDateTime'], inplace=True)
                 df_integrated_hybrid=df_integrated_hybrid.reset_index()
                 for i in df_integrated_hybrid.index:
@@ -193,8 +193,8 @@ def calibrate_parameter(start1, stop1, start2, stop2, hybrid=False):
                     else:
                         if df_integrated_hybrid['Vehicle'][i]==df_integrated_hybrid['Vehicle'][i-1]:
                             df_filtered=df_new.loc[(df_new['Vehicle']==df_integrated_hybrid['Vehicle'][i])&(df_integrated_hybrid['ServiceDateTime'][i-1]<df_new['ServiceDateTime'])&(df_new['ServiceDateTime']<df_integrated_hybrid['ServiceDateTime'][i])]
-                            df_integrated_hybrid['dist'][i]=df_filtered['dist'].sum()
-                            df_integrated_hybrid['Energy'][i]=df_filtered['Energy'].sum()
+                            df_integrated_hybrid.loc[i,'dist']=df_filtered['dist'].sum()
+                            df_integrated_hybrid.loc[i,'Energy']=df_filtered['Energy'].sum()
                             #df_integrated_hybrid['VehicleModel'][i]=df_filtered['VehicleModel'].mode()
                         else:
                             pass
@@ -235,7 +235,7 @@ def calibrate_parameter(start1, stop1, start2, stop2, hybrid=False):
                 df_new['Energy']=energyConsumption_d(df, hybrid=False)
                 df_new.sort_values(by=['Vehicle','ServiceDateTime'], inplace=True)
                 df_new['ServiceDateTime']=pd.to_datetime(df_new['ServiceDateTime'])
-                df_integrated_conventional = validation_new[(validation_new.Powertrain == 'conventional')]
+                df_integrated_conventional = validation_new[(validation_new.Powertrain == 'conventional')].copy()
                 df_integrated_conventional.sort_values(by=['Vehicle','ServiceDateTime'], inplace=True)
                 df_integrated_conventional=df_integrated_conventional.reset_index()
                 for i in df_integrated_conventional.index:
@@ -244,8 +244,8 @@ def calibrate_parameter(start1, stop1, start2, stop2, hybrid=False):
                     else:
                         if df_integrated_conventional['Vehicle'][i]==df_integrated_conventional['Vehicle'][i-1]:
                             df_filtered=df_new.loc[(df_new['Vehicle']==df_integrated_conventional['Vehicle'][i])&(df_integrated_conventional['ServiceDateTime'][i-1]<df_new['ServiceDateTime'])&(df_new['ServiceDateTime']<df_integrated_conventional['ServiceDateTime'][i])]
-                            df_integrated_conventional['dist'][i]=df_filtered['dist'].sum()
-                            df_integrated_conventional['Energy'][i]=df_filtered['Energy'].sum()
+                            df_integrated_conventional.loc[i,'dist']=df_filtered['dist'].sum()
+                            df_integrated_conventional.loc[i,'Energy']=df_filtered['Energy'].sum()
                             #df_integrated_conventional['VehicleModel'][i]=df_filtered['VehicleModel'].mode()
                         else:
                             pass
@@ -279,7 +279,7 @@ def calibrate_parameter(start1, stop1, start2, stop2, hybrid=False):
 #hybrid
 #calibrate_parameter(0.000008, 0.0168, 0.0000011, 0.000411, hybrid=True)
 #calibrate_parameter(0.001195, 0.001195, 0.5 , 0.95 , hybrid=True)
-calibrate_parameter(0.00001, 0.007, 0.00001, 0.00025, hybrid=True)
+calibrate_parameter(0.0001, 0.007, 0.00005, 0.00025, hybrid=True)
 ##test
 #calibrate_parameter(0.0001, 0.0001, 0.00001, 0.00001, hybrid=True)
 
