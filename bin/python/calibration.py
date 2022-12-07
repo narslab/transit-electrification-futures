@@ -277,8 +277,8 @@ def calibrate_parameter(start1, stop1, start2, stop2, hybrid=False, electric=Fal
                     parameter2_values.append(j)
                     RMSE_Economy.append(RMSE_Economy_current)
                     RMSE_Energy.append(RMSE_Energy_current)
-    results = pd.DataFrame(list(zip(parameter1_values, parameter2_values, RMSE_Economy, RMSE_Energy)),
-               columns =['parameter1_values', 'parameter2_values', 'RMSE_Economy','RMSE_Energy'])
+    results = pd.DataFrame(list(zip(parameter1_values, parameter2_values, RMSE_Economy, RMSE_Energy, MAPE_Energy)),
+               columns =['parameter1_values', 'parameter2_values', 'RMSE_Economy','RMSE_Energy','MAPE_Energy'])
     results.to_csv(r'../../results/calibration-results.csv')
     print("--- %s seconds ---" % (time.time() - start_time))
 #hybrid
@@ -288,7 +288,7 @@ def calibrate_parameter(start1, stop1, start2, stop2, hybrid=False, electric=Fal
 
 
 #conventional
-#calibrate_parameter(0.0001, 0.01, 0.000001, 0.0001, hybrid=False, electric=False)
+calibrate_parameter(0.0001, 0.01, 0.000001, 0.0001, hybrid=False, electric=False)
 
 
 #electric
