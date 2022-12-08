@@ -228,8 +228,8 @@ def calibrate_parameter(start1, stop1, start2, stop2, hybrid=False):
         #parameter1=a0_cdb
         #parameter2=a1_cdb
         count=0
-        for a0 in np.linspace(start1, stop1, 50):
-            for a1 in np.linspace(start2, stop2, 50):
+        for a0 in np.linspace(start1, stop1, 35):
+            for a1 in np.linspace(start2, stop2, 35):
                 count+=1
                 print(count)
                 global a0_cdb
