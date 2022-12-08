@@ -82,14 +82,14 @@ def fuelRate_d(df_input, hybrid=False):
 	# Estimates fuel consumed (liters per second)
     if hybrid == True:
         a0 = a0_heb
-        print(a0)
+        #print(a0)
         a1 = a1_heb        
         P_t = power_d(df_input, hybrid=True)
         FC_t = P_t.apply(lambda x: a0 + a1*x +a2*x*x if x >= 0 else a0)
         FC_t=FC_t*b
     else:
         a0 = a0_cdb
-        print(a0)
+        #print(a0)
         a1 = a1_cdb
         P_t = power_d(df_input, hybrid=False)
         FC_t = P_t.apply(lambda x: a0 + a1*x +a2*x*x if x >= 0 else a0)  
@@ -171,8 +171,11 @@ def calibrate_parameter(start1, stop1, start2, stop2, hybrid=False):
         validation=df_validation
         #parameter1=a0_heb
         #parameter2=a1_heb
+        count=0
         for a0 in np.linspace(start1, stop1, 50):
             for a1 in np.linspace(start2, stop2, 50):
+                count+=1
+                print(count)
                 global a0_heb
                 a0_heb=a0
                 global a1_heb
@@ -224,8 +227,11 @@ def calibrate_parameter(start1, stop1, start2, stop2, hybrid=False):
         validation=df_validation
         #parameter1=a0_cdb
         #parameter2=a1_cdb
-        for a0 in np.linspace(start1, stop1, 25):
-            for a1 in np.linspace(start2, stop2, 25):
+        count=0
+        for a0 in np.linspace(start1, stop1, 100):
+            for a1 in np.linspace(start2, stop2, 100):
+                count+=1
+                print(count)
                 global a0_cdb
                 a0_cdb=a0
                 global a1_cdb
@@ -279,14 +285,14 @@ def calibrate_parameter(start1, stop1, start2, stop2, hybrid=False):
 #hybrid
 #calibrate_parameter(0.000008, 0.0168, 0.0000011, 0.000411, hybrid=True)
 #calibrate_parameter(0.001195, 0.001195, 0.5 , 0.95 , hybrid=True)
-calibrate_parameter(0.000001, 0.0050, 0.000001, 0.00025, hybrid=True)
+#calibrate_parameter(0.000001, 0.0050, 0.000001, 0.00025, hybrid=True)
 ##test
 #calibrate_parameter(0.0001, 0.0001, 0.00001, 0.00001, hybrid=True)
 
 
 #conventional
 #calibrate_parameter(0.0001, 0.01, 0.000001, 0.0001, hybrid=False)
-#calibrate_parameter(0.001, 0.0025, 0.00005, 0.0002, hybrid=False)
+calibrate_parameter(0.0005, 0.0030, 0.00001, 0.0002, hybrid=False)
 ##test
 #calibrate_parameter(0.0001, 0.0001, 0.000001, 0.000001, hybrid=False)
 
