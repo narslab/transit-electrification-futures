@@ -171,12 +171,12 @@ def calibrate_parameter(start1, stop1, start2, stop2, hybrid=False):
         validation=df_validation
         #parameter1=a0_heb
         #parameter2=a1_heb
-        for i in np.linspace(start1, stop1, 100):
-            for j in np.linspace(start2, stop2, 100):
+        for a0 in np.linspace(start1, stop1, 100):
+            for a1 in np.linspace(start2, stop2, 100):
                 global a0_heb
-                a0_heb=i
+                a0_heb=a0
                 global a1_heb
-                a1_heb=j
+                a1_heb=a1
                 #global b
                 #b=j
                 df_new=df.copy()
@@ -211,8 +211,8 @@ def calibrate_parameter(start1, stop1, start2, stop2, hybrid=False):
                 MAPE_Energy_current = np.mean(np.abs((train['gallons'] - train['Energy']) / train['gallons'])) * 100
                 RMSE_Economy_current = mean_squared_error(train['Real_Fuel_economy'], train['Fuel_economy'], squared=False)
                 MAPE_Economy_current = np.mean(np.abs((train['Real_Fuel_economy'] - train['Fuel_economy']) / train['Real_Fuel_economy'])) * 100
-                parameter1_values.append(i)
-                parameter2_values.append(j)
+                parameter1_values.append(a0)
+                parameter2_values.append(a1)
                 RMSE_Energy.append(RMSE_Energy_current)
                 MAPE_Energy.append(MAPE_Energy_current)
                 RMSE_Economy.append(RMSE_Economy_current)
@@ -224,12 +224,12 @@ def calibrate_parameter(start1, stop1, start2, stop2, hybrid=False):
         validation=df_validation
         #parameter1=a0_cdb
         #parameter2=a1_cdb
-        for i in np.linspace(start1, stop1, 100):
-            for j in np.linspace(start2, stop2, 100):
+        for a0 in np.linspace(start1, stop1, 10):
+            for a1 in np.linspace(start2, stop2, 10):
                 global a0_cdb
-                a0_cdb=i
+                a0_cdb=a0
                 global a1_cdb
-                a1_cdb=j
+                a1_cdb=a1
                 df_new=df.copy()
                 validation_new=validation.copy()
                 df_new['Energy']=energyConsumption_d(df, hybrid=False)
@@ -262,8 +262,8 @@ def calibrate_parameter(start1, stop1, start2, stop2, hybrid=False):
                 MAPE_Energy_current = np.mean(np.abs((train['gallons'] - train['Energy']) / train['gallons'])) * 100
                 RMSE_Economy_current = mean_squared_error(train['Real_Fuel_economy'], train['Fuel_economy'], squared=False)
                 MAPE_Economy_current = np.mean(np.abs((train['Real_Fuel_economy'] - train['Fuel_economy']) / train['Real_Fuel_economy'])) * 100
-                parameter1_values.append(i)
-                parameter2_values.append(j)
+                parameter1_values.append(a0)
+                parameter2_values.append(a1)
                 RMSE_Energy.append(RMSE_Energy_current)
                 MAPE_Energy.append(MAPE_Energy_current)
                 RMSE_Economy.append(RMSE_Economy_current)
@@ -279,13 +279,14 @@ def calibrate_parameter(start1, stop1, start2, stop2, hybrid=False):
 #hybrid
 #calibrate_parameter(0.000008, 0.0168, 0.0000011, 0.000411, hybrid=True)
 #calibrate_parameter(0.001195, 0.001195, 0.5 , 0.95 , hybrid=True)
-calibrate_parameter(0.0001, 0.007, 0.00005, 0.00025, hybrid=True)
+#calibrate_parameter(0.0001, 0.007, 0.00005, 0.00025, hybrid=True)
 ##test
 #calibrate_parameter(0.0001, 0.0001, 0.00001, 0.00001, hybrid=True)
 
 
 #conventional
 #calibrate_parameter(0.0001, 0.01, 0.000001, 0.0001, hybrid=False)
+calibrate_parameter(0.001, 0.0025, 0.00005, 0.0002, hybrid=False)
 ##test
 #calibrate_parameter(0.0001, 0.0001, 0.000001, 0.000001, hybrid=False)
 
