@@ -24,8 +24,8 @@ alpha_2:                    0.00000001  # unitless
 
 
 #Parameters specific to CDB
-alpha_0_cdb:                0.0016666    # unitless
-alpha_1_cdb:                0.0000833    # unitless
+alpha_0_cdb:                0.001676    # unitless
+alpha_1_cdb:                0.0000882    # unitless
 frontal_area_cdb:           7.44         # m^2
 
 
