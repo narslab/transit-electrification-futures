@@ -1,4 +1,6 @@
 results/
+results/
 data/raw
 data/tidy/large
 .ipynb_checkpoints
+
