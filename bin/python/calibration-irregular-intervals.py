@@ -207,7 +207,13 @@ def calibrate_parameter(start1, stop1, start2, stop2, hybrid=False):
                 df_integrated_hybrid['Real_Fuel_economy']=df_integrated_hybrid['dist']/df_integrated_hybrid['gallons']
                 df_integrated_hybrid['Energy'] = df_integrated_hybrid['Energy'].astype(float)
                 df_integrated_hybrid['dist'] = df_integrated_hybrid['dist'].astype(float)
-                train_dates=['2022-04-01','2022-04-02','2022-04-03','2022-04-04','2022-04-05','2022-04-06','2022-04-07','2022-04-08','2022-04-09','2022-04-10','2022-04-11','2022-04-12','2022-04-13', '2022-04-14','2022-04-15','2022-04-16','2022-04-17','2022-04-18','2022-04-19','2022-04-20','2022-04-21','2022-04-22','2022-04-23']
+                #train_dates=['2022-04-01','2022-04-02','2022-04-03','2022-04-04','2022-04-05','2022-04-06','2022-04-07','2022-04-08','2022-04-09','2022-04-10','2022-04-11','2022-04-12','2022-04-13', '2022-04-14','2022-04-15','2022-04-16','2022-04-17','2022-04-18','2022-04-19','2022-04-20','2022-04-21','2022-04-22','2022-04-23']
+                train_dates=['4/1/2022', '4/6/2022', '4/7/2022', '4/11/2022', '4/13/2022',
+       '4/14/2022', '4/19/2022', '4/20/2022', '4/21/2022', '4/22/2022',
+       '4/23/2022', '4/4/2022',
+       '4/5/2022', '4/8/2022', '4/9/2022', '4/12/2022', '4/15/2022',
+       '4/18/2022', '4/10/2022', '4/16/2022',
+       '4/2/2022', '4/17/2022', '4/3/2022']  
                 train = df_integrated_hybrid[df_integrated_hybrid.date.isin(train_dates)]
                 MSE_Energy_current = mean_squared_error(train['gallons'], train['Energy'])
                 RMSE_Energy_current = math.sqrt(MSE_Energy_current)
@@ -261,7 +267,13 @@ def calibrate_parameter(start1, stop1, start2, stop2, hybrid=False):
                 df_integrated_conventional['Real_Fuel_economy']=df_integrated_conventional['dist']/df_integrated_conventional['gallons']
                 df_integrated_conventional['Energy'] = df_integrated_conventional['Energy'].astype(float)
                 df_integrated_conventional['dist'] = df_integrated_conventional['dist'].astype(float)
-                train_dates=['2022-04-01','2022-04-02','2022-04-03','2022-04-04','2022-04-05','2022-04-06','2022-04-07','2022-04-08','2022-04-09','2022-04-10','2022-04-11','2022-04-12','2022-04-13', '2022-04-14','2022-04-15','2022-04-16','2022-04-17','2022-04-18','2022-04-19','2022-04-20','2022-04-21','2022-04-22','2022-04-23']
+                #train_dates=['2022-04-01','2022-04-02','2022-04-03','2022-04-04','2022-04-05','2022-04-06','2022-04-07','2022-04-08','2022-04-09','2022-04-10','2022-04-11','2022-04-12','2022-04-13', '2022-04-14','2022-04-15','2022-04-16','2022-04-17','2022-04-18','2022-04-19','2022-04-20','2022-04-21','2022-04-22','2022-04-23']
+                train_dates=['4/1/2022', '4/6/2022', '4/7/2022', '4/11/2022', '4/13/2022',
+       '4/14/2022', '4/19/2022', '4/20/2022', '4/21/2022', '4/22/2022',
+       '4/23/2022', '4/4/2022',
+       '4/5/2022', '4/8/2022', '4/9/2022', '4/12/2022', '4/15/2022',
+       '4/18/2022', '4/10/2022', '4/16/2022',
+       '4/2/2022', '4/17/2022', '4/3/2022']                
                 train = df_integrated_conventional[df_integrated_conventional.date.isin(train_dates)]
                 MSE_Energy_current = mean_squared_error(train['gallons'], train['Energy'])
                 RMSE_Energy_current = math.sqrt(MSE_Energy_current)
