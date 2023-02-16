@@ -144,7 +144,7 @@ df_hybrid=df_trajectories.loc[df_trajectories['Powertrain'] == 'hybrid'].copy()
 
 
 # read validation df
-df_validation = pd.read_csv(r'../../data/tidy/energy-validation-april2022-31march.csv', delimiter=',', skiprows=0, low_memory=False)
+df_validation = pd.read_csv(r'../../data/tidy/energy-validation-april2022-31march-without-outliers.csv', delimiter=',', skiprows=0, low_memory=False)
 df_validation=df_validation.loc[df_validation['gallons']>0]
 df_validation.sort_values(by=['equipment_id','timestamp'], inplace=True)
 df_validation.drop(['Unnamed: 0'], axis=1, inplace=True)
@@ -172,8 +172,8 @@ def calibrate_parameter(start1, stop1, start2, stop2, hybrid=False):
         #parameter1=a0_heb
         #parameter2=a1_heb
         count=0
-        for a0 in np.linspace(start1, stop1, 100):
-            for a1 in np.linspace(start2, stop2, 100):
+        for a0 in np.linspace(start1, stop1, 50):
+            for a1 in np.linspace(start2, stop2, 50):
                 count+=1
                 print(count)
                 global a0_heb
