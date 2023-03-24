@@ -45,6 +45,9 @@ for i in df.index:
             dist.append(0) 
 df['dist'] = dist
 
+# Add time column
+df['time'] = df['ServiceDateTime'].dt.time
+
 #calculating speed
 speed=[]
 for i in df.index:
@@ -54,7 +57,7 @@ for i in df.index:
         if df['Vehicle'].loc[i]==df['Vehicle'].loc[i-1]:
             if df['Date'].loc[i]==df['Date'].loc[i-1]:
                 FMT = '%H:%M:%S'
-                time_diff = abs(datetime.strptime(df['time'].loc[i-1], FMT) - datetime.strptime(df['time'].loc[i], FMT)).total_seconds() / 3600.0
+                time_diff = abs(datetime.strptime(str(df['time'].iloc[i-1]), FMT) - datetime.strptime(str(df['time'].iloc[i]), FMT)).total_seconds() / 3600.0
                 distance = df['dist'].loc[i]
                 if time_diff==0:
                     speed.append(0)
