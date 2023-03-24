@@ -172,8 +172,8 @@ def calibrate_parameter(start1, stop1, start2, stop2, hybrid=False):
         #parameter1=a0_heb
         #parameter2=a1_heb
         count=0
-        for a0 in np.linspace(start1, stop1, 50):
-            for a1 in np.linspace(start2, stop2, 50):
+        for a0 in np.linspace(start1, stop1, 100):
+            for a1 in np.linspace(start2, stop2, 100):
                 count+=1
                 print(count)
                 global a0_heb
@@ -297,14 +297,14 @@ def calibrate_parameter(start1, stop1, start2, stop2, hybrid=False):
 #hybrid
 #calibrate_parameter(0.000008, 0.0168, 0.0000011, 0.000411, hybrid=True)
 #calibrate_parameter(0.001195, 0.001195, 0.5 , 0.95 , hybrid=True)
-#calibrate_parameter(0.0009, 0.002, 0.00003, 0.0001, hybrid=True)
+calibrate_parameter(0.0009, 0.003, 0.00005, 0.0005, hybrid=True)
 ##test
 #calibrate_parameter(0.0001, 0.0001, 0.00001, 0.00001, hybrid=True)
 
 
 #conventional
 #calibrate_parameter(0.0001, 0.01, 0.000001, 0.0001, hybrid=False)
-calibrate_parameter(0.0009, 0.0030, 0.00005, 0.0005, hybrid=False)
+#calibrate_parameter(0.0009, 0.0030, 0.00005, 0.0005, hybrid=False)
 ##test
 #calibrate_parameter(0.0001, 0.0001, 0.000001, 0.000001, hybrid=False)
 

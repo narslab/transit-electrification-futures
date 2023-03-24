@@ -24,14 +24,14 @@ alpha_2:                    0.00000001  # unitless
 
 
 #Parameters specific to CDB
-alpha_0_cdb:                0.001676    # unitless
-alpha_1_cdb:                0.0000882    # unitless
+alpha_0_cdb:                0.00170689     # unitless
+alpha_1_cdb:                0.000082069    # unitless
 frontal_area_cdb:           7.44         # m^2
 
 
 #Parameters specific to HEB
-alpha_0_heb:                0.0014       # unitless
-alpha_1_heb:                0.00006818   # unitless
+alpha_0_heb:                0.001196       # unitless
+alpha_1_heb:                0.0000863   # unitless
 frontal_area_heb:           6.99        # m^2
 
 

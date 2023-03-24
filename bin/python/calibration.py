@@ -164,9 +164,12 @@ def calibrate_parameter(start1, stop1, start2, stop2, hybrid=False, electric=Fal
     start_time = time.time()
     parameter1_values=[]
     parameter2_values=[]
-    RMSE_Economy=[]
+    RMSE_Economy_train=[]
+    RMSE_Economy_test=[]
     RMSE_Energy=[]
     MAPE_Energy=[]
+    MAPE_Economy_train=[]
+    MAPE_Economy_test=[]
     if hybrid==True:
         df=df_hybrid
         #parameter1=a0_heb
@@ -251,8 +254,8 @@ def calibrate_parameter(start1, stop1, start2, stop2, hybrid=False, electric=Fal
             df=df_electric
             #parameter1=gamma
             #parameter2=eta_batt
-            for i in np.linspace(start1, stop1, 200):
-                for j in np.linspace(start2, stop2, 20):
+            for i in np.linspace(start1, stop1, 1):
+                for j in np.linspace(start2, stop2, 1):
                     global gamma
                     gamma=i
                     global eta_batt
@@ -269,16 +272,31 @@ def calibrate_parameter(start1, stop1, start2, stop2, hybrid=False, electric=Fal
                     df_integrated=df_integrated.dropna()
                     df_integrated = df_integrated.reset_index()
                     train, test = train_test_split(df_integrated, test_size=0.2, random_state=(42))    
-                    MSE_Economy = np.square(np.subtract(0.438,train['Fuel/energy_economy'])).mean() 
-                    RMSE_Economy_current = math.sqrt(MSE_Economy)
-                    MSE_Energy = 0 
-                    RMSE_Energy_current = 0
+                    MSE_Economy_train = np.square(np.subtract(0.438,train['Fuel/energy_economy'])).mean() 
+                    RMSE_Economy_current_train = math.sqrt(MSE_Economy_train)
+                    MAPE_Economy_current_train = np.mean(np.abs((0.438- train['Fuel/energy_economy']) / 0.438)) * 100
+                    MSE_Economy_test = np.square(np.subtract(0.438,test['Fuel/energy_economy'])).mean() 
+                    RMSE_Economy_current_test = math.sqrt(MSE_Economy_test)
+                    MAPE_Economy_current_test = np.mean(np.abs((0.438- test['Fuel/energy_economy']) / 0.438)) * 100
+                    #MSE_Energy = 0 
+                    #RMSE_Energy_current = 0
                     parameter1_values.append(i)
                     parameter2_values.append(j)
-                    RMSE_Economy.append(RMSE_Economy_current)
-                    RMSE_Energy.append(RMSE_Energy_current)
-    results = pd.DataFrame(list(zip(parameter1_values, parameter2_values, RMSE_Economy, RMSE_Energy, MAPE_Energy)),
-               columns =['parameter1_values', 'parameter2_values', 'RMSE_Economy','RMSE_Energy','MAPE_Energy'])
+                    RMSE_Economy_train.append(RMSE_Economy_current_train)
+                    RMSE_Economy_test.append(RMSE_Economy_current_test)
+                    MAPE_Economy_train.append(MAPE_Economy_current_train)
+                    MAPE_Economy_test.append(MAPE_Economy_current_test)
+                    #RMSE_Energy.append(RMSE_Energy_current)
+    print(parameter1_values)
+    print(parameter2_values)
+    print(RMSE_Economy_train)
+    print(RMSE_Economy_test)
+    print(MAPE_Economy_train)   
+    print(MAPE_Economy_test)    
+
+    results = pd.DataFrame(list(zip(parameter1_values, parameter2_values, RMSE_Economy_train, RMSE_Economy_test, MAPE_Economy_train, MAPE_Economy_test)),
+               columns =['parameter1_values', 'parameter2_values', 'RMSE_Economy_train', 'RMSE_Economy_test','MAPE_Economy_train','MAPE_Economy_test'])
+    print(results)
     results.to_csv(r'../../results/calibration-results.csv')
     print("--- %s seconds ---" % (time.time() - start_time))
 #hybrid
@@ -288,9 +306,9 @@ def calibrate_parameter(start1, stop1, start2, stop2, hybrid=False, electric=Fal
 
 
 #conventional
-calibrate_parameter(0.0001, 0.01, 0.000001, 0.0001, hybrid=False, electric=False)
+#calibrate_parameter(0.0001, 0.01, 0.000001, 0.0001, hybrid=False, electric=False)
 
 
 #electric
-#calibrate_parameter(0.0299, 5 , 0.75, 0.95, hybrid=False, electric=True)
+calibrate_parameter(3.10, 3.10 , 0.95, 0.95, hybrid=False, electric=True)
 

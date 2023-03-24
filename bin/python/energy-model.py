@@ -92,12 +92,15 @@ def fuelRate_d(df_input, hybrid=False):
     return FC_t
 
 
-# Define Energy consumption function for diesei vehicle
+# Define Energy consumption function for diesel vehicle
 def energyConsumption_d(df_input, hybrid=False):
 	# Estimates energy consumed (gallons)     
     df = df_input
     t = df.time_delta_in_seconds
-    FC_t = fuelRate_d(df_input, hybrid)
+    if hybrid == True:
+        FC_t = fuelRate_d(df_input, hybrid=True)
+    else:
+        FC_t = fuelRate_d(df_input, hybrid=False)
     E_t = (FC_t * t)/3.78541
     return E_t
 
@@ -124,9 +127,7 @@ def energyConsumption_e(df_input):
     return E_t
 
 # Compute energy consumption for "Conventional", "hybrid" and "electric" buses
-#df_conventional['FuelRate(L/s)']=fuelRate_d(df_conventional)
 df_conventional['Energy']=energyConsumption_d(df_conventional)
-#df_hybrid['FuelRate/Energy']=fuelRate_d(df_hybrid, hybrid=True)
 df_hybrid['Energy']=energyConsumption_d(df_hybrid, hybrid=True)
 df_electric['Energy']=energyConsumption_e(df_electric)
 
@@ -134,14 +135,11 @@ df_electric['Energy']=energyConsumption_e(df_electric)
 
 #megre subset dataframes 
 df_final=pd.concat([df_conventional, df_hybrid, df_electric])
-#print(len(df_final['Vehicle'].unique()))
 
 # Sort dataframe
 df_final.sort_values(by=['Vehicle','ServiceDateTime'], ascending=True, inplace=True)
-#print(len(df_final['Vehicle'].unique()))
 
 
 df_final.to_csv(r'../../results/computed-fuel-rates.csv')
-#print(len(df_final['Vehicle'].unique()))
 
 
