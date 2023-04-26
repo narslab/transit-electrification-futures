@@ -18,7 +18,7 @@ class vehicleParams():
 		self.__dict__.update(entries)
 
 # Read trajectories df
-df = pd.read_csv(r'../../results/trajectories-mapped-powertrain-weight-grade-oct2021-sep2022.csv', delimiter=',', skiprows=0, low_memory=False)
+df = pd.read_csv(r'../../data/tidy/large/trajectories-mapped-powertrain-weight-grade-oct2021-sep2022.csv', delimiter=',', skiprows=0, low_memory=False)
 df.speed = df.speed *1.60934 # takes speed in km/h (Convert from mph to km/h)
 df.rename(columns={"speed": "Speed", "acc": "Acceleration", "VehiclWeight(lb)": "Vehicle_mass"}, inplace=True)
 df = df.fillna(0)

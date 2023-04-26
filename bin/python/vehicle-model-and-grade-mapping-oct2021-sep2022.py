@@ -69,4 +69,5 @@ grade[1:][cond] = elevation_diff[cond] / np.sqrt(dist_squared[cond] - elev_squar
 # Assign the computed grades to the dataframe
 df_trajectories['grade'] = grade
 
-
+# Save tidy csv file
+df_trajectories.to_csv(r'../../data/tidy/large/trajectories-mapped-powertrain-weight-grade-oct2021-sep2022.csv')
