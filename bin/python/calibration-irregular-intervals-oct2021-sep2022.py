@@ -8,9 +8,7 @@ Created on Tue Jul 19 10:39:25 2022
 import yaml
 import pandas as pd
 import numpy as np
-import math
-from sklearn.metrics import mean_squared_error
-import time
+
 
 
 #import model
@@ -23,18 +21,6 @@ f.close()
 class vehicleParams():
 	def __init__(self, **entries):
 		self.__dict__.update(entries)
-
-# Read trajectories df
-df = pd.read_csv(r'../../data/tidy/large/trajectories-mapped-powertrain-weight-grade-oct2021-sep2022.csv', delimiter=',', skiprows=0, low_memory=False)
-df.speed = df.speed *1.60934 # takes speed in km/h (Convert from mph to km/h)
-df.rename(columns={"speed": "Speed", "acc": "Acceleration", "VehiclWeight(lb)": "Vehicle_mass"}, inplace=True)
-df = df.fillna(0)
-
-
-# Subsetting data frame for "Conventional", "hybrid", and "electric" buses
-df_conventional=df.loc[df['Powertrain'] == 'conventional'].copy()
-df_hybrid=df.loc[df['Powertrain'] == 'hybrid'].copy()
-df_electric=df.loc[df['Powertrain'] == 'electric'].copy()
 
 # Define model parameters
 p = vehicleParams(**parameters)
@@ -85,6 +71,7 @@ def power_d(df_input, hybrid=False):
 # Define fuel rate function for diesel vehicle
 def regenerative_braking(df_input, hybrid=True):
 	# Apply regenerative braking for HEBs 
+    df = df_input
     if hybrid == True:
         factor = df.Acceleration.apply(lambda a: 1 if a >= 0 else np.exp(-(0.0411/abs(a))))
         P_t = factor * power_d(df_input, hybrid=True)
@@ -107,7 +94,7 @@ def energyConsumption_d(df_input, hybrid=False):
 
 
 # Read trajectories df
-df_trajectories = pd.read_csv(r'../../data/tidy/large/trajectories-mapped-powertrain-weight-grade.csv', delimiter=',', skiprows=0, low_memory=False)
+df_trajectories = pd.read_csv(r'../../data/tidy/large/trajectories-mapped-powertrain-weight-grade-oct2021-sep2022.csv', delimiter=',', skiprows=0, low_memory=False)
 df_trajectories.rename(columns={"VehiclWeight(lb)": "Vehicle_mass"}, inplace=True)
 df_trajectories['Date']=pd.to_datetime(df_trajectories['Date'])
 df_trajectories.speed = df_trajectories.speed *1.60934 # takes speed in km/h (Convert from mph to km/h)
