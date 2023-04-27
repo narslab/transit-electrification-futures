@@ -55,9 +55,10 @@ eta_batt = p.battery_efficiency
 eta_m = p.motor_efficiency
 a0_cdb = p.alpha_0_cdb
 a1_cdb = p.alpha_1_cdb
-a2 = p.alpha_2
+a2_cdb = p.alpha_2_cdb
 a0_heb = p.alpha_0_heb
 a1_heb = p.alpha_1_heb
+a2_heb = p.alpha_2_heb
 b=p.beta
 
 # Define power function for diesel vehicle
@@ -80,13 +81,15 @@ def fuelRate_d(df_input, hybrid=False):
 	# Estimates fuel consumed (liters per second) 
     if hybrid == True:
         a0 = a0_heb 
-        a1 = a1_heb   
+        a1 = a1_heb
+        a2 = a2_heb
         factor = df.Acceleration.apply(lambda a: 1 if a >= 0 else np.exp(-(0.0411/abs(a))))
         P_t = factor * power_d(df_input, hybrid=True)
         FC_t = P_t.apply(lambda x: a0 + a1*x + a2*x*x if x >= 0 and df.Acceleration <= 0 else (a0 if x < 0 and df.Acceleration <= 0 else x/33.7)) # deviding by 33.7 converts kwh to gallons of diesel
     else:
         a0 = a0_cdb
         a1 = a1_cdb
+        a2 = a2_cdb
         P_t = power_d(df_input, hybrid=False)
         FC_t = P_t.apply(lambda x: a0 + a1*x +a2*x*x if x >= 0 else a0)  
     return FC_t

@@ -30,9 +30,9 @@ frontal_area_cdb:           7.44         # m^2
 
 
 #Parameters specific to HEB
-alpha_0_heb:                0.001196       # unitless
-alpha_1_heb:                0.0000863   # unitless
-frontal_area_heb:           6.99        # m^2
+alpha_0_heb:                -4.2667141348728687e-10       # unitless
+alpha_1_heb:                 0.00028047031373535443   # unitless
+frontal_area_heb:           10.07527559222301        # m^2
 
 
 
