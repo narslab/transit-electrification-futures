@@ -61,14 +61,23 @@ def validation(hybrid=False):
             pass 
         else:
             if df_integrated['Vehicle'][i]==df_integrated['Vehicle'][i-1]:
-                df_filtered=df.loc[(df['Vehicle']==df_integrated['Vehicle'][i])&(df_integrated['ServiceDateTime'][i-1]<df['ServiceDateTime'])&(df['ServiceDateTime']<df_integrated['ServiceDateTime'][i])]
+                df_filtered=df.loc[(df['Vehicle']==df_integrated['Vehicle'][i])&((df_integrated['ServiceDateTime'][i-1]<df['ServiceDateTime']))&((df['ServiceDateTime']<df_integrated['ServiceDateTime'][i]))]
                 df_integrated.loc[i,'dist']=df_filtered['dist'].sum()
                 df_integrated.loc[i,'Energy']=df_filtered['Energy'].sum()
+                df_filtered=df_filtered.reset_index()
             else:
                 pass               
     # Drop rows with missing values in 'Energy' and 'Qty' columns
     df_integrated_clean = df_integrated.dropna(subset=['Energy', 'Qty'])
+    df_integrated_clean = df_integrated_clean[~(df_integrated_clean['Energy'].isin([np.nan, np.inf, -np.inf]))]
+    df_integrated_clean = df_integrated_clean[~(df_integrated_clean['Qty'].isin([np.nan, np.inf, -np.inf]))]
     
+    # save the integerated dataframe
+    if hybrid:
+        df_integrated_clean.to_csv(r'../../results/validation-vs-computed-fuel-rates-heb-oct2021-sep2022.csv')
+    else:
+        df_integrated_clean.to_csv(r'../../results/validation-vs-computed-fuel-rates-cdb-oct2021-sep2022.csv')
+
     # Extract the two columns from your dataframe
     energy = df_integrated_clean['Energy']
     qty = df_integrated_clean['Qty']
@@ -79,14 +88,13 @@ def validation(hybrid=False):
     return (mape, rmse)
 
 #hybrid
-mape_heb, rmse_heb = validation(hybrid=True)
+mape_heb, mape2_heb, rmse_heb = validation(hybrid=True)
 print("mape_heb:", mape_heb, "rmse_heb:", rmse_heb)
 
 
 #conventional
 mape_cdb, rmse_cdb = validation(hybrid=False)
 print("mape_cdb:", mape_cdb, "rmse_cdb:", rmse_cdb)
-
 
 
 

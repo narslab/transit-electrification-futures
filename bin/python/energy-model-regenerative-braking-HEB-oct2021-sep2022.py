@@ -83,6 +83,7 @@ def fuelRate_d(df_input, hybrid=False):
         a1 = a1_heb
         a2 = a2_heb
         factor = df.Acceleration.apply(lambda a: 1 if a >= 0 else np.exp(-(0.0411/abs(a))))
+        #factor=1
         P_t = factor * power_d(df_input, hybrid=True)
         FC_t = P_t.apply(lambda x: a0 + a1*x +a2*x*x if x >= 0 else a0)  
 
