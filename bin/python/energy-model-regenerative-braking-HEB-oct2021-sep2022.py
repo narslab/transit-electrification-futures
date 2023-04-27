@@ -85,7 +85,9 @@ def fuelRate_d(df_input, hybrid=False):
         a2 = a2_heb
         factor = df.Acceleration.apply(lambda a: 1 if a >= 0 else np.exp(-(0.0411/abs(a))))
         P_t = factor * power_d(df_input, hybrid=True)
-        FC_t = P_t.apply(lambda x: a0 + a1*x + a2*x*x if x >= 0 and df.Acceleration <= 0 else (a0 if x < 0 and df.Acceleration <= 0 else x/33.7)) # deviding by 33.7 converts kwh to gallons of diesel
+        #FC_t = P_t.apply(lambda x: a0 + a1*x + a2*x*x if x >= 0 and df.Acceleration <= 0 else (a0 if x < 0 and df.Acceleration <= 0 else x/33.7)) # deviding by 33.7 converts kwh to gallons of diesel
+        FC_t = P_t.apply(lambda x: a0 + a1*x + a2*x*x if (x >= 0) & (df['Acceleration'] <= 0) else (a0 if (x < 0) & (df['Acceleration'] <= 0) else x/33.7))
+
     else:
         a0 = a0_cdb
         a1 = a1_cdb
@@ -106,7 +108,6 @@ def energyConsumption_d(df_input, hybrid=False):
         FC_t = fuelRate_d(df_input, hybrid=False)
     E_t = (FC_t * t)/3.78541
     return E_t
-
 
 
 # Define power function for electric vehicle
@@ -134,7 +135,6 @@ def energyConsumption_e(df_input):
 df_conventional['Energy']=energyConsumption_d(df_conventional)
 df_hybrid['Energy']=energyConsumption_d(df_hybrid, hybrid=True)
 df_electric['Energy']=energyConsumption_e(df_electric)
-
 
 
 #megre subset dataframes 

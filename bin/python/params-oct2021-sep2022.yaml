@@ -20,19 +20,21 @@ beta:                       0.95       # unitless
 
 #Parameters specific to CDB/HEB
 driveline_efficiency_d_dis: 0.94        # unitless
-alpha_2:                    0.00000001  # unitless
+
 
 
 #Parameters specific to CDB
 alpha_0_cdb:                0.00170689     # unitless
 alpha_1_cdb:                0.000082069    # unitless
+alpha_2_cdb:                0.00000001  # unitless
 frontal_area_cdb:           7.44         # m^2
 
 
 #Parameters specific to HEB
 alpha_0_heb:                -4.2667141348728687e-10       # unitless
 alpha_1_heb:                 0.00028047031373535443   # unitless
-frontal_area_heb:           10.07527559222301        # m^2
+alpha_2_heb:                 10.07527559222301  # unitless
+frontal_area_heb:            10.0        # m^2
 
 
 
