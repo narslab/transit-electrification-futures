@@ -60,8 +60,8 @@ def power_d(df_input, hybrid=False):
     else:
        A_f_d=A_f_cdb        
     df = df_input
-    v = df.Speed
-    a = df.Acceleration
+    v = df.speed
+    a = df.acc
     gr = df.grade
     m = (df.Vehicle_mass+df.Onboard*179)*0.453592 # converts lb to kg
     P_t = (1/float(3600*eta_d_dis))*((1./25.92)*rho*C_D*C_h*A_f_d*v*v + m*g*C_r*(c1*v + c2)/1000 + 1.2*m*a+m*g*gr)*v
@@ -73,7 +73,7 @@ def regenerative_braking(df_input, hybrid=True):
 	# Apply regenerative braking for HEBs 
     df = df_input
     if hybrid == True:
-        factor = df.Acceleration.apply(lambda a: 1 if a >= 0 else np.exp(-(0.0411/abs(a))))
+        factor = df.acc.apply(lambda a: 1 if a >= 0 else np.exp(-(0.0411/abs(a))))
         P_t = factor * power_d(df_input, hybrid=True)
     else:
         P_t = power_d(df_input, hybrid=False)
@@ -108,16 +108,21 @@ df_hybrid=df_trajectories.loc[df_trajectories['Powertrain'] == 'hybrid'].copy()
 
 # read validation df
 df_validation = pd.read_csv(r'../../data/tidy/fuel-tickets-oct2021-sep2022.csv', delimiter=',', skiprows=0, low_memory=False)
-df_validation=df_validation.loc[df_validation['gallons']>0]
-df_validation.sort_values(by=['equipment_id','timestamp'], inplace=True)
+df_validation=df_validation.loc[df_validation['Qty']>0]
+df_validation.sort_values(by=['Equipment ID','Transaction Date'], inplace=True)
 df_validation.drop(['Unnamed: 0'], axis=1, inplace=True)
-df_validation.rename(columns={"timestamp": "ServiceDateTime","equipment_id":"Vehicle"}, inplace=True)
+df_validation.rename(columns={"Transaction Date": "ServiceDateTime","Equipment ID":"Vehicle"}, inplace=True)
 df_validation["dist"] = np.nan
 df_validation["Energy"] = np.nan
 df_validation.sort_values(by=['Vehicle','ServiceDateTime'], inplace=True)
 df_validation['ServiceDateTime'] = pd.to_datetime(df_validation['ServiceDateTime'])
 df_validation=df_validation.reset_index()
 
+### Map powertrain in the validation dataset
+df2 = pd.read_csv(r'../../data/tidy/vehicles-summary.csv', delimiter=',', skiprows=0, low_memory=False)
+mydict = df2.groupby('Type')['Equipment ID'].agg(list).to_dict()
+d = {val:key for key, lst in mydict.items() for val in lst}
+df_validation['Powertrain'] = df_validation['Vehicle'].map(d)
 
 # =============================================================================
 # ### calibrating model
@@ -169,6 +174,52 @@ df_validation=df_validation.reset_index()
     
 
 
+# =============================================================================
+# def calibrate_parameter(hybrid=False):
+#     # Create separate dataframes for hybrid and conventional vehicles
+#     if hybrid:
+#         df = df_hybrid.copy()
+#         validation = df_validation[df_validation.Powertrain == 'hybrid'].copy()
+#     else:
+#         df = df_conventional.copy()
+#         validation = df_validation[df_validation.Powertrain == 'conventional'].copy()
+#     
+#     # Calculate energy consumption for each trip
+#     df['Energy'] = energyConsumption_d(df, hybrid=True)
+#     
+#     
+#     # Convert ServiceDateTime column to datetime data type
+#     df['ServiceDateTime'] = pd.to_datetime(df['ServiceDateTime'])
+#     validation['ServiceDateTime'] = pd.to_datetime(validation['ServiceDateTime'])
+#     
+#     # Sort dataframes by vehicle and service datetime
+#     df.sort_values(by=['Vehicle', 'ServiceDateTime'], inplace=True)
+#     validation.sort_values(by=['Vehicle', 'ServiceDateTime'], inplace=True)
+#     
+#     # Drop duplicate rows in validation dataframe based on Vehicle and ServiceDateTime
+#     validation.drop_duplicates(subset=['Vehicle', 'ServiceDateTime'], keep='last', inplace=True)
+#     
+#     # Calculate total distance and energy consumption for each trip in validation dataframe
+#     df_integrated = pd.merge_asof(validation, df, on='ServiceDateTime', by='Vehicle', direction='nearest')
+#     df_integrated['dist'] = np.nan
+#     df_integrated['Energy'] = np.nan
+#     mask = df_integrated['Vehicle'].eq(df_integrated['Vehicle'].shift())
+#     for i, mask_value in enumerate(mask):
+#         if mask_value:
+#             df_filtered = df[(df['Vehicle'] == df_integrated.loc[i, 'Vehicle']) &
+#                              (df['ServiceDateTime'] >= df_integrated.loc[i-1, 'ServiceDateTime']) &
+#                              (df['ServiceDateTime'] <= df_integrated.loc[i, 'ServiceDateTime'])]
+#             df_integrated.loc[i, 'dist'] = df_filtered['dist'].sum()
+#             df_integrated.loc[i, 'Energy'] = df_filtered['Energy'].sum()
+# 
+#     # Calculate coefficients for polynomial fit
+#     coefficients, residuals, _, _, _ = np.polyfit(df_integrated['Energy'], df_integrated['gallons'], deg=2, full=True)
+#     
+#     # Return coefficients
+#     return coefficients
+# =============================================================================
+
+
 def calibrate_parameter(hybrid=False):
     # Create separate dataframes for hybrid and conventional vehicles
     if hybrid:
@@ -179,36 +230,40 @@ def calibrate_parameter(hybrid=False):
         validation = df_validation[df_validation.Powertrain == 'conventional'].copy()
     
     # Calculate energy consumption for each trip
-    df['Energy'] = energyConsumption_d(df, hybrid=True)
+    df['Energy'] = energyConsumption_d(df, hybrid=hybrid)
     
-    # Sort dataframes by vehicle and service datetime
-    df.sort_values(by=['Vehicle', 'ServiceDateTime'], inplace=True)
-    validation.sort_values(by=['Vehicle', 'ServiceDateTime'], inplace=True)
     
     # Convert ServiceDateTime column to datetime data type
     df['ServiceDateTime'] = pd.to_datetime(df['ServiceDateTime'])
     validation['ServiceDateTime'] = pd.to_datetime(validation['ServiceDateTime'])
     
-    # Calculate total distance and energy consumption for each trip in validation dataframe
-    df_integrated = pd.merge_asof(validation, df, on='ServiceDateTime', by='Vehicle', direction='nearest')
-    df_integrated['dist'] = np.nan
-    df_integrated['Energy'] = np.nan
-    mask = df_integrated['Vehicle'].eq(df_integrated['Vehicle'].shift())
-    for i, mask_value in enumerate(mask):
-        if mask_value:
-            df_filtered = df[(df['Vehicle'] == df_integrated.loc[i, 'Vehicle']) &
-                             (df['ServiceDateTime'] >= df_integrated.loc[i-1, 'ServiceDateTime']) &
-                             (df['ServiceDateTime'] <= df_integrated.loc[i, 'ServiceDateTime'])]
-            df_integrated.loc[i, 'dist'] = df_filtered['dist'].sum()
-            df_integrated.loc[i, 'Energy'] = df_filtered['Energy'].sum()
+    # Sort dataframes by vehicle and service datetime
+    df.sort_values(by=['Vehicle', 'ServiceDateTime'], inplace=True)
+    validation.sort_values(by=['Vehicle', 'ServiceDateTime'], inplace=True)    
+   
+    # creat integerated df by merging df and validation
+    df_integrated = validation.copy()
+    df_integrated.sort_values(by=['Vehicle','ServiceDateTime'], inplace=True)
+    df_integrated=df_integrated.reset_index()
+    for i in df_integrated.index:
+        if i==0:
+            pass 
+        else:
+            if df_integrated['Vehicle'][i]==df_integrated['Vehicle'][i-1]:
+                df_filtered=df.loc[(df['Vehicle']==df_integrated['Vehicle'][i])&(df_integrated['ServiceDateTime'][i-1]<df['ServiceDateTime'])&(df['ServiceDateTime']<df_integrated['ServiceDateTime'][i])]
+                df_integrated.loc[i,'dist']=df_filtered['dist'].sum()
+                df_integrated.loc[i,'Energy']=df_filtered['Energy'].sum()
+            else:
+                pass               
+    # Drop rows with missing values in 'Energy' and 'Qty' columns
+    df_integrated_clean = df_integrated.dropna(subset=['Energy', 'Qty'])
 
-    # Calculate coefficients for polynomial fit
-    coefficients, residuals, _, _, _ = np.polyfit(df_integrated['Energy'], df_integrated['gallons'], deg=2, full=True)
-    
+    # Perform the polyfit using cleaned data
+    coefficients, residuals, _, _, _ = np.polyfit(df_integrated_clean['Energy'], df_integrated_clean['Qty'], deg=2, full=True)
+    a0_cdb, a1_cdb, a2_cdb = coefficients
+
     # Return coefficients
     return coefficients
-
-
 
 #hybrid
 a0_heb, a1_heb, a2_heb = calibrate_parameter(hybrid=True)
