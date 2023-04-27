@@ -1,0 +1,46 @@
+---
+#Common parameters 
+air_density:                1.2256      # kg/m^3
+drag_coefficient:           0.78        # unitless
+epsilon:                    .000001     # unitless
+engine_displacement:        8.7       # liter
+fuel_lower_heating_value:   43000000    # J/kg
+fuel_economy_city:          22          # mpg
+fuel_economy_hwy:           31          # mpg
+gravitational_acceleration: 9.81        # m/s^2
+idling_mean_fuel_pressure:  400000      # N/m^2
+idling_speed:               1000        # rpm
+number_of_engine_cylinders: 6
+rolling_coefficient:        1.25        # unitless
+rolling_resistance_coef1:   0.0328      # unitless
+rolling_resistance_coef2:   4.575       # unitless
+vehicle_mass:               1453        # kg
+altitude_correction_factor:  0.01       # km
+beta:                       0.95       # unitless
+
+#Parameters specific to CDB/HEB
+driveline_efficiency_d_dis: 0.94        # unitless
+alpha_2:                    0.00000001  # unitless
+
+
+#Parameters specific to CDB
+alpha_0_cdb:                0.00170689     # unitless
+alpha_1_cdb:                0.000082069    # unitless
+frontal_area_cdb:           7.44         # m^2
+
+
+#Parameters specific to HEB
+alpha_0_heb:                0.001196       # unitless
+alpha_1_heb:                0.0000863   # unitless
+frontal_area_heb:           6.99        # m^2
+
+
+
+
+#Parameters specific to BEB
+driveline_efficiency_d_beb: 0.92        # unitless
+battery_efficiency:         0.95        # unitless
+motor_efficiency:           0.91        # unitless
+frontal_area_beb:           6.99        # m^2
+gamma:                      3.10      # unitless
+

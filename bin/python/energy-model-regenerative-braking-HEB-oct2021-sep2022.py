@@ -9,7 +9,7 @@ import yaml
 import pandas as pd
 import numpy as np
 
-f = open('params.yaml')
+f = open('params-oct2021-sep2022.yaml')
 parameters = yaml.safe_load(f)
 f.close()
 
