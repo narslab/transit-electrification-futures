@@ -75,7 +75,6 @@ def power_d(df_input, hybrid=False):
     P_t = (1/float(3600*eta_d_dis))*((1./25.92)*rho*C_D*C_h*A_f_d*v*v + m*g*C_r*(c1*v + c2)/1000 + 1.2*m*a+m*g*gr)*v
     return P_t
 
-
 # Define fuel rate function for diesel vehicle
 def fuelRate_d(df_input, hybrid=False):
 	# Estimates fuel consumed (liters per second) 
@@ -85,8 +84,7 @@ def fuelRate_d(df_input, hybrid=False):
         a2 = a2_heb
         factor = df.Acceleration.apply(lambda a: 1 if a >= 0 else np.exp(-(0.0411/abs(a))))
         P_t = factor * power_d(df_input, hybrid=True)
-        #FC_t = P_t.apply(lambda x: a0 + a1*x + a2*x*x if x >= 0 and df.Acceleration <= 0 else (a0 if x < 0 and df.Acceleration <= 0 else x/33.7)) # deviding by 33.7 converts kwh to gallons of diesel
-        FC_t = P_t.apply(lambda x: a0 + a1*x + a2*x*x if (x >= 0) & (df['Acceleration'] <= 0) else (a0 if (x < 0) & (df['Acceleration'] <= 0) else x/33.7))
+        FC_t = P_t.apply(lambda x: a0 + a1*x +a2*x*x if x >= 0 else a0)  
 
     else:
         a0 = a0_cdb

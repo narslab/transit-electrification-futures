@@ -191,6 +191,8 @@ def calibrate_parameter(hybrid=False):
     # Sort dataframes by vehicle and service datetime
     df.sort_values(by=['Vehicle', 'ServiceDateTime'], inplace=True)
     validation.sort_values(by=['Vehicle', 'ServiceDateTime'], inplace=True)
+    validation.reset_index(drop=True, inplace=True)  
+
 
     # Initialize dist and Energy columns in validation with 0
     validation['dist'] = 0
