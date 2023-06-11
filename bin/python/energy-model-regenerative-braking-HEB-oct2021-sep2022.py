@@ -8,6 +8,7 @@ Created on Tue Jul 19 10:39:25 2022
 import yaml
 import pandas as pd
 import numpy as np
+import gc   # For manual garbage collection
 
 f = open('params-oct2021-sep2022.yaml')
 parameters = yaml.safe_load(f)
@@ -17,8 +18,11 @@ class vehicleParams():
 	def __init__(self, **entries):
 		self.__dict__.update(entries)
 
-# Read trajectories df
+# Read only required columns for computation from trajectories df. Change this to the actual column names you use.
+#required_columns = ["speed", "acc", "VehiclWeight(lb)", "Powertrain", "time_delta_in_seconds", "Vehicle", "ServiceDateTime", "Onboard", "grade"]
 df = pd.read_csv(r'../../data/tidy/large/trajectories-mapped-powertrain-weight-grade-oct2021-sep2022.csv', delimiter=',', skiprows=0, low_memory=False)
+
+
 df.speed = df.speed *1.60934 # takes speed in km/h (Convert from mph to km/h)
 df.rename(columns={"speed": "Speed", "acc": "Acceleration", "VehiclWeight(lb)": "Vehicle_mass"}, inplace=True)
 df = df.fillna(0)
@@ -28,6 +32,7 @@ df = df.fillna(0)
 df_conventional=df.loc[df['Powertrain'] == 'conventional'].copy()
 df_hybrid=df.loc[df['Powertrain'] == 'hybrid'].copy()
 df_electric=df.loc[df['Powertrain'] == 'electric'].copy()
+print('Done with reading dataframes for CDB, HEB, and BEB')
 
 # Define model parameters
 p = vehicleParams(**parameters)
@@ -43,6 +48,7 @@ c1 = p.rolling_resistance_coef1
 c2 = p.rolling_resistance_coef2
 eta_d_dis = p.driveline_efficiency_d_dis
 eta_d_beb = p.driveline_efficiency_d_beb
+eta_d_heb = p.driveline_efficiency_d_beb
 P_mfo = p.idling_mean_fuel_pressure
 omega = p.idling_speed
 d = p.engine_displacement
@@ -55,11 +61,13 @@ eta_batt = p.battery_efficiency
 eta_m = p.motor_efficiency
 a0_cdb = p.alpha_0_cdb
 a1_cdb = p.alpha_1_cdb
-a2_cdb = p.alpha_2_cdb
 a0_heb = p.alpha_0_heb
 a1_heb = p.alpha_1_heb
-a2_heb = p.alpha_2_heb
+a2_cdb = p.alpha_2_cdb
 b=p.beta
+gamma_heb=p.gamma
+gamma_beb=p.gamma
+a2_heb = p.alpha_2_heb
 
 # Define power function for diesel vehicle
 def power_d(df_input, hybrid=False):
@@ -78,21 +86,23 @@ def power_d(df_input, hybrid=False):
 # Define fuel rate function for diesel vehicle
 def fuelRate_d(df_input, hybrid=False):
 	# Estimates fuel consumed (liters per second) 
-    if hybrid == True:
-        a0 = a0_heb 
-        a1 = a1_heb
-        a2 = a2_heb
-        factor = df.Acceleration.apply(lambda a: 1 if a >= 0 else np.exp(-(0.0411/abs(a))))
-        #factor=1
-        P_t = factor * power_d(df_input, hybrid=True)
-        FC_t = P_t.apply(lambda x: a0 + a1*x +a2*x*x if x >= 0 else a0)  
-
+    if hybrid:
+        a0 = float(a0_heb) 
+        a1 = float(a1_heb)
+        a2 = float(a2_heb)
+        P_t = power_d(df_input, hybrid=True)     
+        positive_pt_indices = P_t >= 0
+        rg_factor = np.zeros_like(P_t)
+        rg_factor[positive_pt_indices] = (a0 + eta_batt/(eta_m*eta_d_beb)*np.exp(-(gamma_heb/abs(df_input['Acceleration'][positive_pt_indices])))) * P_t[positive_pt_indices]
+        FC_t = np.where(P_t >= 0, a0 + a1*P_t + a2*P_t*P_t, rg_factor)        
+        
     else:
-        a0 = a0_cdb
-        a1 = a1_cdb
-        a2 = a2_cdb
+        a0 = float(a0_cdb)
+        a1 = float(a1_cdb)
+        a2 = float(a2_cdb)
         P_t = power_d(df_input, hybrid=False)
-        FC_t = P_t.apply(lambda x: a0 + a1*x +a2*x*x if x >= 0 else a0)  
+        FC_t = np.where(P_t >= 0, a0 + a1*P_t + a2*P_t*P_t, a0)  
+
     return FC_t
 
 
@@ -117,7 +127,7 @@ def power_e(df_input):
     gr = df.grade
     m = df.Vehicle_mass+(df.Onboard*179)*0.453592 # converts lb to kg
     factor = df.Acceleration.apply(lambda a: 1 if a >= 0 else np.exp(-(0.0411/abs(a))))
-    P_t = factor*(eta_batt/eta_m*eta_d_beb)*(1/float(3600*eta_d_beb))*((1./25.92)*rho*C_D*C_h*A_f_beb*v*v + m*g*C_r*(c1*v + c2)/1000 + 1.1*m*a+m*g*gr)*v
+    P_t = factor*(eta_batt/(eta_m*eta_d_beb))*(1/float(3600*eta_d_beb))*((1./25.92)*rho*C_D*C_h*A_f_beb*v*v + m*g*C_r*(c1*v + c2)/1000 + 1.1*m*a+m*g*gr)*v
     return P_t
 
 
@@ -132,16 +142,24 @@ def energyConsumption_e(df_input):
 
 # Compute energy consumption for "Conventional", "hybrid" and "electric" buses
 df_conventional['Energy']=energyConsumption_d(df_conventional)
+print('Done calculating energy for CDB')
 df_hybrid['Energy']=energyConsumption_d(df_hybrid, hybrid=True)
+print('Done calculating energy for HEB')
 df_electric['Energy']=energyConsumption_e(df_electric)
+print('Done calculating energy for BEB')
 
 
 #megre subset dataframes 
 df_final=pd.concat([df_conventional, df_hybrid, df_electric])
+print('Done concatinating')
+
+# Delete the no longer needed dataframes and perform garbage collection
+del df_conventional, df_hybrid, df_electric
+gc.collect()
 
 # Sort dataframe
 df_final.sort_values(by=['Vehicle','ServiceDateTime'], ascending=True, inplace=True)
-
+print('Done sorting')
 
 df_final.to_csv(r'../../results/computed-fuel-rates-oct2021-sep2022.csv')
 

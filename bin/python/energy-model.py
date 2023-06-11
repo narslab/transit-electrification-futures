@@ -101,7 +101,7 @@ def energyConsumption_d(df_input, hybrid=False):
         FC_t = fuelRate_d(df_input, hybrid=True)
     else:
         FC_t = fuelRate_d(df_input, hybrid=False)
-    E_t = (FC_t * t)/3.78541
+    E_t = (FC_t * t)/3.78541 #The value 3.78541 represents the number of liters in one US gallon
     return E_t
 
 
