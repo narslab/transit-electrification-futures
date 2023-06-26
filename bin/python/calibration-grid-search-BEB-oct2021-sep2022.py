@@ -92,9 +92,9 @@ df_validation = pd.read_excel(r'../../data/tidy/Jun2022-Sep2022-BEB-validation.x
 df_validation.rename(columns={"Transaction Date": "ServiceDateTime","Equipment ID":"Vehicle"}, inplace=True)
 df_validation["dist"] = np.nan
 df_validation["Energy"] = np.nan
-df_validation.sort_values(by=['Vehicle','ServiceDateTime'], inplace=True)
 df_validation['ServiceDateTime'] = pd.to_datetime(df_validation['ServiceDateTime'])
-df_validation=df_validation.reset_index()
+df_validation.sort_values(by=['Vehicle','ServiceDateTime'], inplace=True)
+
 
 ### Map powertrain in the validation dataset
 df2 = pd.read_csv(r'../../data/tidy/vehicles-summary.csv', delimiter=',', skiprows=0, low_memory=False)
@@ -144,10 +144,12 @@ def calibrate_parameter(args):
     start, stop, n_points = args
     start_time = time.time()
     parameter1_values = []
-    RMSE_Energy = []
-    MAPE_Energy = []
-    RMSE_Economy = []
-    MAPE_Economy = []
+    RMSE_Energy_train = []
+    MAPE_Energy_train = []
+    RMSE_Energy_test = []
+    MAPE_Energy_test = []
+    #RMSE_Economy = []
+    #MAPE_Economy = []
 
     df = df_beb
     validation = df_validation
@@ -158,22 +160,43 @@ def calibrate_parameter(args):
     for gamma in gamma_values:        
         df_integrated = process_dataframe(df, validation)
         df_integrated.dropna(subset=['Qty', 'Energy_sum'], inplace=True)
-        train, test = train_test_split(df_integrated, test_size=0.2, random_state=42)
-        MSE_Energy_current = mean_squared_error(train['Qty'], train['Energy_sum'])
-        RMSE_Energy_current = math.sqrt(MSE_Energy_current)
-        MAPE_Energy_current = np.mean(np.abs((train['Qty'] - train['Energy_sum']) / train['Qty'])) * 100
-        RMSE_Economy_current = mean_squared_error(train['Real_Fuel_economy'], train['Fuel_economy'], squared=False)
-        MAPE_Economy_current = np.mean(np.abs((train['Real_Fuel_economy'] - train['Fuel_economy']) / train['Real_Fuel_economy'])) * 100
+        #train, test = train_test_split(df_integrated, test_size=0.2, random_state=42)
+        ### Assign each row to the train or test dataset.
+        # Calculate cumulative count of each Vehicle's rows
+        df_integrated['cumulative_count'] = df_integrated.groupby('Vehicle').cumcount()
+        # Calculate total count of each Vehicle's rows
+        vehicle_counts = df_integrated['Vehicle'].value_counts().rename('vehicle_counts')
+        # Merge this information back into df_sorted
+        df_integrated = df_integrated.merge(vehicle_counts, left_on='Vehicle', right_index=True)
+        # Calculate the cumulative percentage for each Vehicle
+        df_integrated['cumulative_percentage'] = df_integrated['cumulative_count'] / df_integrated['vehicle_counts']
+        # Assign each row to train or test set
+        df_integrated['dataset'] = np.where(df_integrated['cumulative_percentage'] < 0.8, 'train', 'test')
+        df_train = df_integrated[df_integrated['dataset'] == 'train']
+        df_test = df_integrated[df_integrated['dataset'] == 'test']
+        # drop the auxiliary columns 
+        df_train = df_train.drop(columns=['cumulative_count', 'vehicle_counts', 'cumulative_percentage', 'dataset'])
+        df_test = df_test.drop(columns=['cumulative_count', 'vehicle_counts', 'cumulative_percentage', 'dataset'])
+        df_integrated=df_integrated.reset_index()
+        MSE_Energy_train_current = mean_squared_error(df_train['Qty'], df_train['Energy_sum'])
+        RMSE_Energy_train_current = math.sqrt(MSE_Energy_train_current)
+        MAPE_Energy_train_current = np.mean(np.abs((df_train['Qty'] - df_train['Energy_sum']) / df_train['Qty'])) * 100
+        MSE_Energy_test_current = mean_squared_error(df_test['Qty'], df_test['Energy_sum'])
+        RMSE_Energy_test_current = math.sqrt(MSE_Energy_test_current)
+        MAPE_Energy_test_current = np.mean(np.abs((df_test['Qty'] - df_test['Energy_sum']) / df_test['Qty'])) * 100
+        #RMSE_Economy_current = mean_squared_error(df_train['Real_Fuel_economy'], df_train['Fuel_economy'], squared=False)
+        #MAPE_Economy_current = np.mean(np.abs((df_train['Real_Fuel_economy'] - df_train['Fuel_economy']) / df_train['Real_Fuel_economy'])) * 100
         parameter1_values.append(gamma)
-        print(RMSE_Energy_current)
-        RMSE_Energy.append(RMSE_Energy_current)
-        MAPE_Energy.append(MAPE_Energy_current)
-        RMSE_Economy.append(RMSE_Economy_current)
-        MAPE_Economy.append(MAPE_Economy_current)
+        RMSE_Energy_train.append(RMSE_Energy_train_current)
+        MAPE_Energy_train.append(MAPE_Energy_train_current)
+        RMSE_Energy_train.append(RMSE_Energy_test_current)
+        MAPE_Energy_train.append(MAPE_Energy_test_current)
+        #RMSE_Economy.append(RMSE_Economy_current)
+        #MAPE_Economy.append(MAPE_Economy_current)
 
-    results = pd.DataFrame(list(zip(parameter1_values, RMSE_Energy, MAPE_Energy, RMSE_Economy, MAPE_Economy)),
-                           columns=['parameter1_values', 'RMSE_Energy', 'MAPE_Energy', 'RMSE_Economy', 'MAPE_Economy'])
-    results.to_csv((r'../../results/calibration-grid-search-oct2021-sep2022.csv'))
+    results = pd.DataFrame(list(zip(parameter1_values, RMSE_Energy_train, MAPE_Energy_train, RMSE_Energy_test, MAPE_Energy_test)),
+                           columns=['parameter1_values', 'RMSE_Energy_train', 'MAPE_Energy_train', 'RMSE_Energy_test', 'MAPE_Energy_test'])
+    results.to_csv((r'../../results/calibration-grid-search-BEB-oct2021-sep2022.csv'))
     print("--- %s seconds ---" % (time.time() - start_time))
 
     

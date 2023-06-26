@@ -1,0 +1,2 @@
+agency_id,agency_name,agency_url,agency_timezone,agency_lang,agency_phone,agency_fare_url
+"SATCo",PVTA,http://www.pvta.com,America/New_York,EN,413 781 7882,https://www.pvta.com/faresPassesBus.php
