@@ -113,6 +113,7 @@ y_CDB = LpVariable.dicts('y_CDB', keys_years_scenarios, lowBound=0, cat='Integer
 y_HEB = LpVariable.dicts('y_HEB', keys_years_scenarios, lowBound=0, cat='Integer')
 y_BEB = LpVariable.dicts('y_BEB', keys_years_scenarios, lowBound=0, cat='Integer')
 
+
 # Define Objective Function
 model += lpSum([
     cost_inv[(p, y)] * (y_CDB[(y, s)] if p == 'C' else (
@@ -125,34 +126,54 @@ model += lpSum([
     for key in keys_CDB + keys_HEB + keys_BEB
 ])
 
+     
 ## Define Constraints
 
 # Constraint 1: The sum of decision variables for each vehicle and year across all powertrains should be <= 1
 # Get unique list of vehicles across all datasets
 vehicles = list(set([key[0] for key in keys_CDB + keys_HEB + keys_BEB]))
 
+#for vehicle in tqdm(vehicles):
+#    for y in range(Y):
+#        model += lpSum(
+#            x_CDB[(vehicle, date, route, trip_key)]
+#            for date in range(y*365 + 1, (y+1)*365 + 1)  # assuming leap years aren't considered
+#            for route in df_CDB['Route'].unique()
+#            for trip_key in range(Rho)
+#            if (vehicle, date, route, trip_key) in keys_CDB
+#        ) + lpSum(
+#            x_HEB[(vehicle, date, route, trip_key)]
+#            for date in range(y*365 + 1, (y+1)*365 + 1)  # assuming leap years aren't considered
+#            for route in df_HEB['Route'].unique()
+#            for trip_key in range(Rho)
+#            if (vehicle, date, route, trip_key) in keys_HEB
+#        ) + lpSum(
+#            x_BEB[(vehicle, date, route, trip_key)]
+#            for date in range(y*365 + 1, (y+1)*365 + 1)  # assuming leap years aren't considered
+#            for route in df_BEB['Route'].unique()
+#            for trip_key in range(Rho)
+#            if (vehicle, date, route, trip_key) in keys_BEB
+#        ) <= 1
+# Prepare keys for each vehicle and year
+keys_by_vehicle_year = {
+    (vehicle, y): [
+        key for key in keys_CDB + keys_HEB + keys_BEB
+        if key[0] == vehicle and y*365 + 1 <= key[1] <= (y+1)*365 + 1
+    ]
+    for vehicle in vehicles for y in range(Y)
+}
+
+# Now add the constraint to the model
 for vehicle in tqdm(vehicles):
     for y in range(Y):
-        model += lpSum(
-            x_CDB[(vehicle, date, route, trip_key)]
-            for date in range(y*365 + 1, (y+1)*365 + 1)  # assuming leap years aren't considered
-            for route in df_CDB['Route'].unique()
-            for trip_key in range(Rho)
-            if (vehicle, date, route, trip_key) in keys_CDB
-        ) + lpSum(
-            x_HEB[(vehicle, date, route, trip_key)]
-            for date in range(y*365 + 1, (y+1)*365 + 1)  # assuming leap years aren't considered
-            for route in df_HEB['Route'].unique()
-            for trip_key in range(Rho)
-            if (vehicle, date, route, trip_key) in keys_HEB
-        ) + lpSum(
-            x_BEB[(vehicle, date, route, trip_key)]
-            for date in range(y*365 + 1, (y+1)*365 + 1)  # assuming leap years aren't considered
-            for route in df_BEB['Route'].unique()
-            for trip_key in range(Rho)
-            if (vehicle, date, route, trip_key) in keys_BEB
-        ) <= 1
-
+        keys = keys_by_vehicle_year[(vehicle, y)]
+        model += (
+            lpSum(
+                x_CDB[key] if key in x_CDB else
+                (x_HEB[key] if key in x_HEB else x_BEB[key])
+                for key in keys
+            ) <= 1
+        )
 
 # Constraint 2: Only one bus can be assigned to each trip (either a CDB, HEB or BEB)
 # Get unique combinations of Date, Route, and TripKey
@@ -161,20 +182,20 @@ unique_keys = set(keys_CDB + keys_HEB + keys_BEB)
 #Get unique vehicle ids
 vehicle_ids = set(df_CDB['Vehicle'].unique().tolist() + df_HEB['Vehicle'].unique().tolist() + df_BEB['Vehicle'].unique().tolist())
 
-for key in unique_keys:
+for key in tqdm(unique_keys):
     date, route, tripkey = key[1], key[2], key[3]
     model += lpSum(x_CDB.get((vehicle, date, route, tripkey), 0) for vehicle in vehicle_ids) + \
               lpSum(x_HEB.get((vehicle, date, route, tripkey), 0) for vehicle in vehicle_ids) + \
               lpSum(x_BEB.get((vehicle, date, route, tripkey), 0) for vehicle in vehicle_ids) <= 1
 
 # Constraint 3: Total number of CDB, HEB, BEB should not exceed the total fleet size
-for y in range(Y):
+for y in tqdm(range(Y)):
     for s in S:
         model += lpSum(y_CDB[(year, s)] for year in range(y + 1)) + lpSum(
             y_HEB[(year, s)] for year in range(y + 1)) + lpSum(y_BEB[(year, s)] for year in range(y + 1)) <= 1000
 
 # Constraint 4: Maximum daily charging capacity
-for d in D:
+for d in tqdm(D):
     for y in range(Y):
         for s in S:
             model += lpSum(
@@ -188,6 +209,10 @@ for y in range(Y):
             cost_inv[('H', year)] * y_HEB[(year, s)] for year in range(y + 1)) + lpSum(
             cost_inv[('B', year)] * y_BEB[(year, s)] for year in range(y + 1)) <= M_inv[(s, y)]
 
+# Print model statistics
+print("Number of variables: ", len(model.variables()))
+print("Number of constraints: ", len(model.constraints))
+                
 # Debug the model
 model.debug = True
 
