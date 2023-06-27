@@ -3,6 +3,9 @@ from pulp import LpVariable, LpMinimize, LpProblem
 from pulp import lpSum
 from pulp import LpStatus, value
 import numpy as np
+from tqdm import tqdm  
+import time  
+from pulp import PULP_CBC_CMD
 #from pulp import *
 
 # Read dataframes of all-CDB, all-HEB, and all BEB with runs included
@@ -127,7 +130,7 @@ model += lpSum([
 # Get unique list of vehicles across all datasets
 vehicles = list(set([key[0] for key in keys_CDB + keys_HEB + keys_BEB]))
 
-for vehicle in vehicles:
+for vehicle in tqdm(vehicles):
     for y in range(Y):
         model += lpSum(
             x_CDB[(vehicle, date, route, trip_key)]
@@ -188,8 +191,12 @@ for y in range(Y):
 model.debug = True
 
 # Solve the model
-model.solve()
-#model.solve(GUROBI_CMD())
+start_time = time.time()  # get the current time
+#model.solve()  
+
+# Use the msg parameter in the solve function to see the solver logs.
+model.solve(PULP_CBC_CMD(msg=1))  # For PuLP's built-in CBC solver
+print(f"Time taken by model.solve(): {time.time() - start_time} seconds")  # print the time difference
 
 
 # Check status and print optimal value
