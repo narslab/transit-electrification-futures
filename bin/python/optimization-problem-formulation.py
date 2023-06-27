@@ -1,12 +1,8 @@
 import pandas as pd
-from pulp import LpVariable, LpMinimize, LpProblem
-from pulp import lpSum
-from pulp import LpStatus, value
-import numpy as np
+from pulp import GUROBI, LpVariable, LpMinimize, LpProblem, lpSum, LpStatus, value
 from tqdm import tqdm  
 import time  
-from pulp import PULP_CBC_CMD
-from pulp import GUROBI
+# from pulp import PULP_CBC_CMD,
 #from pulp import *
 
 # Read dataframes of all-CDB, all-HEB, and all BEB with runs included
@@ -22,6 +18,7 @@ df_BEB['Date'] = pd.to_datetime(df_BEB['Date']).dt.dayofyear
 # Define parameters
 D = set(df_CDB['Date'].unique())  # Create a set of unique dates
 Y = 13  # Years in simulation
+max_number_of_buses = 500 # 213*2 (current numnumber of fleet*2, assuming buses are going to be replaced with electric at most with ratio of 1:2)
 
 # Maximum daily charging capacity in year y
 M_cap = {y: val for y, val in enumerate([5600, 8400, 10500, 12950, 15400, 18900] + [float('inf')] * (Y - 6))}
@@ -71,144 +68,99 @@ N = {
 # then, create the 'Diesel' column based on the condition for 'Powertrain'
 
 # For df_CDB
-energy_CDB = df_CDB.groupby(['Vehicle', 'Date', 'Route', 'TripKey']).agg({'Energy': 'sum', 'Powertrain': 'first'}).reset_index()
+energy_CDB = df_CDB.groupby(['Date', 'Route', 'TripKey']).agg({'Energy': 'sum', 'Powertrain': 'first'}).reset_index()
 energy_CDB['Diesel'] = energy_CDB.apply(lambda x: x['Energy'] if x['Powertrain'] in ['conventional', 'hybrid'] else 0, axis=1)
-energy_CDB_dict = energy_CDB.set_index(['Vehicle', 'Date', 'Route', 'TripKey']).to_dict('index')
+energy_CDB_dict = energy_CDB.set_index(['Date', 'Route', 'TripKey']).to_dict('index')
 
 # For df_HEB
-energy_HEB = df_HEB.groupby(['Vehicle', 'Date', 'Route', 'TripKey']).agg({'Energy': 'sum', 'Powertrain': 'first'}).reset_index()
+energy_HEB = df_HEB.groupby(['Date', 'Route', 'TripKey']).agg({'Energy': 'sum', 'Powertrain': 'first'}).reset_index()
 energy_HEB['Diesel'] = energy_HEB.apply(lambda x: x['Energy'] if x['Powertrain'] in ['conventional', 'hybrid'] else 0, axis=1)
-energy_HEB_dict = energy_HEB.set_index(['Vehicle', 'Date', 'Route', 'TripKey']).to_dict('index')
+energy_HEB_dict = energy_HEB.set_index(['Date', 'Route', 'TripKey']).to_dict('index')
 
 # For df_BEB
-energy_BEB = df_BEB.groupby(['Vehicle', 'Date', 'Route', 'TripKey']).agg({'Energy': 'sum', 'Powertrain': 'first'}).reset_index()
+energy_BEB = df_BEB.groupby(['Date', 'Route', 'TripKey']).agg({'Energy': 'sum', 'Powertrain': 'first'}).reset_index()
 energy_BEB['Diesel'] = energy_BEB.apply(lambda x: x['Energy'] if x['Powertrain'] in ['conventional', 'hybrid'] else 0, axis=1)
-energy_BEB_dict = energy_BEB.set_index(['Vehicle', 'Date', 'Route', 'TripKey']).to_dict('index')
-
-# Drop inf
-#energy_CDB_dict = energy_CDB_dict.replace([np.inf, -np.inf], np.nan)
-#energy_CDB_dict = energy_CDB_dict.dropna(how="any")
-#energy_HEB_dict = energy_HEB_dict.replace([np.inf, -np.inf], np.nan)
-#energy_HEB_dict = energy_HEB_dict.dropna(how="any")
-#energy_BEB_dict = energy_BEB_dict.replace([np.inf, -np.inf], np.nan)
-#energy_BEB_dict = energy_BEB_dict.dropna(how="any")
+energy_BEB_dict = energy_BEB.set_index(['Date', 'Route', 'TripKey']).to_dict('index')
 
 
 # Create an LP Problem
 model = LpProblem('Minimize fleet diesel consumption', LpMinimize)
 
+# Additional keys for buses and years
+bus_keys = range(max_number_of_buses)
+year_keys = range(Y)
+
 # Decision variables
 keys_CDB = list(energy_CDB_dict.keys())
-x_CDB = LpVariable.dicts('x_CDB', keys_CDB, lowBound=0, cat='Binary')
-
 keys_HEB = list(energy_HEB_dict.keys())
-x_HEB = LpVariable.dicts('x_HEB', keys_HEB, lowBound=0, cat='Binary')
-
 keys_BEB = list(energy_BEB_dict.keys())
-x_BEB = LpVariable.dicts('x_BEB', keys_BEB, lowBound=0, cat='Binary')
 
-# Variables for new buses each year
-keys_years_scenarios = [(y, s) for y in range(Y) for s in S]
-y_CDB = LpVariable.dicts('y_CDB', keys_years_scenarios, lowBound=0, cat='Integer')
-y_HEB = LpVariable.dicts('y_HEB', keys_years_scenarios, lowBound=0, cat='Integer')
-y_BEB = LpVariable.dicts('y_BEB', keys_years_scenarios, lowBound=0, cat='Integer')
+# Decision variables which include two additional indices for buses (i) and years (y)
+x_CDB = LpVariable.dicts('x_CDB', (bus_keys, year_keys, keys_CDB), lowBound=0, cat='Binary')
+x_HEB = LpVariable.dicts('x_HEB', (bus_keys, year_keys, keys_HEB), lowBound=0, cat='Binary')
+x_BEB = LpVariable.dicts('x_BEB', (bus_keys, year_keys, keys_BEB), lowBound=0, cat='Binary')
+
+# Define y_CDB, y_HEB, and y_BEB as the number of each type of bus at each year under each scenario
+y_CDB = LpVariable.dicts('y_CDB', (year_keys, S), lowBound=0, cat='Integer')
+y_HEB = LpVariable.dicts('y_HEB', (year_keys, S), lowBound=0, cat='Integer')
+y_BEB = LpVariable.dicts('y_BEB', (year_keys, S), lowBound=0, cat='Integer')
 
 
-# Define Objective Function
-model += lpSum([
-    cost_inv[(p, y)] * (y_CDB[(y, s)] if p == 'C' else (
-        y_HEB[(y, s)] if p == 'H' else
-        y_BEB[(y, s)])) for p in ['C', 'H', 'B'] for y in range(Y) for s in S
-] + [
-    energy_CDB_dict[key]['Diesel'] * x_CDB[key] if key in energy_CDB_dict else (
-        energy_HEB_dict[key]['Diesel'] * x_HEB[key] if key in energy_HEB_dict else (
-            energy_BEB_dict[key]['Diesel'] * x_BEB[key] if key in energy_BEB_dict else 0))
-    for key in keys_CDB + keys_HEB + keys_BEB
-])
-
+# Objective function for diesel consumption
+model += (
+    lpSum([energy_CDB_dict[key]['Diesel'] * x_CDB[i][y][key] for key in keys_CDB for i in bus_keys for y in year_keys]) +
+    lpSum([energy_HEB_dict[key]['Diesel'] * x_HEB[i][y][key] for key in keys_HEB for i in bus_keys for y in year_keys]) +
+    lpSum([energy_BEB_dict[key]['Diesel'] * x_BEB[i][y][key] for key in keys_BEB for i in bus_keys for y in year_keys])
+), "Total Diesel Consumption"
      
 ## Define Constraints
 
-# Constraint 1: The sum of decision variables for each vehicle and year across all powertrains should be <= 1
-# Get unique list of vehicles across all datasets
-vehicles = list(set([key[0] for key in keys_CDB + keys_HEB + keys_BEB]))
-
-#for vehicle in tqdm(vehicles):
-#    for y in range(Y):
-#        model += lpSum(
-#            x_CDB[(vehicle, date, route, trip_key)]
-#            for date in range(y*365 + 1, (y+1)*365 + 1)  # assuming leap years aren't considered
-#            for route in df_CDB['Route'].unique()
-#            for trip_key in range(Rho)
-#            if (vehicle, date, route, trip_key) in keys_CDB
-#        ) + lpSum(
-#            x_HEB[(vehicle, date, route, trip_key)]
-#            for date in range(y*365 + 1, (y+1)*365 + 1)  # assuming leap years aren't considered
-#            for route in df_HEB['Route'].unique()
-#            for trip_key in range(Rho)
-#            if (vehicle, date, route, trip_key) in keys_HEB
-#        ) + lpSum(
-#            x_BEB[(vehicle, date, route, trip_key)]
-#            for date in range(y*365 + 1, (y+1)*365 + 1)  # assuming leap years aren't considered
-#            for route in df_BEB['Route'].unique()
-#            for trip_key in range(Rho)
-#            if (vehicle, date, route, trip_key) in keys_BEB
-#        ) <= 1
-# Prepare keys for each vehicle and year
-keys_by_vehicle_year = {
-    (vehicle, y): [
-        key for key in keys_CDB + keys_HEB + keys_BEB
-        if key[0] == vehicle and y*365 + 1 <= key[1] <= (y+1)*365 + 1
-    ]
-    for vehicle in vehicles for y in range(Y)
-}
-
-# Now add the constraint to the model
-for vehicle in tqdm(vehicles):
-    for y in range(Y):
-        keys = keys_by_vehicle_year[(vehicle, y)]
+# Constraint 1: The sum of decision variables for each bus and year across all powertrains should be <= 1
+for i in tqdm(bus_keys):
+    for y in year_keys:
         model += (
-            lpSum(
-                x_CDB[key] if key in x_CDB else
-                (x_HEB[key] if key in x_HEB else x_BEB[key])
-                for key in keys
-            ) <= 1
-        )
+            lpSum(x_CDB[i][y][key] for key in keys_CDB if key in x_CDB[i][y]) +
+            lpSum(x_HEB[i][y][key] for key in keys_HEB if key in x_HEB[i][y]) +
+            lpSum(x_BEB[i][y][key] for key in keys_BEB if key in x_BEB[i][y])
+        ) <= 1
 
-# Constraint 2: Only one bus can be assigned to each trip (either a CDB, HEB or BEB)
-# Get unique combinations of Date, Route, and TripKey
-unique_keys = set(keys_CDB + keys_HEB + keys_BEB)
-
-#Get unique vehicle ids
-vehicle_ids = set(df_CDB['Vehicle'].unique().tolist() + df_HEB['Vehicle'].unique().tolist() + df_BEB['Vehicle'].unique().tolist())
-
+# Constraint 2: Only one bus can be assigned to each trip
+# Assume unique_keys are all the unique combinations of (date, route, trip)
+unique_keys = set(keys_CDB) | set(keys_HEB) | set(keys_BEB)  # Union of all keys
 for key in tqdm(unique_keys):
-    date, route, tripkey = key[1], key[2], key[3]
-    model += lpSum(x_CDB.get((vehicle, date, route, tripkey), 0) for vehicle in vehicle_ids) + \
-              lpSum(x_HEB.get((vehicle, date, route, tripkey), 0) for vehicle in vehicle_ids) + \
-              lpSum(x_BEB.get((vehicle, date, route, tripkey), 0) for vehicle in vehicle_ids) <= 1
+    model += (
+        lpSum(x_CDB[i][y][key] for i in bus_keys for y in year_keys if key in x_CDB[i][y]) +
+        lpSum(x_HEB[i][y][key] for i in bus_keys for y in year_keys if key in x_HEB[i][y]) +
+        lpSum(x_BEB[i][y][key] for i in bus_keys for y in year_keys if key in x_BEB[i][y])
+    ) <= 1
 
 # Constraint 3: Total number of CDB, HEB, BEB should not exceed the total fleet size
-for y in tqdm(range(Y)):
-    for s in S:
-        model += lpSum(y_CDB[(year, s)] for year in range(y + 1)) + lpSum(
-            y_HEB[(year, s)] for year in range(y + 1)) + lpSum(y_BEB[(year, s)] for year in range(y + 1)) <= 1000
+# Assume max_buses_per_year is a constant limit
+max_buses_per_year = max_number_of_buses
+for y in tqdm(year_keys):
+    model += (
+        lpSum(y_CDB[(year, s)] for year in range(y + 1) for s in S) +
+        lpSum(y_HEB[(year, s)] for year in range(y + 1) for s in S) +
+        lpSum(y_BEB[(year, s)] for year in range(y + 1) for s in S)
+    ) <= max_buses_per_year
 
 # Constraint 4: Maximum daily charging capacity
 for d in tqdm(D):
-    for y in range(Y):
-        for s in S:
-            model += lpSum(
-                energy_BEB_dict[key]['Energy'] * x_BEB[key] if key in energy_BEB_dict else 0 for key in keys_BEB if
-                key[1] == d) <= M_cap[y]
+    for y in year_keys:
+        model += (
+            lpSum(energy_BEB_dict[key]['Energy'] * x_BEB[i][y][key] if key in x_BEB[i][y] else 0 for i in bus_keys for key in keys_BEB if key[1] == d)
+        ) <= M_cap[y]
 
 # Constraint 5: Maximum yearly investment
-for y in range(Y):
+for y in year_keys:
     for s in S:
-        model += lpSum(cost_inv[('C', year)] * y_CDB[(year, s)] for year in range(y + 1)) + lpSum(
-            cost_inv[('H', year)] * y_HEB[(year, s)] for year in range(y + 1)) + lpSum(
-            cost_inv[('B', year)] * y_BEB[(year, s)] for year in range(y + 1)) <= M_inv[(s, y)]
-
+        model += (
+            lpSum(cost_inv[('C', year)] * y_CDB[(year, s)] for year in range(y + 1)) +
+            lpSum(cost_inv[('H', year)] * y_HEB[(year, s)] for year in range(y + 1)) +
+            lpSum(cost_inv[('B', year)] * y_BEB[(year, s)] for year in range(y + 1))
+        ) <= M_inv[(s, y)]
+        
+        
 # Print model statistics
 print("Number of variables: ", len(model.variables()))
 print("Number of constraints: ", len(model.constraints))
@@ -230,6 +182,15 @@ print(f"Time taken by model.solve(): {time.time() - start_time} seconds")  # pri
 print("Status:", LpStatus[model.status])
 print("Optimal Cost:", value(model.objective))
 
+df = pd.DataFrame(columns=["Variable", "Value"])
+
 # Print optimal decision variables
 for variable in model.variables():
+    df = df.append({"Variable": variable.name, "Value": variable.varValue}, ignore_index=True)
     print("{} = {}".format(variable.name, variable.varValue))
+    
+# Append optimal objective value to DataFrame
+df = df.append({"Variable": "Optimal Cost", "Value": value(model.objective)}, ignore_index=True)
+
+# Save the DataFrame to a CSV file
+df.to_csv(r'../../results/strategies-simulation-optimized-variables.csv', index=False)
