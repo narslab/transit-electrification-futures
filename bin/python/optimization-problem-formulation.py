@@ -2,6 +2,8 @@ import pandas as pd
 from pulp import LpVariable, LpMinimize, LpProblem
 from pulp import lpSum
 from pulp import LpStatus, value
+import numpy as np
+#from pulp import *
 
 # Read dataframes of all-CDB, all-HEB, and all BEB with runs included
 df_CDB = pd.read_csv(r'../../results/computed-fuel-rates-runs-all-CDB.csv', low_memory=False)
@@ -25,7 +27,7 @@ S = {'low-cap', 'mid-cap', 'high-cap'}
 
 # Define R and Rho
 R = df_CDB['Route'].nunique()
-Rho = df_CDB[df_CDB['run'] != float('inf')]['run'].max()
+Rho = int(df_CDB[df_CDB['run'] != float('inf')]['run'].max())
 
 # The cost of purchasing a new bus
 cost_inv = {
@@ -79,6 +81,15 @@ energy_BEB = df_BEB.groupby(['Vehicle', 'Date', 'Route', 'TripKey']).agg({'Energ
 energy_BEB['Diesel'] = energy_BEB.apply(lambda x: x['Energy'] if x['Powertrain'] in ['conventional', 'hybrid'] else 0, axis=1)
 energy_BEB_dict = energy_BEB.set_index(['Vehicle', 'Date', 'Route', 'TripKey']).to_dict('index')
 
+# Drop inf
+#energy_CDB_dict = energy_CDB_dict.replace([np.inf, -np.inf], np.nan)
+#energy_CDB_dict = energy_CDB_dict.dropna(how="any")
+#energy_HEB_dict = energy_HEB_dict.replace([np.inf, -np.inf], np.nan)
+#energy_HEB_dict = energy_HEB_dict.dropna(how="any")
+#energy_BEB_dict = energy_BEB_dict.replace([np.inf, -np.inf], np.nan)
+#energy_BEB_dict = energy_BEB_dict.dropna(how="any")
+
+
 # Create an LP Problem
 model = LpProblem('Minimize fleet cost', LpMinimize)
 
@@ -110,19 +121,55 @@ model += lpSum([
     for key in keys_CDB + keys_HEB + keys_BEB
 ])
 
-# Define Constraints
+## Define Constraints
 
-# Constraint 1: Only one bus can be assigned to each trip (either a CDB, HEB or BEB)
-for key in keys_CDB + keys_HEB + keys_BEB:
-    model += x_CDB[key] + x_HEB[key] + x_BEB[key] <= 1
+# Constraint 1: The sum of decision variables for each vehicle and year across all powertrains should be <= 1
+# Get unique list of vehicles across all datasets
+vehicles = list(set([key[0] for key in keys_CDB + keys_HEB + keys_BEB]))
 
-# Constraint 2: Total number of CDB, HEB, BEB should not exceed the total fleet size
+for vehicle in vehicles:
+    for y in range(Y):
+        model += lpSum(
+            x_CDB[(vehicle, date, route, trip_key)]
+            for date in range(y*365 + 1, (y+1)*365 + 1)  # assuming leap years aren't considered
+            for route in df_CDB['Route'].unique()
+            for trip_key in range(Rho)
+            if (vehicle, date, route, trip_key) in keys_CDB
+        ) + lpSum(
+            x_HEB[(vehicle, date, route, trip_key)]
+            for date in range(y*365 + 1, (y+1)*365 + 1)  # assuming leap years aren't considered
+            for route in df_HEB['Route'].unique()
+            for trip_key in range(Rho)
+            if (vehicle, date, route, trip_key) in keys_HEB
+        ) + lpSum(
+            x_BEB[(vehicle, date, route, trip_key)]
+            for date in range(y*365 + 1, (y+1)*365 + 1)  # assuming leap years aren't considered
+            for route in df_BEB['Route'].unique()
+            for trip_key in range(Rho)
+            if (vehicle, date, route, trip_key) in keys_BEB
+        ) <= 1
+
+
+# Constraint 2: Only one bus can be assigned to each trip (either a CDB, HEB or BEB)
+# Get unique combinations of Date, Route, and TripKey
+unique_keys = set(keys_CDB + keys_HEB + keys_BEB)
+
+#Get unique vehicle ids
+vehicle_ids = set(df_CDB['Vehicle'].unique().tolist() + df_HEB['Vehicle'].unique().tolist() + df_BEB['Vehicle'].unique().tolist())
+
+for key in unique_keys:
+    date, route, tripkey = key[1], key[2], key[3]
+    model += lpSum(x_CDB.get((vehicle, date, route, tripkey), 0) for vehicle in vehicle_ids) + \
+              lpSum(x_HEB.get((vehicle, date, route, tripkey), 0) for vehicle in vehicle_ids) + \
+              lpSum(x_BEB.get((vehicle, date, route, tripkey), 0) for vehicle in vehicle_ids) <= 1
+
+# Constraint 3: Total number of CDB, HEB, BEB should not exceed the total fleet size
 for y in range(Y):
     for s in S:
         model += lpSum(y_CDB[(year, s)] for year in range(y + 1)) + lpSum(
             y_HEB[(year, s)] for year in range(y + 1)) + lpSum(y_BEB[(year, s)] for year in range(y + 1)) <= 1000
 
-# Constraint 3: Maximum daily charging capacity
+# Constraint 4: Maximum daily charging capacity
 for d in D:
     for y in range(Y):
         for s in S:
@@ -130,16 +177,25 @@ for d in D:
                 energy_BEB_dict[key]['Energy'] * x_BEB[key] if key in energy_BEB_dict else 0 for key in keys_BEB if
                 key[1] == d) <= M_cap[y]
 
-# Constraint 4: Maximum yearly investment
+# Constraint 5: Maximum yearly investment
 for y in range(Y):
     for s in S:
         model += lpSum(cost_inv[('C', year)] * y_CDB[(year, s)] for year in range(y + 1)) + lpSum(
             cost_inv[('H', year)] * y_HEB[(year, s)] for year in range(y + 1)) + lpSum(
             cost_inv[('B', year)] * y_BEB[(year, s)] for year in range(y + 1)) <= M_inv[(s, y)]
 
+# Debug the model
+model.debug = True
+
 # Solve the model
 model.solve()
+#model.solve(GUROBI_CMD())
+
 
 # Check status and print optimal value
 print("Status:", LpStatus[model.status])
 print("Optimal Cost:", value(model.objective))
+
+# Print optimal decision variables
+for variable in model.variables():
+    print("{} = {}".format(variable.name, variable.varValue))
