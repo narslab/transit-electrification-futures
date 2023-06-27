@@ -6,6 +6,7 @@ import numpy as np
 from tqdm import tqdm  
 import time  
 from pulp import PULP_CBC_CMD
+from pulp import GUROBI
 #from pulp import *
 
 # Read dataframes of all-CDB, all-HEB, and all BEB with runs included
@@ -94,7 +95,7 @@ energy_BEB_dict = energy_BEB.set_index(['Vehicle', 'Date', 'Route', 'TripKey']).
 
 
 # Create an LP Problem
-model = LpProblem('Minimize fleet cost', LpMinimize)
+model = LpProblem('Minimize fleet diesel consumption', LpMinimize)
 
 # Decision variables
 keys_CDB = list(energy_CDB_dict.keys())
@@ -195,7 +196,8 @@ start_time = time.time()  # get the current time
 #model.solve()  
 
 # Use the msg parameter in the solve function to see the solver logs.
-model.solve(PULP_CBC_CMD(msg=1))  # For PuLP's built-in CBC solver
+#model.solve(PULP_CBC_CMD(msg=1))  # For PuLP's built-in CBC solver
+model.solve(GUROBI(msg=1))
 print(f"Time taken by model.solve(): {time.time() - start_time} seconds")  # print the time difference
 
 
