@@ -115,7 +115,20 @@ model += (
      
 ## Define Constraints
 
-# Constraint 1: The sum of decision variables for each bus and year across all powertrains should be <= 1
+# Constraint 1: Aaccounting for the relationship between the buses purchased each year and the trips that are assigned to these new buses. 
+for s in  tqdm(S):
+    for y in  year_keys:
+        # CDB buses
+        model += lpSum(x_CDB[s][i][y][key] for i in bus_keys for key in keys_CDB if key in x_CDB[s][i][y]) == y_CDB[(y, s)]
+
+        # HEB buses
+        model += lpSum(x_HEB[s][i][y][key] for i in bus_keys for key in keys_HEB if key in x_HEB[s][i][y]) == y_HEB[(y, s)]
+
+        # BEB buses
+        model += lpSum(x_BEB[s][i][y][key] for i in bus_keys for key in keys_BEB if key in x_BEB[s][i][y]) == y_BEB[(y, s)]
+
+
+# Constraint 2: The sum of decision variables for each bus and year across all powertrains should be <= 1
 for i in tqdm(bus_keys):
     for y in year_keys:
         model += (
@@ -124,7 +137,7 @@ for i in tqdm(bus_keys):
             lpSum(x_BEB[i][y][key] for key in keys_BEB if key in x_BEB[i][y])
         ) <= 1
 
-# Constraint 2: Only one bus can be assigned to each trip
+# Constraint 3: Only one bus can be assigned to each trip
 # Assume unique_keys are all the unique combinations of (date, route, trip)
 unique_keys = set(keys_CDB) | set(keys_HEB) | set(keys_BEB)  # Union of all keys
 for key in tqdm(unique_keys):
@@ -134,7 +147,7 @@ for key in tqdm(unique_keys):
         lpSum(x_BEB[i][y][key] for i in bus_keys for y in year_keys if key in x_BEB[i][y])
     ) <= 1
 
-# Constraint 3: Total number of CDB, HEB, BEB should not exceed the total fleet size
+# Constraint 4: Total number of CDB, HEB, BEB should not exceed the total fleet size
 # Assume max_buses_per_year is a constant limit
 max_buses_per_year = max_number_of_buses
 for y in tqdm(year_keys):
@@ -144,14 +157,14 @@ for y in tqdm(year_keys):
         lpSum(y_BEB[(year, s)] for year in range(y + 1) for s in S)
     ) <= max_buses_per_year
 
-# Constraint 4: Maximum daily charging capacity
+# Constraint 5: Maximum daily charging capacity
 for d in tqdm(D):
     for y in year_keys:
         model += (
             lpSum(energy_BEB_dict[key]['Energy'] * x_BEB[i][y][key] if key in x_BEB[i][y] else 0 for i in bus_keys for key in keys_BEB if key[1] == d)
         ) <= M_cap[y]
 
-# Constraint 5: Maximum yearly investment
+# Constraint 6: Maximum yearly investment
 for y in year_keys:
     for s in S:
         model += (
