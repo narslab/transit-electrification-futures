@@ -190,6 +190,12 @@ model.addConstrs(
     name="C6"
 )
 
+# Print model statistics
+print("Number of variables:", model.NumVars)
+print("Number of binary variables:", model.NumBinVars)
+print("Number of integer variables:", model.NumIntVars)
+print("Number of constraints:", model.NumConstrs)
+print("Number of non-zero coefficients:", model.NumNZs)
         
 # Tuning and Optimization
 model.tune()
