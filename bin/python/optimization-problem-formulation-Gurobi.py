@@ -1,3 +1,4 @@
+import gc
 import pandas as pd
 from gurobipy import Model, GRB, quicksum
 from tqdm import tqdm  
@@ -97,6 +98,12 @@ energy_BEB = df_BEB.groupby(['Date', 'Route', 'TripKey']).agg({'Energy': 'sum', 
 energy_BEB['Diesel'] = (energy_BEB['Powertrain'].isin(['conventional', 'hybrid']) * energy_BEB['Energy'])
 energy_BEB_dict = energy_BEB.set_index(['Date', 'Route', 'TripKey']).to_dict('index')
 
+
+# Now delete the DataFrame to free up memory
+del df_CDB
+del df_HEB
+del df_BEB
+gc.collect()
 
 # Create a model
 model = Model('Minimize fleet diesel consumption')
