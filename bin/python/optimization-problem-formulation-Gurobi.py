@@ -1,5 +1,5 @@
 import pandas as pd
-from gurobipy import Model, GRB, quicksum
+from gurobipy import Model, GRB, quicksum, tupledict
 from tqdm import tqdm  
 import time  
 
@@ -90,8 +90,10 @@ model.setParam('OutputFlag', 1)
 # Set heuristic parameters
 model.setParam('MIPFocus', 1)  # 1: Focuses on finding feasible solutions. 2: focuses on improving the optimality of the best solution found. 3: focuses on proving the optimality of the best solution.
 model.setParam('Heuristics', 0.5)  # Spend more time on heuristics (range is 0 to 1, with 1 being the most time)
-model.setParam('Cuts', 2)  # Use more aggressive cutting planes
-# This parameter lets you modify the aggressiveness with which Gurobi generates cutting planes. These are additional constraints that can potentially improve the LP relaxation of the problem, leading to a quicker solution.
+model.setParam('Cuts', 2)  # Use more aggressive cutting planes. This parameter lets you modify the aggressiveness with which Gurobi generates cutting planes. These are additional constraints that can potentially improve the LP relaxation of the problem, leading to a quicker solution.
+model.setParam('Presolve', 2)  # This parameter controls the aggressiveness of presolve reductions.  
+model.setParam('Threads', 8)  # Set number of threads to be used for parallel processing.
+
 
 # Additional keys for buses and years
 bus_keys = range(max_number_of_buses)
@@ -123,76 +125,57 @@ model.setObjective(
 ## Define Constraints
 
 # Constraint 1: Accounting for the relationship between the buses purchased each year and the trips that are assigned to these new buses. 
-for i in tqdm(bus_keys, desc='Constraint 1'):
-    for y in year_keys:
-        for s in S:
-            model.addConstr(
-                quicksum(x_CDB[i, y, key] for key in keys_CDB) <= y_CDB[y, s], 
-                name=f"C1_CDB_{i}_{y}_{s}"
-            )
-            model.addConstr(
-                quicksum(x_HEB[i, y, key] for key in keys_HEB) <= y_HEB[y, s], 
-                name=f"C1_HEB_{i}_{y}_{s}"
-            )
-            model.addConstr(
-                quicksum(x_BEB[i, y, key] for key in keys_BEB) <= y_BEB[y, s], 
-                name=f"C1_BEB_{i}_{y}_{s}"
-            )
+model.addConstrs(
+    (x_CDB.sum(i, y, '*') <= y_CDB.sum(y, '*') for i in bus_keys for y in year_keys for s in S),
+    name="C1_CDB"
+)
+model.addConstrs(
+    (x_HEB.sum(i, y, '*') <= y_HEB.sum(y, '*') for i in bus_keys for y in year_keys for s in S),
+    name="C1_HEB"
+)
+model.addConstrs(
+    (x_BEB.sum(i, y, '*') <= y_BEB.sum(y, '*') for i in bus_keys for y in year_keys for s in S),
+    name="C1_BEB"
+)
 
 # Constraint 2: The sum of decision variables for each bus and year across all powertrains should be <= 1
-for i in tqdm(bus_keys, desc='Constraint 2'):
-    for y in year_keys:
-        model.addConstr(
-            quicksum(x_CDB[i, y, key] for key in keys_CDB) +
-            quicksum(x_HEB[i, y, key] for key in keys_HEB) +
-            quicksum(x_BEB[i, y, key] for key in keys_BEB) <= 1, 
-            name=f"C2_{i}_{y}"
-        )
+model.addConstrs(
+    (x_CDB.sum(i, y, '*') + x_HEB.sum(i, y, '*') + x_BEB.sum(i, y, '*') <= 1 for i in bus_keys for y in year_keys),
+    name="C2"
+)
 
 # Constraint 3: Only one bus can be assigned to each trip
 unique_keys = set(keys_CDB) | set(keys_HEB) | set(keys_BEB)  # Union of all keys
-for key in tqdm(unique_keys, desc='Constraint 3'):
-    model.addConstr(
-        quicksum(x_CDB[i, y, key] for i in bus_keys for y in year_keys if key in keys_CDB) +
-        quicksum(x_HEB[i, y, key] for i in bus_keys for y in year_keys if key in keys_HEB) +
-        quicksum(x_BEB[i, y, key] for i in bus_keys for y in year_keys if key in keys_BEB) <= 1, 
-        name=f"C3_{key}"
-    )
+model.addConstrs(
+    (x_CDB.sum('*', '*', key) + x_HEB.sum('*', '*', key) + x_BEB.sum('*', '*', key) <= 1 for key in unique_keys),
+    name="C3"
+)
 
 # Constraint 4: Total number of CDB, HEB, BEB should not exceed the total fleet size
-for y in tqdm(year_keys, desc='Constraint 4'):
-    model.addConstr(
-        quicksum(y_CDB[y, s] for s in S) +
-        quicksum(y_HEB[y, s] for s in S) +
-        quicksum(y_BEB[y, s] for s in S) <= max_number_of_buses, 
-        name=f"C4_{y}"
-    )
+model.addConstrs(
+    (y_CDB.sum(y, '*') + y_HEB.sum(y, '*') + y_BEB.sum(y, '*') <= max_number_of_buses for y in year_keys),
+    name="C4"
+)
 
 # Constraint 5: Maximum daily charging capacity
-for d in tqdm(D, desc='Constraint 5'):
-    for y in year_keys:
-        model.addConstr(
-            quicksum(
-                energy_BEB_dict[key]['Energy'] * x_BEB[i, y, key] 
-                for i in bus_keys 
-                for key in keys_BEB 
-                if key[0] == d and key in x_BEB[i, y]
-            ) <= M_cap[y], 
-            name=f"C5_{d}_{y}"
-        )
+model.addConstrs(
+    (quicksum(energy_BEB_dict[key]['Energy'] * x_BEB.sum(i, y, key) for i in bus_keys for key in keys_BEB if key[0] == d) <= M_cap[y] for d in D for y in year_keys),
+    name="C5"
+)
+
 
 # Constraint 6: Maximum yearly investment
-for y in tqdm(year_keys, desc='Constraint 6'):
-    for s in S:
-        model.addConstr(
-            quicksum(cost_inv[('C', year)] * y_CDB[year, s] for year in range(y + 1)) +
-            quicksum(cost_inv[('H', year)] * y_HEB[year, s] for year in range(y + 1)) +
-            quicksum(cost_inv[('B', year)] * y_BEB[year, s] for year in range(y + 1)) <= M_inv[s, y],
-            name=f"C6_{s}_{y}"
-        )
+model.addConstrs(
+    (quicksum(cost_inv[('C', year)] * y_CDB.sum(year, '*') for year in range(y + 1)) +
+    quicksum(cost_inv[('H', year)] * y_HEB.sum(year, '*') for year in range(y + 1)) +
+    quicksum(cost_inv[('B', year)] * y_BEB.sum(year, '*') for year in range(y + 1)) <= M_inv[s, y]
+    for y in year_keys for s in S),
+    name="C6"
+)
+
         
-        
-# Optimize model
+# Tuning and Optimization
+model.tune()
 model.optimize()
 
 # Print optimal decision variables
