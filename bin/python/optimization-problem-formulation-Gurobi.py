@@ -7,6 +7,10 @@ import time
 df_CDB = pd.read_csv(r'../../results/computed-fuel-rates-runs-all-CDB.csv', low_memory=False)
 df_HEB = pd.read_csv(r'../../results/computed-fuel-rates-runs-all-HEB.csv', low_memory=False)
 df_BEB = pd.read_csv(r'../../results/computed-fuel-rates-runs-all-BEB.csv', low_memory=False)
+#df_CDB = pd.read_parquet(r'../../results/computed-fuel-rates-runs-all-CDB.parquet')
+#df_HEB = pd.read_parquet(r'../../results/computed-fuel-rates-runs-all-HEB.parquet')
+#df_BEB = pd.read_parquet(r'../../results/computed-fuel-rates-runs-all-BEB.parquet')
+
 
 # Convert 'Date' column to day of the year format
 df_CDB['Date'] = pd.to_datetime(df_CDB['Date']).dt.dayofyear
@@ -15,6 +19,11 @@ df_BEB['Date'] = pd.to_datetime(df_BEB['Date']).dt.dayofyear
 
 # Sample 30 random dates
 random_dates = df_CDB['Date'].sample(n=30, random_state=1).values
+
+# Convert 'Date' column to category data type before filtering
+df_CDB['Date'] = df_CDB['Date'].astype('category')
+df_HEB['Date'] = df_HEB['Date'].astype('category')
+df_BEB['Date'] = df_BEB['Date'].astype('category')
 
 # Filter dataframes by random dates
 df_CDB = df_CDB[df_CDB['Date'].isin(random_dates)]
@@ -75,17 +84,17 @@ N = {
 
 # For df_CDB
 energy_CDB = df_CDB.groupby(['Date', 'Route', 'TripKey']).agg({'Energy': 'sum', 'Powertrain': 'first'}).reset_index()
-energy_CDB['Diesel'] = energy_CDB.apply(lambda x: x['Energy'] if x['Powertrain'] in ['conventional', 'hybrid'] else 0, axis=1)
+energy_CDB['Diesel'] = (energy_CDB['Powertrain'].isin(['conventional', 'hybrid']) * energy_CDB['Energy'])
 energy_CDB_dict = energy_CDB.set_index(['Date', 'Route', 'TripKey']).to_dict('index')
 
 # For df_HEB
 energy_HEB = df_HEB.groupby(['Date', 'Route', 'TripKey']).agg({'Energy': 'sum', 'Powertrain': 'first'}).reset_index()
-energy_HEB['Diesel'] = energy_HEB.apply(lambda x: x['Energy'] if x['Powertrain'] in ['conventional', 'hybrid'] else 0, axis=1)
+energy_HEB['Diesel'] = (energy_HEB['Powertrain'].isin(['conventional', 'hybrid']) * energy_HEB['Energy'])
 energy_HEB_dict = energy_HEB.set_index(['Date', 'Route', 'TripKey']).to_dict('index')
 
 # For df_BEB
 energy_BEB = df_BEB.groupby(['Date', 'Route', 'TripKey']).agg({'Energy': 'sum', 'Powertrain': 'first'}).reset_index()
-energy_BEB['Diesel'] = energy_BEB.apply(lambda x: x['Energy'] if x['Powertrain'] in ['conventional', 'hybrid'] else 0, axis=1)
+energy_BEB['Diesel'] = (energy_BEB['Powertrain'].isin(['conventional', 'hybrid']) * energy_BEB['Energy'])
 energy_BEB_dict = energy_BEB.set_index(['Date', 'Route', 'TripKey']).to_dict('index')
 
 
