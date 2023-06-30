@@ -1,5 +1,5 @@
 import pandas as pd
-from gurobipy import Model, GRB, quicksum, tupledict
+from gurobipy import Model, GRB, quicksum
 from tqdm import tqdm  
 import time  
 
@@ -12,6 +12,14 @@ df_BEB = pd.read_csv(r'../../results/computed-fuel-rates-runs-all-BEB.csv', low_
 df_CDB['Date'] = pd.to_datetime(df_CDB['Date']).dt.dayofyear
 df_HEB['Date'] = pd.to_datetime(df_HEB['Date']).dt.dayofyear
 df_BEB['Date'] = pd.to_datetime(df_BEB['Date']).dt.dayofyear
+
+# Sample 30 random dates
+random_dates = df_CDB['Date'].sample(n=30, random_state=1).values
+
+# Filter dataframes by random dates
+df_CDB = df_CDB[df_CDB['Date'].isin(random_dates)]
+df_HEB = df_HEB[df_HEB['Date'].isin(random_dates)]
+df_BEB = df_BEB[df_BEB['Date'].isin(random_dates)]
 
 # Define parameters
 D = set(df_CDB['Date'].unique())  # Create a set of unique dates
@@ -115,12 +123,21 @@ y_HEB = model.addVars(year_keys, S, vtype=GRB.INTEGER, name='y_HEB')
 y_BEB = model.addVars(year_keys, S, vtype=GRB.INTEGER, name='y_BEB')
 
 # Objective function for diesel consumption
+#model.setObjective(
+#    quicksum([energy_CDB_dict[key]['Diesel'] * x_CDB[i, y, key] for key in keys_CDB for i in bus_keys for y in year_keys]) +
+#    quicksum([energy_HEB_dict[key]['Diesel'] * x_HEB[i, y, key] for key in keys_HEB for i in bus_keys for y in year_keys]) +
+#    quicksum([energy_BEB_dict[key]['Diesel'] * x_BEB[i, y, key] for key in keys_BEB for i in bus_keys for y in year_keys]),
+#    GRB.MINIMIZE
+#)
+
+# Objective function for diesel consumption
 model.setObjective(
-    quicksum([energy_CDB_dict[key]['Diesel'] * x_CDB[i, y, key] for key in keys_CDB for i in bus_keys for y in year_keys]) +
+    12 * (quicksum([energy_CDB_dict[key]['Diesel'] * x_CDB[i, y, key] for key in keys_CDB for i in bus_keys for y in year_keys]) +
     quicksum([energy_HEB_dict[key]['Diesel'] * x_HEB[i, y, key] for key in keys_HEB for i in bus_keys for y in year_keys]) +
-    quicksum([energy_BEB_dict[key]['Diesel'] * x_BEB[i, y, key] for key in keys_BEB for i in bus_keys for y in year_keys]),
+    quicksum([energy_BEB_dict[key]['Diesel'] * x_BEB[i, y, key] for key in keys_BEB for i in bus_keys for y in year_keys])),
     GRB.MINIMIZE
 )
+
      
 ## Define Constraints
 
