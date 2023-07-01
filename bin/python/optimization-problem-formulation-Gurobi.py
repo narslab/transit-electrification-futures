@@ -18,8 +18,8 @@ df_CDB['Date'] = pd.to_datetime(df_CDB['Date']).dt.dayofyear
 df_HEB['Date'] = pd.to_datetime(df_HEB['Date']).dt.dayofyear
 df_BEB['Date'] = pd.to_datetime(df_BEB['Date']).dt.dayofyear
 
-# Sample 30 random dates
-random_dates = df_CDB['Date'].sample(n=30, random_state=1).values
+# Sample 5 random dates
+random_dates = df_CDB['Date'].sample(n=5, random_state=1).values
 
 # Convert 'Date' column to category data type before filtering
 df_CDB['Date'] = df_CDB['Date'].astype('category')
