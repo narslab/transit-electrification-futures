@@ -132,19 +132,19 @@ keys_HEB = list(energy_HEB_dict.keys())
 keys_BEB = list(energy_BEB_dict.keys())
 
 # Decision variables which include two additional indices for buses (i) and years (y)
-x_CDB = model.addVars(S, bus_keys, year_keys, keys_CDB, vtype=GRB.BINARY, name='x_CDB')
-x_HEB = model.addVars(S, bus_keys, year_keys, keys_HEB, vtype=GRB.BINARY, name='x_HEB')
-x_BEB = model.addVars(S, bus_keys, year_keys, keys_BEB, vtype=GRB.BINARY, name='x_BEB')
+x_CDB = model.addVars(S, bus_keys, year_keys, keys_CDB, vtype=GRB.CONTINUOUS, name='x_CDB')
+x_HEB = model.addVars(S, bus_keys, year_keys, keys_HEB, vtype=GRB.CONTINUOUS, name='x_HEB')
+x_BEB = model.addVars(S, bus_keys, year_keys, keys_BEB, vtype=GRB.CONTINUOUS, name='x_BEB')
 
 # Define y_CDB, y_HEB, and y_BEB as the number of each type of bus at each year under each scenario
-y_CDB = model.addVars(S, year_keys, vtype=GRB.INTEGER, name='y_CDB')
-y_HEB = model.addVars(S, year_keys, vtype=GRB.INTEGER, name='y_HEB')
-y_BEB = model.addVars(S, year_keys, vtype=GRB.INTEGER, name='y_BEB')
+y_CDB = model.addVars(S, year_keys, vtype=GRB.CONTINUOUS, name='y_CDB')
+y_HEB = model.addVars(S, year_keys, vtype=GRB.CONTINUOUS, name='y_HEB')
+y_BEB = model.addVars(S, year_keys, vtype=GRB.CONTINUOUS, name='y_BEB')
 
 # Decision Variables for bus types
-z_CDB = model.addVars(S, bus_keys, year_keys, vtype=GRB.BINARY, name="z_CDB")
-z_HEB = model.addVars(S, bus_keys, year_keys, vtype=GRB.BINARY, name="z_HEB")
-z_BEB = model.addVars(S, bus_keys, year_keys, vtype=GRB.BINARY, name="z_BEB")
+z_CDB = model.addVars(S, bus_keys, year_keys, vtype=GRB.CONTINUOUS, name="z_CDB")
+z_HEB = model.addVars(S, bus_keys, year_keys, vtype=GRB.CONTINUOUS, name="z_HEB")
+z_BEB = model.addVars(S, bus_keys, year_keys, vtype=GRB.CONTINUOUS, name="z_BEB")
 
 
 # Objective function for diesel consumption
