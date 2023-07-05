@@ -18,8 +18,8 @@ df_CDB['Date'] = pd.to_datetime(df_CDB['Date']).dt.dayofyear
 df_HEB['Date'] = pd.to_datetime(df_HEB['Date']).dt.dayofyear
 df_BEB['Date'] = pd.to_datetime(df_BEB['Date']).dt.dayofyear
 
-# Sample 5 random dates
-random_dates = df_CDB['Date'].sample(n=5, random_state=1).values
+# Sample 7 random dates
+random_dates = df_CDB['Date'].sample(n=7, random_state=1).values
 
 # Convert 'Date' column to category data type before filtering
 df_CDB['Date'] = df_CDB['Date'].astype('category')
@@ -32,7 +32,7 @@ df_HEB = df_HEB[df_HEB['Date'].isin(random_dates)]
 df_BEB = df_BEB[df_BEB['Date'].isin(random_dates)]
 
 # Define parameters
-D = set(df_CDB['Date'].unique())  # Create a set of unique dates
+D = len(set(df_CDB['Date'].unique()))  # Create a set of unique dates
 Y = 13  # Years in simulation
 max_number_of_buses = 500 # 213*2 (current numnumber of fleet*2, assuming buses are going to be replaced with electric at most with ratio of 1:2)
 
@@ -122,6 +122,9 @@ model.setParam('Threads', 8)  # Set number of threads to be used for parallel pr
 # Additional keys for buses and years
 bus_keys = range(max_number_of_buses)
 year_keys = range(Y)
+day_keys = range(D)
+route_keys = range(R)
+run_keys = range(Rho)
 
 # Decision variables
 keys_CDB = list(energy_CDB_dict.keys())
@@ -129,26 +132,24 @@ keys_HEB = list(energy_HEB_dict.keys())
 keys_BEB = list(energy_BEB_dict.keys())
 
 # Decision variables which include two additional indices for buses (i) and years (y)
-x_CDB = model.addVars(bus_keys, year_keys, keys_CDB, vtype=GRB.BINARY, name='x_CDB')
-x_HEB = model.addVars(bus_keys, year_keys, keys_HEB, vtype=GRB.BINARY, name='x_HEB')
-x_BEB = model.addVars(bus_keys, year_keys, keys_BEB, vtype=GRB.BINARY, name='x_BEB')
+x_CDB = model.addVars(S, bus_keys, year_keys, keys_CDB, vtype=GRB.BINARY, name='x_CDB')
+x_HEB = model.addVars(S, bus_keys, year_keys, keys_HEB, vtype=GRB.BINARY, name='x_HEB')
+x_BEB = model.addVars(S, bus_keys, year_keys, keys_BEB, vtype=GRB.BINARY, name='x_BEB')
 
 # Define y_CDB, y_HEB, and y_BEB as the number of each type of bus at each year under each scenario
-y_CDB = model.addVars(year_keys, S, vtype=GRB.INTEGER, name='y_CDB')
-y_HEB = model.addVars(year_keys, S, vtype=GRB.INTEGER, name='y_HEB')
-y_BEB = model.addVars(year_keys, S, vtype=GRB.INTEGER, name='y_BEB')
+y_CDB = model.addVars(S, year_keys, vtype=GRB.INTEGER, name='y_CDB')
+y_HEB = model.addVars(S, year_keys, vtype=GRB.INTEGER, name='y_HEB')
+y_BEB = model.addVars(S, year_keys, vtype=GRB.INTEGER, name='y_BEB')
 
-# Objective function for diesel consumption
-#model.setObjective(
-#    quicksum([energy_CDB_dict[key]['Diesel'] * x_CDB[i, y, key] for key in keys_CDB for i in bus_keys for y in year_keys]) +
-#    quicksum([energy_HEB_dict[key]['Diesel'] * x_HEB[i, y, key] for key in keys_HEB for i in bus_keys for y in year_keys]) +
-#    quicksum([energy_BEB_dict[key]['Diesel'] * x_BEB[i, y, key] for key in keys_BEB for i in bus_keys for y in year_keys]),
-#    GRB.MINIMIZE
-#)
+# Decision Variables for bus types
+z_CDB = model.addVars(S, bus_keys, year_keys, vtype=GRB.BINARY, name="z_CDB")
+z_HEB = model.addVars(S, bus_keys, year_keys, vtype=GRB.BINARY, name="z_HEB")
+z_BEB = model.addVars(S, bus_keys, year_keys, vtype=GRB.BINARY, name="z_BEB")
+
 
 # Objective function for diesel consumption
 model.setObjective(
-    12 * (quicksum([energy_CDB_dict[key]['Diesel'] * x_CDB[i, y, key] for key in keys_CDB for i in bus_keys for y in year_keys]) +
+    52 * (quicksum([energy_CDB_dict[key]['Diesel'] * x_CDB[i, y, key] for key in keys_CDB for i in bus_keys for y in year_keys]) +
     quicksum([energy_HEB_dict[key]['Diesel'] * x_HEB[i, y, key] for key in keys_HEB for i in bus_keys for y in year_keys]) +
     quicksum([energy_BEB_dict[key]['Diesel'] * x_BEB[i, y, key] for key in keys_BEB for i in bus_keys for y in year_keys])),
     GRB.MINIMIZE
@@ -157,53 +158,83 @@ model.setObjective(
      
 ## Define Constraints
 
-# Constraint 1: Accounting for the relationship between the buses purchased each year and the trips that are assigned to these new buses. 
+# Constraint 1: Linking the number of each type of bus at each year variable with trip assignment variables
 model.addConstrs(
-    (x_CDB.sum(i, y, '*') <= y_CDB.sum(y, '*') for i in bus_keys for y in year_keys for s in S),
+    (y_CDB[y] == quicksum((x_CDB[i, y, d, r, rho] >= 1) for i in bus_keys for d in day_keys for r in route_keys for rho in run_keys) for y in year_keys),
     name="C1_CDB"
 )
 model.addConstrs(
-    (x_HEB.sum(i, y, '*') <= y_HEB.sum(y, '*') for i in bus_keys for y in year_keys for s in S),
+    (y_HEB[y] == quicksum((x_HEB[i, y, d, r, rho] >= 1) for i in bus_keys for d in day_keys for r in route_keys for rho in run_keys) for y in year_keys),
     name="C1_HEB"
 )
 model.addConstrs(
-    (x_BEB.sum(i, y, '*') <= y_BEB.sum(y, '*') for i in bus_keys for y in year_keys for s in S),
+    (y_BEB[y] == quicksum((x_BEB[i, y, d, r, rho] >= 1) for i in bus_keys for d in day_keys for r in route_keys for rho in run_keys) for y in year_keys),
     name="C1_BEB"
 )
+### Aditional explanation: 
+#x_CDB[i, y, d, r, rho] >= 1 is a binary condition that checks if bus 'i' is used at least once in a trip during year 'y'. This will return True (or 1) if bus 'i' is used, and False (or 0) otherwise. 
+#Regardless of the values of d, r, and rho, the result of this expression is either 1 (if the bus 'i' is used at least once) or 0 (if the bus 'i' is not used at all).
 
-# Constraint 2: The sum of decision variables for each bus and year across all powertrains should be <= 1
-model.addConstrs(
-    (x_CDB.sum(i, y, '*') + x_HEB.sum(i, y, '*') + x_BEB.sum(i, y, '*') <= 1 for i in bus_keys for y in year_keys),
-    name="C2"
-)
 
-# Constraint 3: Only one bus can be assigned to each trip
-unique_keys = set(keys_CDB) | set(keys_HEB) | set(keys_BEB)  # Union of all keys
+# =============================================================================
+# # Constraint 2: Linking bus type variables with trip assignment variables
+# M = 3000 # A sufficiently large number for max number of trips that each bus can have per day
+# 
+# model.addConstrs(
+#     (x_CDB.sum(i, y, '*') <= M * z_CDB[i, y] for i in bus_keys for y in year_keys),
+#     name="C2_CDB"
+# )
+# model.addConstrs(
+#     (x_HEB.sum(i, y, '*') <= M * z_HEB[i, y] for i in bus_keys for y in year_keys),
+#     name="C2_HEB"
+# )
+# model.addConstrs(
+#     (x_BEB.sum(i, y, '*') <= M * z_BEB[i, y] for i in bus_keys for y in year_keys),
+#     name="C2_BEB"
+# )
+# =============================================================================
+
+# Constraint 3: The sum of decision variables for each bus and year across all powertrains should be <= 1
 model.addConstrs(
-    (x_CDB.sum('*', '*', key) + x_HEB.sum('*', '*', key) + x_BEB.sum('*', '*', key) <= 1 for key in unique_keys),
+    (z_CDB[i, y] + z_HEB[i, y] + z_BEB[i, y] <= 1 for i in bus_keys for y in year_keys),
     name="C3"
 )
 
-# Constraint 4: Total number of CDB, HEB, BEB should not exceed the total fleet size
+# Constraint 4: Only one bus can be assigned to each trip
+unique_keys = set(keys_CDB) | set(keys_HEB) | set(keys_BEB)  # Union of all keys
 model.addConstrs(
-    (y_CDB.sum(y, '*') + y_HEB.sum(y, '*') + y_BEB.sum(y, '*') <= max_number_of_buses for y in year_keys),
+    (x_CDB.sum('*', '*', key) + x_HEB.sum('*', '*', key) + x_BEB.sum('*', '*', key) <= 1 for key in unique_keys),
     name="C4"
 )
 
-# Constraint 5: Maximum daily charging capacity
+# =============================================================================
+# # Constraint 5: Total number of CDB, HEB, BEB should not exceed the total fleet size
+# model.addConstrs(
+#     (y_CDB.sum(y, '*') + y_HEB.sum(y, '*') + y_BEB.sum(y, '*') <= max_number_of_buses for y in year_keys),
+#     name="C5"
+# )
+# =============================================================================
+
+# Constraint 6: Maximum daily charging capacity (The total energy consumed by all Battery Electric Buses (BEBs) in a given day does not exceed the total charging capacity available)
 model.addConstrs(
     (quicksum(energy_BEB_dict[key]['Energy'] * x_BEB.sum(i, y, key) for i in bus_keys for key in keys_BEB if key[0] == d) <= M_cap[y] for d in D for y in year_keys),
-    name="C5"
+    name="C6"
 )
 
 
-# Constraint 6: Maximum yearly investment
+# Constraint 7: Daily energy consumption by each BEB should not exceed its battery capacity
+model.addConstrs(
+    (quicksum(energy_BEB_dict[key]['Energy'] * x_BEB[i, y, key] for key in keys_BEB if key[0] == d) <= cap for i in bus_keys for d in D for y in year_keys),
+    name="C7"
+)
+
+# Constraint 8: Maximum yearly investment
 model.addConstrs(
     (quicksum(cost_inv[('C', year)] * y_CDB.sum(year, '*') for year in range(y + 1)) +
     quicksum(cost_inv[('H', year)] * y_HEB.sum(year, '*') for year in range(y + 1)) +
     quicksum(cost_inv[('B', year)] * y_BEB.sum(year, '*') for year in range(y + 1)) <= M_inv[s, y]
     for y in year_keys for s in S),
-    name="C6"
+    name="C8"
 )
 
 # Print model statistics
