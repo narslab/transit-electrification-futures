@@ -1,7 +1,8 @@
 import gc
 import pandas as pd
 from gurobipy import Model, GRB, quicksum
-
+from tqdm import tqdm  
+import time  
 
 # Read dataframes of all-CDB, all-HEB, and all BEB with runs included
 df_CDB = pd.read_csv(r'../../results/computed-fuel-rates-runs-all-CDB.csv', low_memory=False)
@@ -118,11 +119,10 @@ model = Model('Minimize fleet diesel consumption')
 model.setParam('OutputFlag', 1)
 
 # Set heuristic parameters
-#model.setParam('MIPFocus', 1)  # This parameter lets control the MIP solver's focus. The options are: 1. Finds feasible solutions quickly. This is useful if the problem is difficult to solve and you're satisfied with any feasible solution. 2: Works to improve the best bound. This is useful when the best objective bound is poor. 3: Tries to prove optimality of the best solution found. This is useful if you're sure a nearly-optimal solution exists and you want the solver to focus on proving its optimality.
-model.setParam('Heuristics', 0.5)  # Controls the effort put into MIP heuristics (range is 0 to 1). A higher value means more effort is put into finding solutions, but at the cost of slower overall performance. 
-#model.setParam('Cuts', 2)  # This parameter controls the aggressiveness of cut generation. Cutting planes are additional constraints that can potentially improve the LP relaxation of the problem, thus leading to a quicker solution. A higher value means more aggressive cut generation, but this could potentially slow down the solver because of the extra overhead.
-model.setParam('Presolve', 2)  # This parameter controls the presolve level. Presolve is a phase during which the solver tries to simplify the model before the actual optimization takes place. A higher presolve level means the solver puts more effort into simplification, which can often reduce solving time. (-1: automatic (default) - Gurobi will decide based on the problem characteristics whether to use presolve or not.0: no presolve. 1: conservative presolve. 2: aggressive presolve.)
-#model.setParam('MIPGap', 0.01) # This parameter sets the relative gap for the MIP search termination. The solver will stop as soon as the relative gap between the lower and upper objective bound is less than this value. The lower this value, the closer to optimality the solution has to be before the solver stops.  
+model.setParam('MIPFocus', 1)  # 1: Focuses on finding feasible solutions. 2: focuses on improving the optimality of the best solution found. 3: focuses on proving the optimality of the best solution.
+model.setParam('Heuristics', 0.5)  # Spend more time on heuristics (range is 0 to 1, with 1 being the most time)
+model.setParam('Cuts', 2)  # Use more aggressive cutting planes. This parameter lets you modify the aggressiveness with which Gurobi generates cutting planes. These are additional constraints that can potentially improve the LP relaxation of the problem, leading to a quicker solution.
+model.setParam('Presolve', 2)  # This parameter controls the aggressiveness of presolve reductions.  
 model.setParam('Threads', 64)  # Set number of threads to be used for parallel processing.
 
 
@@ -139,19 +139,19 @@ keys_HEB = list(energy_HEB_dict.keys())
 keys_BEB = list(energy_BEB_dict.keys())
 
 # Decision variables which include two additional indices for buses (i) and years (y)
-x_CDB = model.addVars(S, bus_keys, year_keys, keys_CDB, vtype=GRB.BINARY, name='x_CDB')
-x_HEB = model.addVars(S, bus_keys, year_keys, keys_HEB, vtype=GRB.BINARY, name='x_HEB')
-x_BEB = model.addVars(S, bus_keys, year_keys, keys_BEB, vtype=GRB.BINARY, name='x_BEB')
+x_CDB = model.addVars(S, bus_keys, year_keys, keys_CDB, vtype=GRB.CONTINUOUS, name='x_CDB')
+x_HEB = model.addVars(S, bus_keys, year_keys, keys_HEB, vtype=GRB.CONTINUOUS, name='x_HEB')
+x_BEB = model.addVars(S, bus_keys, year_keys, keys_BEB, vtype=GRB.CONTINUOUS, name='x_BEB')
 
 # Define y_CDB, y_HEB, and y_BEB as the number of each type of bus at each year under each scenario
-y_CDB = model.addVars(S, year_keys, vtype=GRB.BINARY, name='y_CDB')
-y_HEB = model.addVars(S, year_keys, vtype=GRB.BINARY, name='y_HEB')
-y_BEB = model.addVars(S, year_keys, vtype=GRB.BINARY, name='y_BEB')
+y_CDB = model.addVars(S, year_keys, vtype=GRB.CONTINUOUS, name='y_CDB')
+y_HEB = model.addVars(S, year_keys, vtype=GRB.CONTINUOUS, name='y_HEB')
+y_BEB = model.addVars(S, year_keys, vtype=GRB.CONTINUOUS, name='y_BEB')
 
 # Decision Variables for bus types
-z_CDB = model.addVars(S, bus_keys, year_keys, vtype=GRB.BINARY, name="z_CDB")
-z_HEB = model.addVars(S, bus_keys, year_keys, vtype=GRB.BINARY, name="z_HEB")
-z_BEB = model.addVars(S, bus_keys, year_keys, vtype=GRB.BINARY, name="z_BEB")
+z_CDB = model.addVars(S, bus_keys, year_keys, vtype=GRB.CONTINUOUS, name="z_CDB")
+z_HEB = model.addVars(S, bus_keys, year_keys, vtype=GRB.CONTINUOUS, name="z_HEB")
+z_BEB = model.addVars(S, bus_keys, year_keys, vtype=GRB.CONTINUOUS, name="z_BEB")
 
 
 # Objective function for diesel consumption
