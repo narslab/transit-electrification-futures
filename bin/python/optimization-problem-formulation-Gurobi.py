@@ -40,16 +40,6 @@ df_BEB = pd.read_csv(r'../../results/computed-fuel-rates-runs-all-BEB.csv', low_
 #df_BEB = pd.read_parquet(r'../../results/computed-fuel-rates-runs-all-BEB.parquet')
 
 
-# Convert 'Date' column to day of the year format
-#df_CDB['Date'] = pd.to_datetime(df_CDB['Date']).dt.dayofyear
-#df_HEB['Date'] = pd.to_datetime(df_HEB['Date']).dt.dayofyear
-#df_BEB['Date'] = pd.to_datetime(df_BEB['Date']).dt.dayofyear
-
-# Convert 'Date' column to category data type before filtering
-#df_CDB['Date'] = df_CDB['Date'].astype('category')
-#df_HEB['Date'] = df_HEB['Date'].astype('category')
-#df_BEB['Date'] = df_BEB['Date'].astype('category')
-
 # Sample 7 random dates
 #random_dates = df_CDB['Date'].sample(n=7, random_state=1).values
 
@@ -69,6 +59,17 @@ df_HEB = df_HEB.loc[df_HEB['Date']==date_with_max_trips]
 df_BEB = df_BEB.loc[df_BEB['Date']==date_with_max_trips]
 print(df_CDB)
 report_usage()
+
+
+# Convert 'Date' column to day of the year format
+df_CDB['Date'] = pd.to_datetime(df_CDB['Date']).dt.dayofyear
+df_HEB['Date'] = pd.to_datetime(df_HEB['Date']).dt.dayofyear
+df_BEB['Date'] = pd.to_datetime(df_BEB['Date']).dt.dayofyear
+
+# Convert 'Date' column to category data type before filtering
+df_CDB['Date'] = df_CDB['Date'].astype('category')
+df_HEB['Date'] = df_HEB['Date'].astype('category')
+df_BEB['Date'] = df_BEB['Date'].astype('category')
 
 # Define parameters
 #D = len(set(df_CDB['Date'].unique()))  # Create a set of unique dates
@@ -167,7 +168,7 @@ model.setParam('Heuristics', 0.5)  # Controls the effort put into MIP heuristics
 #model.setParam('Cuts', 2)  # This parameter controls the aggressiveness of cut generation. Cutting planes are additional constraints that can potentially improve the LP relaxation of the problem, thus leading to a quicker solution. A higher value means more aggressive cut generation, but this could potentially slow down the solver because of the extra overhead.
 #model.setParam('Presolve', 1)  # This parameter controls the presolve level. Presolve is a phase during which the solver tries to simplify the model before the actual optimization takes place. A higher presolve level means the solver puts more effort into simplification, which can often reduce solving time. (-1: automatic (default) - Gurobi will decide based on the problem characteristics whether to use presolve or not.0: no presolve. 1: conservative presolve. 2: aggressive presolve.)
 #model.setParam('MIPGap', 0.01) # This parameter sets the relative gap for the MIP search termination. The solver will stop as soon as the relative gap between the lower and upper objective bound is less than this value. The lower this value, the closer to optimality the solution has to be before the solver stops.  
-model.setParam('Threads', 40)  # Set number of threads to be used for parallel processing.
+model.setParam('Threads', 32)  # Set number of threads to be used for parallel processing.
 print("Done setting model parameters")
 report_usage()
 
@@ -184,6 +185,11 @@ keys_HEB = list(energy_HEB_dict.keys())
 keys_BEB = list(energy_BEB_dict.keys())
 print("Done setting necessary keys")
 report_usage()
+
+print("Number of CDB variables:",len(bus_keys)*len(year_keys)*len(keys_CDB))
+print("Number of HEB variables:",len(bus_keys)*len(year_keys)*len(keys_HEB))
+print("Number of BEB variables:",len(bus_keys)*len(year_keys)*len(keys_BEB))
+
 
 # Decision variables which include two additional indices for buses (i) and years (y)
 x_CDB = model.addVars(S, bus_keys, year_keys, keys_CDB, vtype=GRB.CONTINUOUS, name='x_CDB')
