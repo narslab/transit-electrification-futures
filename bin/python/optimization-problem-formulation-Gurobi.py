@@ -13,9 +13,9 @@ df_BEB = pd.read_csv(r'../../results/computed-fuel-rates-runs-all-BEB.csv', low_
 
 
 # Convert 'Date' column to day of the year format
-df_CDB['Date'] = pd.to_datetime(df_CDB['Date']).dt.dayofyear
-df_HEB['Date'] = pd.to_datetime(df_HEB['Date']).dt.dayofyear
-df_BEB['Date'] = pd.to_datetime(df_BEB['Date']).dt.dayofyear
+#df_CDB['Date'] = pd.to_datetime(df_CDB['Date']).dt.dayofyear
+#df_HEB['Date'] = pd.to_datetime(df_HEB['Date']).dt.dayofyear
+#df_BEB['Date'] = pd.to_datetime(df_BEB['Date']).dt.dayofyear
 
 # Convert 'Date' column to category data type before filtering
 df_CDB['Date'] = df_CDB['Date'].astype('category')
@@ -31,9 +31,14 @@ max_trips = df_CDB.groupby('Date')['TripKey'].nunique().max()
 print ("date_with_max_trips is:", date_with_max_trips)
 
 # Filter dataframes by random dates
-df_CDB = df_CDB[df_CDB['Date'].isin(date_with_max_trips)]
-df_HEB = df_HEB[df_HEB['Date'].isin(date_with_max_trips)]
-df_BEB = df_BEB[df_BEB['Date'].isin(date_with_max_trips)]
+#df_CDB = df_CDB[df_CDB['Date'].isin(date_with_max_trips)]
+#df_HEB = df_HEB[df_HEB['Date'].isin(date_with_max_trips)]
+#df_BEB = df_BEB[df_BEB['Date'].isin(date_with_max_trips)]
+df_CDB = df_CDB.loc[df_CDB['Date']==date_with_max_trips]
+df_HEB = df_HEB.loc[df_HEB['Date']==date_with_max_trips]
+df_BEB = df_BEB.loc[df_BEB['Date']==date_with_max_trips]
+print(df_CDB)
+
 
 # Define parameters
 #D = len(set(df_CDB['Date'].unique()))  # Create a set of unique dates
