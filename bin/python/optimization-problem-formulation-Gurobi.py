@@ -2,9 +2,34 @@ import gc
 import pandas as pd
 from gurobipy import Model, GRB, quicksum
 import time
+import psutil
+import os
 
 start = time.time()
 
+# Get the current process
+process = psutil.Process(os.getpid())
+
+# Get the total memory available in bytes
+total_memory = psutil.virtual_memory().total
+
+# Convert bytes to GB
+total_memory_gb = total_memory / (1024 ** 3)
+
+print(f'Total memory: {total_memory_gb} GB')
+
+while True:
+    # Get the percentage of CPU usage by this process
+    cpu_percent = process.cpu_percent(interval=1)
+
+    # Get the memory usage by this process
+    memory_info = process.memory_info()
+    memory_usage = memory_info.rss  # in bytes
+
+    print(f"Process CPU usage: {cpu_percent}%")
+    print(f"Process memory usage: {memory_usage / (1024 * 1024)} MB")  # convert bytes to MB
+
+    time.sleep(60)
 
 # Read dataframes of all-CDB, all-HEB, and all BEB with runs included
 df_CDB = pd.read_csv(r'../../results/computed-fuel-rates-runs-all-CDB.csv', low_memory=False)
@@ -119,9 +144,12 @@ del df_CDB
 del df_HEB
 del df_BEB
 gc.collect()
+print("Done deleting unneccesary dataframes")
 
 # Create a model
 model = Model('Minimize fleet diesel consumption')
+print("Done creating the model")
+
 
 # Enable logging and print progress
 model.setParam('OutputFlag', 1)
@@ -133,6 +161,7 @@ model.setParam('Heuristics', 0.5)  # Controls the effort put into MIP heuristics
 model.setParam('Presolve', 1)  # This parameter controls the presolve level. Presolve is a phase during which the solver tries to simplify the model before the actual optimization takes place. A higher presolve level means the solver puts more effort into simplification, which can often reduce solving time. (-1: automatic (default) - Gurobi will decide based on the problem characteristics whether to use presolve or not.0: no presolve. 1: conservative presolve. 2: aggressive presolve.)
 #model.setParam('MIPGap', 0.01) # This parameter sets the relative gap for the MIP search termination. The solver will stop as soon as the relative gap between the lower and upper objective bound is less than this value. The lower this value, the closer to optimality the solution has to be before the solver stops.  
 model.setParam('Threads', 64)  # Set number of threads to be used for parallel processing.
+print("Done setting model parameters")
 
 
 # Additional keys for buses and years
@@ -146,21 +175,27 @@ run_keys = range(Rho)
 keys_CDB = list(energy_CDB_dict.keys())
 keys_HEB = list(energy_HEB_dict.keys())
 keys_BEB = list(energy_BEB_dict.keys())
+print("Done setting necessary keys")
 
 # Decision variables which include two additional indices for buses (i) and years (y)
 x_CDB = model.addVars(S, bus_keys, year_keys, keys_CDB, vtype=GRB.BINARY, name='x_CDB')
 x_HEB = model.addVars(S, bus_keys, year_keys, keys_HEB, vtype=GRB.BINARY, name='x_HEB')
 x_BEB = model.addVars(S, bus_keys, year_keys, keys_BEB, vtype=GRB.BINARY, name='x_BEB')
+print("Done setting x variables")
+
 
 # Define y_CDB, y_HEB, and y_BEB as the number of each type of bus at each year under each scenario
 y_CDB = model.addVars(S, year_keys, vtype=GRB.BINARY, name='y_CDB')
 y_HEB = model.addVars(S, year_keys, vtype=GRB.BINARY, name='y_HEB')
 y_BEB = model.addVars(S, year_keys, vtype=GRB.BINARY, name='y_BEB')
+print("Done setting y variables")
+
 
 # Decision Variables for bus types
 z_CDB = model.addVars(S, bus_keys, year_keys, vtype=GRB.BINARY, name="z_CDB")
 z_HEB = model.addVars(S, bus_keys, year_keys, vtype=GRB.BINARY, name="z_HEB")
 z_BEB = model.addVars(S, bus_keys, year_keys, vtype=GRB.BINARY, name="z_BEB")
+print("Done setting z variables")
 
 
 # Objective function for diesel consumption
@@ -170,6 +205,7 @@ model.setObjective(
     quicksum([energy_BEB_dict[key]['Diesel'] * x_BEB[i, y, key] for key in keys_BEB for i in bus_keys for y in year_keys])),
     GRB.MINIMIZE
 )
+print("Done setting objective function")
 
      
 ## Define Constraints
@@ -190,6 +226,7 @@ model.addConstrs(
 ### Aditional explanation: 
 #x_CDB[i, y, d, r, rho] >= 1 is a binary condition that checks if bus 'i' is used at least once in a trip during year 'y'. This will return True (or 1) if bus 'i' is used, and False (or 0) otherwise. 
 #Regardless of the values of d, r, and rho, the result of this expression is either 1 (if the bus 'i' is used at least once) or 0 (if the bus 'i' is not used at all).
+print("Done defining constraint 1")
 
 
 # =============================================================================
@@ -210,18 +247,22 @@ model.addConstrs(
 # )
 # =============================================================================
 
-# Constraint 3: The sum of decision variables for each bus and year across all powertrains should be <= 1
+# Constraint 2: The sum of decision variables for each bus and year across all powertrains should be <= 1
 model.addConstrs(
     (z_CDB[i, y] + z_HEB[i, y] + z_BEB[i, y] <= 1 for i in bus_keys for y in year_keys),
-    name="C3"
+    name="C2"
 )
+print("Done defining constraint 2")
 
-# Constraint 4: Only one bus can be assigned to each trip
+
+# Constraint 3: Only one bus can be assigned to each trip
 unique_keys = set(keys_CDB) | set(keys_HEB) | set(keys_BEB)  # Union of all keys
 model.addConstrs(
     (x_CDB.sum('*', '*', key) + x_HEB.sum('*', '*', key) + x_BEB.sum('*', '*', key) <= 1 for key in unique_keys),
-    name="C4"
+    name="C3"
 )
+print("Done defining constraint 3")
+
 
 # =============================================================================
 # # Constraint 5: Total number of CDB, HEB, BEB should not exceed the total fleet size
@@ -231,27 +272,31 @@ model.addConstrs(
 # )
 # =============================================================================
 
-# Constraint 6: Maximum daily charging capacity
+# Constraint 4: Maximum daily charging capacity
 model.addConstrs(
     (quicksum(energy_BEB_dict[key]['Energy'] * x_BEB.sum(s, i, y, key) for s in S for i in bus_keys for key in keys_BEB) <= M_cap[y] for y in year_keys),
-    name="C6"
+    name="C4"
 )
+print("Done defining constraint 4")
 
-
-# Constraint 7: Daily energy consumption by each BEB should not exceed its battery capacity
+# Constraint 5: Daily energy consumption by each BEB should not exceed its battery capacity
 model.addConstrs(
     (quicksum(energy_BEB_dict[key]['Energy'] * x_BEB[s, i, y, key] for key in keys_BEB) <= cap for s in S for i in bus_keys for y in year_keys),
-    name="C7"
+    name="C5"
 )
+print("Done defining constraint 5")
 
-# Constraint 8: Maximum yearly investment
+
+# Constraint 6: Maximum yearly investment
 model.addConstrs(
     (quicksum(cost_inv[('C', year)] * y_CDB.sum(year, '*') for year in range(y + 1)) +
     quicksum(cost_inv[('H', year)] * y_HEB.sum(year, '*') for year in range(y + 1)) +
     quicksum(cost_inv[('B', year)] * y_BEB.sum(year, '*') for year in range(y + 1)) <= M_inv[s, y]
     for y in year_keys for s in S),
-    name="C8"
+    name="C6"
 )
+print("Done defining constraint 6")
+
 
 # Print model statistics
 print("Number of variables:", model.NumVars)
