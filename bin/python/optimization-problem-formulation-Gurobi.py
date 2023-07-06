@@ -186,16 +186,16 @@ print("Done setting necessary keys")
 report_usage()
 
 # Decision variables which include two additional indices for buses (i) and years (y)
-x_CDB = model.addVars(S, bus_keys, year_keys, keys_CDB, vtype=GRB.BINARY, name='x_CDB')
-x_HEB = model.addVars(S, bus_keys, year_keys, keys_HEB, vtype=GRB.BINARY, name='x_HEB')
-x_BEB = model.addVars(S, bus_keys, year_keys, keys_BEB, vtype=GRB.BINARY, name='x_BEB')
+x_CDB = model.addVars(S, bus_keys, year_keys, keys_CDB, vtype=GRB.CONTINUOUS, name='x_CDB')
+x_HEB = model.addVars(S, bus_keys, year_keys, keys_HEB, vtype=GRB.CONTINUOUS, name='x_HEB')
+x_BEB = model.addVars(S, bus_keys, year_keys, keys_BEB, vtype=GRB.CONTINUOUS, name='x_BEB')
 print("Done setting x variables")
 report_usage()
 
 # Define y_CDB, y_HEB, and y_BEB as the number of each type of bus at each year under each scenario
-y_CDB = model.addVars(S, year_keys, vtype=GRB.BINARY, name='y_CDB')
-y_HEB = model.addVars(S, year_keys, vtype=GRB.BINARY, name='y_HEB')
-y_BEB = model.addVars(S, year_keys, vtype=GRB.BINARY, name='y_BEB')
+y_CDB = model.addVars(S, year_keys, vtype=GRB.CONTINUOUS, name='y_CDB')
+y_HEB = model.addVars(S, year_keys, vtype=GRB.CONTINUOUS, name='y_HEB')
+y_BEB = model.addVars(S, year_keys, vtype=GRB.CONTINUOUS, name='y_BEB')
 print("Done setting y variables")
 report_usage()
 
