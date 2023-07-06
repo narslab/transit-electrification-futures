@@ -80,7 +80,8 @@ max_number_of_buses = 1000 # 213*4 (current numnumber of fleet*4, assuming buses
 M_cap = {y: val for y, val in enumerate([5600, 8400, 10500, 12950, 15400, 18900] + [float('inf')] * (Y - 6))}
 
 # Set of scenarios
-S = {'low-cap', 'mid-cap', 'high-cap'}
+#S = {'low-cap', 'mid-cap', 'high-cap'}
+S = {'low-cap'}
 
 # Define R and Rho
 R = df_CDB['Route'].nunique()
@@ -99,10 +100,14 @@ cost_inv.update({
 })  # Assuming no cost for existing CDB buses
 
 # Max investment per scenario per year
+#C_max = {
+#    'low-cap': 7,  # in million dollars
+#    'mid-cap': 14,  # in million dollars
+#    'high-cap': 21  # in million dollars
+#}
+
 C_max = {
     'low-cap': 7,  # in million dollars
-    'mid-cap': 14,  # in million dollars
-    'high-cap': 21  # in million dollars
 }
 
 # The maximum yearly investment
@@ -162,7 +167,7 @@ model.setParam('Heuristics', 0.5)  # Controls the effort put into MIP heuristics
 #model.setParam('Cuts', 2)  # This parameter controls the aggressiveness of cut generation. Cutting planes are additional constraints that can potentially improve the LP relaxation of the problem, thus leading to a quicker solution. A higher value means more aggressive cut generation, but this could potentially slow down the solver because of the extra overhead.
 #model.setParam('Presolve', 1)  # This parameter controls the presolve level. Presolve is a phase during which the solver tries to simplify the model before the actual optimization takes place. A higher presolve level means the solver puts more effort into simplification, which can often reduce solving time. (-1: automatic (default) - Gurobi will decide based on the problem characteristics whether to use presolve or not.0: no presolve. 1: conservative presolve. 2: aggressive presolve.)
 #model.setParam('MIPGap', 0.01) # This parameter sets the relative gap for the MIP search termination. The solver will stop as soon as the relative gap between the lower and upper objective bound is less than this value. The lower this value, the closer to optimality the solution has to be before the solver stops.  
-model.setParam('Threads', 64)  # Set number of threads to be used for parallel processing.
+model.setParam('Threads', 40)  # Set number of threads to be used for parallel processing.
 print("Done setting model parameters")
 report_usage()
 
