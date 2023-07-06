@@ -18,7 +18,8 @@ total_memory_gb = total_memory / (1024 ** 3)
 
 print(f'Total memory: {total_memory_gb} GB')
 
-while True:
+# Define function to report memory and CPU usage
+def report_usage():
     # Get the percentage of CPU usage by this process
     cpu_percent = process.cpu_percent(interval=1)
 
@@ -29,7 +30,6 @@ while True:
     print(f"Process CPU usage: {cpu_percent}%")
     print(f"Process memory usage: {memory_usage / (1024 * 1024)} MB")  # convert bytes to MB
 
-    time.sleep(60)
 
 # Read dataframes of all-CDB, all-HEB, and all BEB with runs included
 df_CDB = pd.read_csv(r'../../results/computed-fuel-rates-runs-all-CDB.csv', low_memory=False)
@@ -58,6 +58,7 @@ date_with_max_trips = df_CDB.groupby('Date')['TripKey'].nunique().idxmax()
 max_trips = df_CDB.groupby('Date')['TripKey'].nunique().max()
 print("date_with_max_trips is:", date_with_max_trips)
 print("max_trips is:", max_trips)
+report_usage()
 
 # Filter dataframes by random dates
 #df_CDB = df_CDB[df_CDB['Date'].isin(date_with_max_trips)]
@@ -67,7 +68,7 @@ df_CDB = df_CDB.loc[df_CDB['Date']==date_with_max_trips]
 df_HEB = df_HEB.loc[df_HEB['Date']==date_with_max_trips]
 df_BEB = df_BEB.loc[df_BEB['Date']==date_with_max_trips]
 print(df_CDB)
-
+report_usage()
 
 # Define parameters
 #D = len(set(df_CDB['Date'].unique()))  # Create a set of unique dates
@@ -145,11 +146,12 @@ del df_HEB
 del df_BEB
 gc.collect()
 print("Done deleting unneccesary dataframes")
+report_usage()
 
 # Create a model
 model = Model('Minimize fleet diesel consumption')
 print("Done creating the model")
-
+report_usage()
 
 # Enable logging and print progress
 model.setParam('OutputFlag', 1)
@@ -158,11 +160,11 @@ model.setParam('OutputFlag', 1)
 #model.setParam('MIPFocus', 1)  # This parameter lets control the MIP solver's focus. The options are: 1. Finds feasible solutions quickly. This is useful if the problem is difficult to solve and you're satisfied with any feasible solution. 2: Works to improve the best bound. This is useful when the best objective bound is poor. 3: Tries to prove optimality of the best solution found. This is useful if you're sure a nearly-optimal solution exists and you want the solver to focus on proving its optimality.
 model.setParam('Heuristics', 0.5)  # Controls the effort put into MIP heuristics (range is 0 to 1). A higher value means more effort is put into finding solutions, but at the cost of slower overall performance. 
 #model.setParam('Cuts', 2)  # This parameter controls the aggressiveness of cut generation. Cutting planes are additional constraints that can potentially improve the LP relaxation of the problem, thus leading to a quicker solution. A higher value means more aggressive cut generation, but this could potentially slow down the solver because of the extra overhead.
-model.setParam('Presolve', 1)  # This parameter controls the presolve level. Presolve is a phase during which the solver tries to simplify the model before the actual optimization takes place. A higher presolve level means the solver puts more effort into simplification, which can often reduce solving time. (-1: automatic (default) - Gurobi will decide based on the problem characteristics whether to use presolve or not.0: no presolve. 1: conservative presolve. 2: aggressive presolve.)
+#model.setParam('Presolve', 1)  # This parameter controls the presolve level. Presolve is a phase during which the solver tries to simplify the model before the actual optimization takes place. A higher presolve level means the solver puts more effort into simplification, which can often reduce solving time. (-1: automatic (default) - Gurobi will decide based on the problem characteristics whether to use presolve or not.0: no presolve. 1: conservative presolve. 2: aggressive presolve.)
 #model.setParam('MIPGap', 0.01) # This parameter sets the relative gap for the MIP search termination. The solver will stop as soon as the relative gap between the lower and upper objective bound is less than this value. The lower this value, the closer to optimality the solution has to be before the solver stops.  
 model.setParam('Threads', 64)  # Set number of threads to be used for parallel processing.
 print("Done setting model parameters")
-
+report_usage()
 
 # Additional keys for buses and years
 bus_keys = range(max_number_of_buses)
@@ -176,27 +178,28 @@ keys_CDB = list(energy_CDB_dict.keys())
 keys_HEB = list(energy_HEB_dict.keys())
 keys_BEB = list(energy_BEB_dict.keys())
 print("Done setting necessary keys")
+report_usage()
 
 # Decision variables which include two additional indices for buses (i) and years (y)
 x_CDB = model.addVars(S, bus_keys, year_keys, keys_CDB, vtype=GRB.BINARY, name='x_CDB')
 x_HEB = model.addVars(S, bus_keys, year_keys, keys_HEB, vtype=GRB.BINARY, name='x_HEB')
 x_BEB = model.addVars(S, bus_keys, year_keys, keys_BEB, vtype=GRB.BINARY, name='x_BEB')
 print("Done setting x variables")
-
+report_usage()
 
 # Define y_CDB, y_HEB, and y_BEB as the number of each type of bus at each year under each scenario
 y_CDB = model.addVars(S, year_keys, vtype=GRB.BINARY, name='y_CDB')
 y_HEB = model.addVars(S, year_keys, vtype=GRB.BINARY, name='y_HEB')
 y_BEB = model.addVars(S, year_keys, vtype=GRB.BINARY, name='y_BEB')
 print("Done setting y variables")
-
+report_usage()
 
 # Decision Variables for bus types
 z_CDB = model.addVars(S, bus_keys, year_keys, vtype=GRB.BINARY, name="z_CDB")
 z_HEB = model.addVars(S, bus_keys, year_keys, vtype=GRB.BINARY, name="z_HEB")
 z_BEB = model.addVars(S, bus_keys, year_keys, vtype=GRB.BINARY, name="z_BEB")
 print("Done setting z variables")
-
+report_usage()
 
 # Objective function for diesel consumption
 model.setObjective(
@@ -206,7 +209,7 @@ model.setObjective(
     GRB.MINIMIZE
 )
 print("Done setting objective function")
-
+report_usage()
      
 ## Define Constraints
 
@@ -227,25 +230,7 @@ model.addConstrs(
 #x_CDB[i, y, d, r, rho] >= 1 is a binary condition that checks if bus 'i' is used at least once in a trip during year 'y'. This will return True (or 1) if bus 'i' is used, and False (or 0) otherwise. 
 #Regardless of the values of d, r, and rho, the result of this expression is either 1 (if the bus 'i' is used at least once) or 0 (if the bus 'i' is not used at all).
 print("Done defining constraint 1")
-
-
-# =============================================================================
-# # Constraint 2: Linking bus type variables with trip assignment variables
-# M = 3000 # A sufficiently large number for max number of trips that each bus can have per day
-# 
-# model.addConstrs(
-#     (x_CDB.sum(i, y, '*') <= M * z_CDB[i, y] for i in bus_keys for y in year_keys),
-#     name="C2_CDB"
-# )
-# model.addConstrs(
-#     (x_HEB.sum(i, y, '*') <= M * z_HEB[i, y] for i in bus_keys for y in year_keys),
-#     name="C2_HEB"
-# )
-# model.addConstrs(
-#     (x_BEB.sum(i, y, '*') <= M * z_BEB[i, y] for i in bus_keys for y in year_keys),
-#     name="C2_BEB"
-# )
-# =============================================================================
+report_usage()
 
 # Constraint 2: The sum of decision variables for each bus and year across all powertrains should be <= 1
 model.addConstrs(
@@ -253,7 +238,7 @@ model.addConstrs(
     name="C2"
 )
 print("Done defining constraint 2")
-
+report_usage()
 
 # Constraint 3: Only one bus can be assigned to each trip
 unique_keys = set(keys_CDB) | set(keys_HEB) | set(keys_BEB)  # Union of all keys
@@ -262,15 +247,7 @@ model.addConstrs(
     name="C3"
 )
 print("Done defining constraint 3")
-
-
-# =============================================================================
-# # Constraint 5: Total number of CDB, HEB, BEB should not exceed the total fleet size
-# model.addConstrs(
-#     (y_CDB.sum(y, '*') + y_HEB.sum(y, '*') + y_BEB.sum(y, '*') <= max_number_of_buses for y in year_keys),
-#     name="C5"
-# )
-# =============================================================================
+report_usage()
 
 # Constraint 4: Maximum daily charging capacity
 model.addConstrs(
@@ -278,6 +255,7 @@ model.addConstrs(
     name="C4"
 )
 print("Done defining constraint 4")
+report_usage()
 
 # Constraint 5: Daily energy consumption by each BEB should not exceed its battery capacity
 model.addConstrs(
@@ -285,7 +263,7 @@ model.addConstrs(
     name="C5"
 )
 print("Done defining constraint 5")
-
+report_usage()
 
 # Constraint 6: Maximum yearly investment
 model.addConstrs(
@@ -296,7 +274,7 @@ model.addConstrs(
     name="C6"
 )
 print("Done defining constraint 6")
-
+report_usage()
 
 # Print model statistics
 print("Number of variables:", model.NumVars)
@@ -304,10 +282,12 @@ print("Number of binary variables:", model.NumBinVars)
 print("Number of integer variables:", model.NumIntVars)
 print("Number of constraints:", model.NumConstrs)
 print("Number of non-zero coefficients:", model.NumNZs)
+report_usage()
         
 # Tuning and Optimization
 model.tune()
 model.optimize()
+report_usage()
 
 # Print optimal decision variables
 df = pd.DataFrame(columns=["Variable", "Value"])
@@ -319,4 +299,5 @@ for v in model.getVars():
 df.to_csv(r'../../results/strategies-simulation-optimized-variables.csv', index=False)
 
 end = time.time()
+report_usage()
 print(end - start)
