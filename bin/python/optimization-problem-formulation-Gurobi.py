@@ -1,6 +1,9 @@
 import gc
 import pandas as pd
 from gurobipy import Model, GRB, quicksum
+import time
+
+start = time.time()
 
 
 # Read dataframes of all-CDB, all-HEB, and all BEB with runs included
@@ -18,9 +21,9 @@ df_BEB = pd.read_csv(r'../../results/computed-fuel-rates-runs-all-BEB.csv', low_
 #df_BEB['Date'] = pd.to_datetime(df_BEB['Date']).dt.dayofyear
 
 # Convert 'Date' column to category data type before filtering
-df_CDB['Date'] = df_CDB['Date'].astype('category')
-df_HEB['Date'] = df_HEB['Date'].astype('category')
-df_BEB['Date'] = df_BEB['Date'].astype('category')
+#df_CDB['Date'] = df_CDB['Date'].astype('category')
+#df_HEB['Date'] = df_HEB['Date'].astype('category')
+#df_BEB['Date'] = df_BEB['Date'].astype('category')
 
 # Sample 7 random dates
 #random_dates = df_CDB['Date'].sample(n=7, random_state=1).values
@@ -28,7 +31,8 @@ df_BEB['Date'] = df_BEB['Date'].astype('category')
 # Find the date with the maximum number of unique trips
 date_with_max_trips = df_CDB.groupby('Date')['TripKey'].nunique().idxmax()
 max_trips = df_CDB.groupby('Date')['TripKey'].nunique().max()
-print ("date_with_max_trips is:", date_with_max_trips)
+print("date_with_max_trips is:", date_with_max_trips)
+print("max_trips is:", max_trips)
 
 # Filter dataframes by random dates
 #df_CDB = df_CDB[df_CDB['Date'].isin(date_with_max_trips)]
@@ -126,7 +130,7 @@ model.setParam('OutputFlag', 1)
 #model.setParam('MIPFocus', 1)  # This parameter lets control the MIP solver's focus. The options are: 1. Finds feasible solutions quickly. This is useful if the problem is difficult to solve and you're satisfied with any feasible solution. 2: Works to improve the best bound. This is useful when the best objective bound is poor. 3: Tries to prove optimality of the best solution found. This is useful if you're sure a nearly-optimal solution exists and you want the solver to focus on proving its optimality.
 model.setParam('Heuristics', 0.5)  # Controls the effort put into MIP heuristics (range is 0 to 1). A higher value means more effort is put into finding solutions, but at the cost of slower overall performance. 
 #model.setParam('Cuts', 2)  # This parameter controls the aggressiveness of cut generation. Cutting planes are additional constraints that can potentially improve the LP relaxation of the problem, thus leading to a quicker solution. A higher value means more aggressive cut generation, but this could potentially slow down the solver because of the extra overhead.
-model.setParam('Presolve', 2)  # This parameter controls the presolve level. Presolve is a phase during which the solver tries to simplify the model before the actual optimization takes place. A higher presolve level means the solver puts more effort into simplification, which can often reduce solving time. (-1: automatic (default) - Gurobi will decide based on the problem characteristics whether to use presolve or not.0: no presolve. 1: conservative presolve. 2: aggressive presolve.)
+model.setParam('Presolve', 1)  # This parameter controls the presolve level. Presolve is a phase during which the solver tries to simplify the model before the actual optimization takes place. A higher presolve level means the solver puts more effort into simplification, which can often reduce solving time. (-1: automatic (default) - Gurobi will decide based on the problem characteristics whether to use presolve or not.0: no presolve. 1: conservative presolve. 2: aggressive presolve.)
 #model.setParam('MIPGap', 0.01) # This parameter sets the relative gap for the MIP search termination. The solver will stop as soon as the relative gap between the lower and upper objective bound is less than this value. The lower this value, the closer to optimality the solution has to be before the solver stops.  
 model.setParam('Threads', 64)  # Set number of threads to be used for parallel processing.
 
@@ -268,3 +272,6 @@ for v in model.getVars():
 
 # Save the DataFrame to a CSV file
 df.to_csv(r'../../results/strategies-simulation-optimized-variables.csv', index=False)
+
+end = time.time()
+print(end - start)
