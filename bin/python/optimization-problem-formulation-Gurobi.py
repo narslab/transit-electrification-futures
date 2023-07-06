@@ -60,7 +60,6 @@ df_BEB = df_BEB.loc[df_BEB['Date']==date_with_max_trips]
 print(df_CDB)
 report_usage()
 
-
 # Convert 'Date' column to day of the year format
 df_CDB['Date'] = pd.to_datetime(df_CDB['Date']).dt.dayofyear
 df_HEB['Date'] = pd.to_datetime(df_HEB['Date']).dt.dayofyear
@@ -176,16 +175,19 @@ report_usage()
 bus_keys = range(max_number_of_buses)
 year_keys = range(Y)
 #day_keys = range(D)
-route_keys = range(R)
-run_keys = range(Rho)
+#route_keys = range(R)
+#run_keys = range(Rho)
 
 # Decision variables
 keys_CDB = list(energy_CDB_dict.keys())
 keys_HEB = list(energy_HEB_dict.keys())
 keys_BEB = list(energy_BEB_dict.keys())
 print("keys_CDB",keys_CDB)
+print("len_keys_CDB",len(keys_CDB))
 print("keys_HEB",keys_HEB)
+print("len_keys_HEB",len(keys_HEB))
 print("keys_BEB",keys_BEB)
+print("len_keys_BEB",len(keys_BEB))
 print("Done setting necessary keys")
 report_usage()
 
@@ -229,15 +231,15 @@ report_usage()
 
 # Constraint 1: Linking the number of each type of bus at each year variable with trip assignment variables
 model.addConstrs(
-    (y_CDB[y] == quicksum((x_CDB[i, y, r, rho] >= 1) for i in bus_keys for r in route_keys for rho in run_keys) for y in year_keys),
+    (y_CDB[y] == quicksum((x_CDB[i, y, keys_CDB] >= 1) for i in bus_keys for r in keys_CDB) for y in year_keys),
     name="C1_CDB"
 )
 model.addConstrs(
-    (y_HEB[y] == quicksum((x_HEB[i, y, r, rho] >= 1) for i in bus_keys for r in route_keys for rho in run_keys) for y in year_keys),
+    (y_HEB[y] == quicksum((x_HEB[i, y, keys_HEB] >= 1) for i in bus_keys for r in keys_HEB) for y in year_keys),
     name="C1_HEB"
 )
 model.addConstrs(
-    (y_BEB[y] == quicksum((x_BEB[i, y, r, rho] >= 1) for i in bus_keys for r in route_keys for rho in run_keys) for y in year_keys),
+    (y_BEB[y] == quicksum((x_BEB[i, y, keys_BEB] >= 1) for i in bus_keys for r in keys_BEB) for y in year_keys),
     name="C1_BEB"
 )
 ### Aditional explanation: 
