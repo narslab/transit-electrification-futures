@@ -231,11 +231,12 @@ report_usage()
 # =============================================================================
 
 model.setObjective(
-(quicksum([energy_CDB_dict[key]['Diesel'] * x_CDB[i, y, key] for key in keys_CDB for i in bus_keys for y in year_keys if key in energy_CDB_dict]) + 
-quicksum([energy_HEB_dict[key]['Diesel'] * x_HEB[i, y, key] for key in keys_HEB for i in bus_keys for y in year_keys if key in energy_HEB_dict])+
-quicksum([energy_BEB_dict[key]['Diesel'] * x_BEB[i, y, key] for key in keys_BEB for i in bus_keys for y in year_keys if key in energy_BEB_dict])),
+(quicksum([energy_CDB_dict[key]['Diesel'] * x_CDB[s, i, y, key] for s in S for key in keys_CDB for i in bus_keys for y in year_keys if key in energy_CDB_dict]) +
+ quicksum([energy_HEB_dict[key]['Diesel'] * x_HEB[s, i, y, key] for s in S for key in keys_HEB for i in bus_keys for y in year_keys if key in energy_HEB_dict]) +
+ quicksum([energy_BEB_dict[key]['Diesel'] * x_BEB[s, i, y, key] for s in S for key in keys_BEB for i in bus_keys for y in year_keys if key in energy_BEB_dict])),
     GRB.MINIMIZE
 )
+
 
 print("Done setting objective function")
 report_usage()
@@ -244,15 +245,15 @@ report_usage()
 
 # Constraint 1: Linking the number of each type of bus at each year variable with trip assignment variables
 model.addConstrs(
-    (y_CDB[y] == quicksum((x_CDB[i, y, keys_CDB] >= 1) for i in bus_keys for r in keys_CDB) for y in year_keys),
+    (y_CDB[y] == quicksum((x_CDB[s, i, y, key] >= 1) for s in S for i in bus_keys for key in keys_CDB) for y in year_keys),
     name="C1_CDB"
 )
 model.addConstrs(
-    (y_HEB[y] == quicksum((x_HEB[i, y, keys_HEB] >= 1) for i in bus_keys for r in keys_HEB) for y in year_keys),
+    (y_HEB[y] == quicksum((x_HEB[s, i, y, key] >= 1) for s in S for i in bus_keys for key in keys_HEB) for y in year_keys),
     name="C1_HEB"
 )
 model.addConstrs(
-    (y_BEB[y] == quicksum((x_BEB[i, y, keys_BEB] >= 1) for i in bus_keys for r in keys_BEB) for y in year_keys),
+    (y_BEB[y] == quicksum((x_BEB[s, i, y, key] >= 1) for s in S for i in bus_keys for key in keys_BEB) for y in year_keys),
     name="C1_BEB"
 )
 ### Aditional explanation: 
@@ -263,7 +264,7 @@ report_usage()
 
 # Constraint 2: The sum of decision variables for each bus and year across all powertrains should be <= 1
 model.addConstrs(
-    (z_CDB[i, y] + z_HEB[i, y] + z_BEB[i, y] <= 1 for i in bus_keys for y in year_keys),
+    (z_CDB[s, i, y] + z_HEB[s, i, y] + z_BEB[s, i, y] <= 1 for s in S for i in bus_keys for y in year_keys),
     name="C2"
 )
 print("Done defining constraint 2")
@@ -272,11 +273,9 @@ report_usage()
 # Constraint 3: Only one bus can be assigned to each trip
 unique_keys = set(keys_CDB) | set(keys_HEB) | set(keys_BEB)  # Union of all keys
 model.addConstrs(
-    (x_CDB.sum('*', '*', key) + x_HEB.sum('*', '*', key) + x_BEB.sum('*', '*', key) <= 1 for key in unique_keys),
+    (quicksum(x_CDB[s, i, y, key] + x_HEB[s, i, y, key] + x_BEB[s, i, y, key] for s in S for i in bus_keys for y in year_keys) <= 1 for key in unique_keys),
     name="C3"
 )
-print("Done defining constraint 3")
-report_usage()
 
 # Constraint 4: Maximum daily charging capacity
 model.addConstrs(
@@ -288,7 +287,7 @@ report_usage()
 
 # Constraint 5: Daily energy consumption by each BEB should not exceed its battery capacity
 model.addConstrs(
-    (quicksum(energy_BEB_dict[key]['Energy'] * x_BEB[s, i, y, key] for key in keys_BEB) <= cap for s in S for i in bus_keys for y in year_keys),
+    (quicksum(energy_BEB_dict[key]['Energy'] * x_BEB[s, i, y, key] for s in S for i in bus_keys for key in keys_BEB) <= cap for y in year_keys),
     name="C5"
 )
 print("Done defining constraint 5")
