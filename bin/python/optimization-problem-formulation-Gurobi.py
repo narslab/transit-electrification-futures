@@ -200,16 +200,16 @@ print("Number of BEB variables:",len(bus_keys)*len(year_keys)*len(keys_BEB))
 
 
 # Decision variables which include two additional indices for buses (i) and years (y)
-x_CDB = model.addVars(S, bus_keys, year_keys, keys_CDB, vtype=GRB.CONTINUOUS, name='x_CDB')
-x_HEB = model.addVars(S, bus_keys, year_keys, keys_HEB, vtype=GRB.CONTINUOUS, name='x_HEB')
-x_BEB = model.addVars(S, bus_keys, year_keys, keys_BEB, vtype=GRB.CONTINUOUS, name='x_BEB')
+x_CDB = model.addVars(S, bus_keys, year_keys, keys_CDB, vtype=GRB.BINARY, name='x_CDB')
+x_HEB = model.addVars(S, bus_keys, year_keys, keys_HEB, vtype=GRB.BINARY, name='x_HEB')
+x_BEB = model.addVars(S, bus_keys, year_keys, keys_BEB, vtype=GRB.BINARY, name='x_BEB')
 print("Done setting x variables")
 report_usage()
 
 # Define y_CDB, y_HEB, and y_BEB as the number of each type of bus at each year under each scenario
-y_CDB = model.addVars(S, year_keys, vtype=GRB.CONTINUOUS, name='y_CDB')
-y_HEB = model.addVars(S, year_keys, vtype=GRB.CONTINUOUS, name='y_HEB')
-y_BEB = model.addVars(S, year_keys, vtype=GRB.CONTINUOUS, name='y_BEB')
+y_CDB = model.addVars(S, year_keys, vtype=GRB.INTEGER, name='y_CDB')
+y_HEB = model.addVars(S, year_keys, vtype=GRB.INTEGER, name='y_HEB')
+y_BEB = model.addVars(S, year_keys, vtype=GRB.INTEGER, name='y_BEB')
 print("Done setting y variables")
 report_usage()
 
@@ -236,7 +236,6 @@ model.setObjective(
  quicksum([energy_BEB_dict[key]['Diesel'] * x_BEB[s, i, y, key] for s in S for key in keys_BEB for i in bus_keys for y in year_keys if key in energy_BEB_dict])),
     GRB.MINIMIZE
 )
-
 
 print("Done setting objective function")
 report_usage()
