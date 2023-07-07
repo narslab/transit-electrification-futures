@@ -245,15 +245,15 @@ report_usage()
 
 # Constraint 1: Linking the number of each type of bus at each year variable with trip assignment variables
 model.addConstrs(
-    (y_CDB[y] == quicksum((x_CDB[s, i, y, key] >= 1) for s in S for i in bus_keys for key in keys_CDB) for y in year_keys),
+    (y_CDB[s, y] == quicksum((x_CDB[s, i, y, key] >= 1) for i in bus_keys for key in keys_CDB) for s in S for y in year_keys),
     name="C1_CDB"
 )
 model.addConstrs(
-    (y_HEB[y] == quicksum((x_HEB[s, i, y, key] >= 1) for s in S for i in bus_keys for key in keys_HEB) for y in year_keys),
+    (y_HEB[s, y] == quicksum((x_HEB[s, i, y, key] >= 1) for i in bus_keys for key in keys_HEB) for s in S for y in year_keys),
     name="C1_HEB"
 )
 model.addConstrs(
-    (y_BEB[y] == quicksum((x_BEB[s, i, y, key] >= 1) for s in S for i in bus_keys for key in keys_BEB) for y in year_keys),
+    (y_BEB[s, y] == quicksum((x_BEB[s, i, y, key] >= 1) for i in bus_keys for key in keys_BEB) for s in S for y in year_keys),
     name="C1_BEB"
 )
 ### Aditional explanation: 
