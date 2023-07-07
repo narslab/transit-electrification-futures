@@ -61,14 +61,14 @@ print(df_CDB)
 report_usage()
 
 # Convert 'Date' column to day of the year format
-df_CDB['Date'] = pd.to_datetime(df_CDB['Date']).dt.dayofyear
-df_HEB['Date'] = pd.to_datetime(df_HEB['Date']).dt.dayofyear
-df_BEB['Date'] = pd.to_datetime(df_BEB['Date']).dt.dayofyear
+#df_CDB['Date'] = pd.to_datetime(df_CDB['Date']).dt.dayofyear
+#df_HEB['Date'] = pd.to_datetime(df_HEB['Date']).dt.dayofyear
+#df_BEB['Date'] = pd.to_datetime(df_BEB['Date']).dt.dayofyear
 
 # Convert 'Date' column to category data type before filtering
-df_CDB['Date'] = df_CDB['Date'].astype('category')
-df_HEB['Date'] = df_HEB['Date'].astype('category')
-df_BEB['Date'] = df_BEB['Date'].astype('category')
+#df_CDB['Date'] = df_CDB['Date'].astype('category')
+#df_HEB['Date'] = df_HEB['Date'].astype('category')
+#df_BEB['Date'] = df_BEB['Date'].astype('category')
 
 # Define parameters
 #D = len(set(df_CDB['Date'].unique()))  # Create a set of unique dates
@@ -132,17 +132,20 @@ N = {
 # For df_CDB
 energy_CDB = df_CDB.groupby(['Date', 'Route', 'TripKey']).agg({'Energy': 'sum', 'Powertrain': 'first'}).reset_index()
 energy_CDB['Diesel'] = (energy_CDB['Powertrain'].isin(['conventional', 'hybrid']) * energy_CDB['Energy'])
-energy_CDB_dict = energy_CDB.set_index(['Date', 'Route', 'TripKey']).to_dict('index')
+#energy_CDB_dict = energy_CDB.set_index(['Date', 'Route', 'TripKey']).to_dict('index')
+energy_CDB_dict = energy_CDB.set_index(['TripKey']).to_dict('index')
 
 # For df_HEB
 energy_HEB = df_HEB.groupby(['Date', 'Route', 'TripKey']).agg({'Energy': 'sum', 'Powertrain': 'first'}).reset_index()
 energy_HEB['Diesel'] = (energy_HEB['Powertrain'].isin(['conventional', 'hybrid']) * energy_HEB['Energy'])
-energy_HEB_dict = energy_HEB.set_index(['Date', 'Route', 'TripKey']).to_dict('index')
+#energy_HEB_dict = energy_HEB.set_index(['Date', 'Route', 'TripKey']).to_dict('index')
+energy_HEB_dict = energy_HEB.set_index(['TripKey']).to_dict('index')
 
 # For df_BEB
 energy_BEB = df_BEB.groupby(['Date', 'Route', 'TripKey']).agg({'Energy': 'sum', 'Powertrain': 'first'}).reset_index()
 energy_BEB['Diesel'] = (energy_BEB['Powertrain'].isin(['conventional', 'hybrid']) * energy_BEB['Energy'])
-energy_BEB_dict = energy_BEB.set_index(['Date', 'Route', 'TripKey']).to_dict('index')
+#energy_BEB_dict = energy_BEB.set_index(['Date', 'Route', 'TripKey']).to_dict('index')
+energy_BEB_dict = energy_BEB.set_index(['TripKey']).to_dict('index')
 
 
 # Now delete the DataFrame to free up memory
