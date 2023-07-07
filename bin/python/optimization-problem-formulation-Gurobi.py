@@ -221,12 +221,22 @@ print("Done setting z variables")
 report_usage()
 
 # Objective function for diesel consumption
+# =============================================================================
+# model.setObjective(
+#     (quicksum([energy_CDB_dict[key]['Diesel'] * x_CDB[i, y, key] for key in keys_CDB for i in bus_keys for y in year_keys]) +
+#     quicksum([energy_HEB_dict[key]['Diesel'] * x_HEB[i, y, key] for key in keys_HEB for i in bus_keys for y in year_keys]) +
+#     quicksum([energy_BEB_dict[key]['Diesel'] * x_BEB[i, y, key] for key in keys_BEB for i in bus_keys for y in year_keys])),
+#     GRB.MINIMIZE
+# )
+# =============================================================================
+
 model.setObjective(
-    (quicksum([energy_CDB_dict[key]['Diesel'] * x_CDB[i, y, key] for key in keys_CDB for i in bus_keys for y in year_keys]) +
-    quicksum([energy_HEB_dict[key]['Diesel'] * x_HEB[i, y, key] for key in keys_HEB for i in bus_keys for y in year_keys]) +
-    quicksum([energy_BEB_dict[key]['Diesel'] * x_BEB[i, y, key] for key in keys_BEB for i in bus_keys for y in year_keys])),
+(quicksum([energy_CDB_dict[key]['Diesel'] * x_CDB[i, y, key] for key in keys_CDB for i in bus_keys for y in year_keys if key in energy_CDB_dict]) + 
+quicksum([energy_HEB_dict[key]['Diesel'] * x_HEB[i, y, key] for key in keys_HEB for i in bus_keys for y in year_keys if key in energy_HEB_dict])+
+quicksum([energy_BEB_dict[key]['Diesel'] * x_BEB[i, y, key] for key in keys_BEB for i in bus_keys for y in year_keys if key in energy_BEB_dict])),
     GRB.MINIMIZE
 )
+
 print("Done setting objective function")
 report_usage()
      
