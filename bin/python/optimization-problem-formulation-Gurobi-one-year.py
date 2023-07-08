@@ -299,6 +299,8 @@ report_usage()
 model.tune()
 model.optimize()
 report_usage()
+print("Done optimization")
+
 
 # Print optimal decision variables
 #df = pd.DataFrame(columns=["Variable", "Value"])

@@ -320,13 +320,25 @@ model.optimize()
 report_usage()
 
 # Print optimal decision variables
-df = pd.DataFrame(columns=["Variable", "Value"])
-for v in model.getVars():
-    df = df.append({"Variable": v.varName, "Value": v.x}, ignore_index=True)
-    print(f'{v.varName} = {v.x}')
+#df = pd.DataFrame(columns=["Variable", "Value"])
+#for v in model.getVars():
+#    df = df.append({"Variable": v.varName, "Value": v.x}, ignore_index=True)
+#    print(f'{v.varName} = {v.x}')
+
+# Save the DataFrame to a CSV file
+#df.to_csv(r'../../results/strategies-simulation-optimized-variables.csv', index=False)
+
+vars = model.getVars()
+
+# Create DataFrame directly from the variables and their values
+df = pd.DataFrame({"Variable": [v.varName for v in vars], "Value": [v.x for v in vars]})
+
+# Print optimal decision variables
+print(df.to_string(index=False))
 
 # Save the DataFrame to a CSV file
 df.to_csv(r'../../results/strategies-simulation-optimized-variables.csv', index=False)
+
 
 end = time.time()
 report_usage()
