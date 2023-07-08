@@ -168,9 +168,9 @@ model.setParam('OutputFlag', 1)
 #model.setParam('MIPFocus', 1)  # This parameter lets control the MIP solver's focus. The options are: 1. Finds feasible solutions quickly. This is useful if the problem is difficult to solve and you're satisfied with any feasible solution. 2: Works to improve the best bound. This is useful when the best objective bound is poor. 3: Tries to prove optimality of the best solution found. This is useful if you're sure a nearly-optimal solution exists and you want the solver to focus on proving its optimality.
 model.setParam('Heuristics', 0.5)  # Controls the effort put into MIP heuristics (range is 0 to 1). A higher value means more effort is put into finding solutions, but at the cost of slower overall performance. 
 #model.setParam('Cuts', 2)  # This parameter controls the aggressiveness of cut generation. Cutting planes are additional constraints that can potentially improve the LP relaxation of the problem, thus leading to a quicker solution. A higher value means more aggressive cut generation, but this could potentially slow down the solver because of the extra overhead.
-#model.setParam('Presolve', 1)  # This parameter controls the presolve level. Presolve is a phase during which the solver tries to simplify the model before the actual optimization takes place. A higher presolve level means the solver puts more effort into simplification, which can often reduce solving time. (-1: automatic (default) - Gurobi will decide based on the problem characteristics whether to use presolve or not.0: no presolve. 1: conservative presolve. 2: aggressive presolve.)
+model.setParam('Presolve', 1)  # This parameter controls the presolve level. Presolve is a phase during which the solver tries to simplify the model before the actual optimization takes place. A higher presolve level means the solver puts more effort into simplification, which can often reduce solving time. (-1: automatic (default) - Gurobi will decide based on the problem characteristics whether to use presolve or not.0: no presolve. 1: conservative presolve. 2: aggressive presolve.)
 #model.setParam('MIPGap', 0.01) # This parameter sets the relative gap for the MIP search termination. The solver will stop as soon as the relative gap between the lower and upper objective bound is less than this value. The lower this value, the closer to optimality the solution has to be before the solver stops.  
-model.setParam('Threads', 32)  # Set number of threads to be used for parallel processing.
+model.setParam('Threads', 64)  # Set number of threads to be used for parallel processing.
 print("Done setting model parameters")
 report_usage()
 
@@ -273,9 +273,22 @@ print("Done defining constraint 2")
 report_usage()
 
 # Constraint 3: Only one bus can be assigned to each trip
+#unique_keys = set(keys_CDB) | set(keys_HEB) | set(keys_BEB)  # Union of all keys
+#model.addConstrs(
+#    (quicksum(x_CDB[s, i, y, key] + x_HEB[s, i, y, key] + x_BEB[s, i, y, key] for s in S for i in bus_keys for y in year_keys) <= 1 for key in unique_keys),
+#    name="C3"
+#)
+
+# Constraint 3: Each trip is assigned to exactly one bus
 unique_keys = set(keys_CDB) | set(keys_HEB) | set(keys_BEB)  # Union of all keys
 model.addConstrs(
-    (quicksum(x_CDB[s, i, y, key] + x_HEB[s, i, y, key] + x_BEB[s, i, y, key] for s in S for i in bus_keys for y in year_keys) <= 1 for key in unique_keys),
+    (
+        (
+            quicksum(x_CDB[s, i, y, key] for s in S for i in bus_keys for y in year_keys if key in energy_CDB_dict) +
+            quicksum(x_HEB[s, i, y, key] for s in S for i in bus_keys for y in year_keys if key in energy_HEB_dict) +
+            quicksum(x_BEB[s, i, y, key] for s in S for i in bus_keys for y in year_keys if key in energy_BEB_dict)
+        ) == 1 for key in unique_keys
+    ), 
     name="C3"
 )
 
