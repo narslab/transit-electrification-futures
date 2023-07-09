@@ -35,10 +35,6 @@ def report_usage():
 df_CDB = pd.read_csv(r'../../results/computed-fuel-rates-runs-all-CDB.csv', low_memory=False)
 df_HEB = pd.read_csv(r'../../results/computed-fuel-rates-runs-all-HEB.csv', low_memory=False)
 df_BEB = pd.read_csv(r'../../results/computed-fuel-rates-runs-all-BEB.csv', low_memory=False)
-#df_CDB = pd.read_parquet(r'../../results/computed-fuel-rates-runs-all-CDB.parquet')
-#df_HEB = pd.read_parquet(r'../../results/computed-fuel-rates-runs-all-HEB.parquet')
-#df_BEB = pd.read_parquet(r'../../results/computed-fuel-rates-runs-all-BEB.parquet')
-
 
 # Sample 7 random dates
 #random_dates = df_CDB['Date'].sample(n=7, random_state=1).values
@@ -57,18 +53,8 @@ report_usage()
 df_CDB = df_CDB.loc[df_CDB['Date']==date_with_max_trips]
 df_HEB = df_HEB.loc[df_HEB['Date']==date_with_max_trips]
 df_BEB = df_BEB.loc[df_BEB['Date']==date_with_max_trips]
-#print(df_CDB)
 report_usage()
 
-# Convert 'Date' column to day of the year format
-#df_CDB['Date'] = pd.to_datetime(df_CDB['Date']).dt.dayofyear
-#df_HEB['Date'] = pd.to_datetime(df_HEB['Date']).dt.dayofyear
-#df_BEB['Date'] = pd.to_datetime(df_BEB['Date']).dt.dayofyear
-
-# Convert 'Date' column to category data type before filtering
-#df_CDB['Date'] = df_CDB['Date'].astype('category')
-#df_HEB['Date'] = df_HEB['Date'].astype('category')
-#df_BEB['Date'] = df_BEB['Date'].astype('category')
 
 # Define parameters
 #D = len(set(df_CDB['Date'].unique()))  # Create a set of unique dates
@@ -85,7 +71,6 @@ S = {'low-cap'}
 
 # Define R and Rho
 R = df_CDB['Route'].nunique()
-#Rho = int(df_CDB[df_CDB['run'] != float('inf')]['run'].max())
 Rho = max_trips
 
 # The cost of purchasing a new bus
@@ -220,16 +205,6 @@ z_BEB = model.addVars(S, bus_keys, year_keys, vtype=GRB.BINARY, name="z_BEB")
 print("Done setting z variables")
 report_usage()
 
-# Objective function for diesel consumption
-# =============================================================================
-# model.setObjective(
-#     (quicksum([energy_CDB_dict[key]['Diesel'] * x_CDB[i, y, key] for key in keys_CDB for i in bus_keys for y in year_keys]) +
-#     quicksum([energy_HEB_dict[key]['Diesel'] * x_HEB[i, y, key] for key in keys_HEB for i in bus_keys for y in year_keys]) +
-#     quicksum([energy_BEB_dict[key]['Diesel'] * x_BEB[i, y, key] for key in keys_BEB for i in bus_keys for y in year_keys])),
-#     GRB.MINIMIZE
-# )
-# =============================================================================
-
 model.setObjective(
 (quicksum([energy_CDB_dict[key]['Diesel'] * x_CDB[s, i, y, key] for s in S for key in keys_CDB for i in bus_keys for y in year_keys if key in energy_CDB_dict]) +
  quicksum([energy_HEB_dict[key]['Diesel'] * x_HEB[s, i, y, key] for s in S for key in keys_HEB for i in bus_keys for y in year_keys if key in energy_HEB_dict]) +
@@ -272,12 +247,6 @@ model.addConstrs(
 print("Done defining constraint 2")
 report_usage()
 
-# Constraint 3: Only one bus can be assigned to each trip
-#unique_keys = set(keys_CDB) | set(keys_HEB) | set(keys_BEB)  # Union of all keys
-#model.addConstrs(
-#    (quicksum(x_CDB[s, i, y, key] + x_HEB[s, i, y, key] + x_BEB[s, i, y, key] for s in S for i in bus_keys for y in year_keys) <= 1 for key in unique_keys),
-#    name="C3"
-#)
 
 # Constraint 3: Each trip is assigned to exactly one bus
 unique_keys = set(keys_CDB) | set(keys_HEB) | set(keys_BEB)  # Union of all keys
@@ -292,6 +261,7 @@ model.addConstrs(
     name="C3"
 )
 print("Done defining constraint 3")
+report_usage()
 
 # Constraint 4: Maximum daily charging capacity
 model.addConstrs(
@@ -321,23 +291,22 @@ print("Done defining constraint 6")
 report_usage()
 
 # Print model statistics
-print("Number of variables:", model.NumVars)
-print("Number of binary variables:", model.NumBinVars)
-print("Number of integer variables:", model.NumIntVars)
-print("Number of constraints:", model.NumConstrs)
-print("Number of non-zero coefficients:", model.NumNZs)
-report_usage()
+#print("Number of variables:", model.NumVars)
+#print("Number of binary variables:", model.NumBinVars)
+#print("Number of integer variables:", model.NumIntVars)
+#print("Number of constraints:", model.NumConstrs)
+#print("Number of non-zero coefficients:", model.NumNZs)
+#report_usage()
+
+# Print model statistics
+model.update()
+print(model)
         
 # Tuning and Optimization
 model.tune()
 model.optimize()
 report_usage()
 
-# Print optimal decision variables
-#df = pd.DataFrame(columns=["Variable", "Value"])
-#for v in model.getVars():
-#    df = df.append({"Variable": v.varName, "Value": v.x}, ignore_index=True)
-#    print(f'{v.varName} = {v.x}')
 
 # Save the DataFrame to a CSV file
 #df.to_csv(r'../../results/strategies-simulation-optimized-variables.csv', index=False)
@@ -357,7 +326,7 @@ df_objective = pd.DataFrame({"Year": year_keys, "Objective_Value": [optimal_valu
 print(df.to_string(index=False))
 
 # Print objective value
-print(optimal_value.to_string(index=False))
+print(optimal_value)
 
 # Save the DataFrame to a CSV file
 df.to_csv(r'../../results/strategies-simulation-optimized-variables.csv', index=False)
