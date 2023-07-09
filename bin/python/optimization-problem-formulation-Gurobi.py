@@ -366,4 +366,4 @@ optimal_value.to_csv(r'../../results/strategies-simulation-optimized-objective.c
 
 end = time.time()
 report_usage()
-print(end - start)
+print("Total time spend in seconds",end - start)
