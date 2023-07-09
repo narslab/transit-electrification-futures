@@ -347,11 +347,21 @@ vars = model.getVars()
 # Create DataFrame directly from the variables and their values
 df = pd.DataFrame({"Variable": [v.varName for v in vars], "Value": [v.x for v in vars]})
 
+# Get optimal objective value
+optimal_value = model.ObjVal
+
+# Add this value to DataFrame
+df_objective = pd.DataFrame({"Year": year_keys, "Objective_Value": [optimal_value]*len(year_keys)})
+
 # Print optimal decision variables
 print(df.to_string(index=False))
 
+# Print objective value
+print(optimal_value.to_string(index=False))
+
 # Save the DataFrame to a CSV file
 df.to_csv(r'../../results/strategies-simulation-optimized-variables.csv', index=False)
+optimal_value.to_csv(r'../../results/strategies-simulation-optimized-objective.csv', index=False)
 
 
 end = time.time()
