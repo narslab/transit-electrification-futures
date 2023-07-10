@@ -311,6 +311,15 @@ report_usage()
 # Save the DataFrame to a CSV file
 #df.to_csv(r'../../results/strategies-simulation-optimized-variables.csv', index=False)
 
+# Prepare dictionaries of coeesicients to save
+coeff_dict_CDB = {(s, i, y, key): energy_CDB_dict[key]['Diesel'] for s in S for key in keys_CDB for i in bus_keys for y in year_keys if key in energy_CDB_dict}
+coeff_dict_HEB = {(s, i, y, key): energy_HEB_dict[key]['Diesel'] for s in S for key in keys_HEB for i in bus_keys for y in year_keys if key in energy_HEB_dict}
+coeff_dict_BEB = {(s, i, y, key): energy_BEB_dict[key]['Diesel'] for s in S for key in keys_BEB for i in bus_keys for y in year_keys if key in energy_BEB_dict}
+
+# Combine all the dictionaries into a dataframe
+coeff_df = pd.DataFrame(list(coeff_dict_CDB.items()) + list(coeff_dict_HEB.items()) + list(coeff_dict_BEB.items()), columns=['Variable', 'Coefficient'])
+
+
 vars = model.getVars()
 
 # Create DataFrame directly from the variables and their values
@@ -323,15 +332,15 @@ optimal_value = model.ObjVal
 df_objective = pd.DataFrame({"Year": year_keys, "Objective_Value": [optimal_value]*len(year_keys)})
 
 # Print optimal decision variables
-print(df.to_string(index=False))
+#print(df.to_string(index=False))
 
 # Print objective value
-print(optimal_value)
+print("optimal_value:",optimal_value)
 
 # Save the DataFrame to a CSV file
 df.to_csv(r'../../results/strategies-simulation-optimized-variables.csv', index=False)
-optimal_value.to_csv(r'../../results/strategies-simulation-optimized-objective.csv', index=False)
-
+#optimal_value.to_csv(r'../../results/strategies-simulation-optimized-objective.csv', index=False)
+coeff_df.to_csv(r'../../results/variable_coefficients.csv', index=False)
 
 end = time.time()
 report_usage()
