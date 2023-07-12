@@ -125,14 +125,10 @@ cost_inv.update({
 })  # Assuming no cost for existing CDB buses
 
 # Max investment per scenario per year
-#C_max = {
-#    'low-cap': 7,  # in million dollars
-#    'mid-cap': 14,  # in million dollars
-#    'high-cap': 21  # in million dollars
-#}
-
 C_max = {
     'low-cap': 7,  # in million dollars
+#    'mid-cap': 14,  # in million dollars
+#    'high-cap': 21  # in million dollars
 }
 
 # The maximum yearly investment
@@ -163,7 +159,6 @@ energy_CDB = df_CDB.groupby(['Date', 'Route', 'TripKey']).agg({
     'Energy': 'sum', 
     'Powertrain': 'first'}).reset_index()
 energy_CDB['Diesel'] = (energy_CDB['Powertrain'].isin(['conventional', 'hybrid']) * energy_CDB['Energy'])
-#energy_CDB_dict = energy_CDB.set_index(['Date', 'Route', 'TripKey']).to_dict('index')
 energy_CDB_dict = energy_CDB.set_index(['TripKey']).to_dict('index')
 
 # For df_HEB
@@ -175,7 +170,6 @@ energy_HEB = df_HEB.groupby(['Date', 'Route', 'TripKey']).agg({
     'Energy': 'sum', 
     'Powertrain': 'first'}).reset_index()
 energy_HEB['Diesel'] = (energy_HEB['Powertrain'].isin(['conventional', 'hybrid']) * energy_HEB['Energy'])
-#energy_HEB_dict = energy_HEB.set_index(['Date', 'Route', 'TripKey']).to_dict('index')
 energy_HEB_dict = energy_HEB.set_index(['TripKey']).to_dict('index')
 
 # For df_BEB
@@ -187,9 +181,19 @@ energy_BEB = df_BEB.groupby(['Date', 'Route', 'TripKey']).agg({
     'Energy': 'sum', 
     'Powertrain': 'first'}).reset_index()
 energy_BEB['Diesel'] = (energy_BEB['Powertrain'].isin(['conventional', 'hybrid']) * energy_BEB['Energy'])
-#energy_BEB_dict = energy_BEB.set_index(['Date', 'Route', 'TripKey']).to_dict('index')
 energy_BEB_dict = energy_BEB.set_index(['TripKey']).to_dict('index')
 
+### Combine three dicts and save all trip information in a csv file
+combined_dict = {}
+combined_dict.update(energy_CDB_dict)
+combined_dict.update(energy_HEB_dict)
+combined_dict.update(energy_BEB_dict)
+
+# Convert the dictionary to a DataFrame
+df_combined_dict = pd.DataFrame.from_dict(combined_dict, orient='index')
+
+# Write the DataFrame to a CSV file
+combined_dict.to_csv(r'../../results/busiest-day-trips-info.csv', index=False)
 
 # Now delete the DataFrame to free up memory
 del df_CDB
@@ -228,11 +232,8 @@ year_keys = range(Y)
 keys_CDB = list(energy_CDB_dict.keys())
 keys_HEB = list(energy_HEB_dict.keys())
 keys_BEB = list(energy_BEB_dict.keys())
-#print("keys_CDB",keys_CDB)
 print("len_keys_CDB",len(keys_CDB))
-#print("keys_HEB",keys_HEB)
 print("len_keys_HEB",len(keys_HEB))
-#print("keys_BEB",keys_BEB)
 print("len_keys_BEB",len(keys_BEB))
 print("Done setting necessary keys")
 report_usage()
@@ -329,7 +330,7 @@ model.addConstrs(
 print("Done defining constraint 4")
 report_usage()
 
-# Constraint 5: Daily energy consumption by each BEB should not exceed its battery capacity
+# Constraint 5: Bus range. Daily energy consumption by each BEB should not exceed its battery capacity
 model.addConstrs(
     (quicksum(energy_BEB_dict[key]['Energy'] * x_BEB[s, i, y, key] for s in S for i in bus_keys for key in keys_BEB) <= cap for y in year_keys),
     name="C5"
@@ -349,14 +350,6 @@ print("Done defining constraint 6")
 report_usage()
 
 # Print model statistics
-#print("Number of variables:", model.NumVars)
-#print("Number of binary variables:", model.NumBinVars)
-#print("Number of integer variables:", model.NumIntVars)
-#print("Number of constraints:", model.NumConstrs)
-#print("Number of non-zero coefficients:", model.NumNZs)
-#report_usage()
-
-# Print model statistics
 model.update()
 print(model)
         
@@ -364,10 +357,6 @@ print(model)
 model.tune()
 model.optimize()
 report_usage()
-
-
-# Save the DataFrame to a CSV file
-#df.to_csv(r'../../results/strategies-simulation-optimized-variables.csv', index=False)
 
 # Prepare dictionaries of coeesicients to save
 coeff_dict_CDB = {(s, i, y, key): energy_CDB_dict[key]['Diesel'] for s in S for key in keys_CDB for i in bus_keys for y in year_keys if key in energy_CDB_dict}
@@ -389,15 +378,11 @@ optimal_value = model.ObjVal
 # Add this value to DataFrame
 df_objective = pd.DataFrame({"Year": year_keys, "Objective_Value": [optimal_value]*len(year_keys)})
 
-# Print optimal decision variables
-#print(df.to_string(index=False))
-
 # Print objective value
 print("optimal_value:",optimal_value)
 
 # Save the DataFrame to a CSV file
 df.to_csv(r'../../results/strategies-simulation-optimized-variables.csv', index=False)
-#optimal_value.to_csv(r'../../results/strategies-simulation-optimized-objective.csv', index=False)
 coeff_df.to_csv(r'../../results/variable_coefficients.csv', index=False)
 
 end = time.time()
