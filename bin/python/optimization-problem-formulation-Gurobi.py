@@ -36,8 +36,6 @@ df_CDB = pd.read_csv(r'../../results/computed-fuel-rates-runs-all-CDB.csv', low_
 df_HEB = pd.read_csv(r'../../results/computed-fuel-rates-runs-all-HEB.csv', low_memory=False)
 df_BEB = pd.read_csv(r'../../results/computed-fuel-rates-runs-all-BEB.csv', low_memory=False)
 
-# Sample 7 random dates
-#random_dates = df_CDB['Date'].sample(n=7, random_state=1).values
 
 # Find the date with the maximum number of unique trips
 date_with_max_trips = df_CDB.groupby('Date')['TripKey'].nunique().idxmax()
@@ -46,15 +44,36 @@ print("date_with_max_trips is:", date_with_max_trips)
 print("max_trips is:", max_trips)
 report_usage()
 
-# Filter dataframes by random dates
-#df_CDB = df_CDB[df_CDB['Date'].isin(date_with_max_trips)]
-#df_HEB = df_HEB[df_HEB['Date'].isin(date_with_max_trips)]
-#df_BEB = df_BEB[df_BEB['Date'].isin(date_with_max_trips)]
+# Filter dataframes by the day with max trips
 df_CDB = df_CDB.loc[df_CDB['Date']==date_with_max_trips]
 df_HEB = df_HEB.loc[df_HEB['Date']==date_with_max_trips]
 df_BEB = df_BEB.loc[df_BEB['Date']==date_with_max_trips]
 report_usage()
 
+# Group the dataframes to capture first and last stop, start and ened time and route for each trip
+df_CDB = df_CDB.groupby(['TripKey', 'Date']).agg({
+    'Stop': ['first', 'last'],
+    'ServiceDateTime': ['min', 'max'],
+    'Route': 'first'
+}).reset_index()
+
+df_HEB = df_HEB.groupby(['TripKey', 'Date']).agg({
+    'Stop': ['first', 'last'],
+    'ServiceDateTime': ['min', 'max'],
+    'Route': 'first'
+}).reset_index()
+
+df_BEB = df_BEB.groupby(['TripKey', 'Date']).agg({
+    'Stop': ['first', 'last'],
+    'ServiceDateTime': ['min', 'max'],
+    'Route': 'first'
+}).reset_index()
+
+# Renaming columns
+df_CDB.columns = ['TripKey', 'Date', 'First_Stop', 'Last_Stop', 'Start_Time', 'End_Time', 'Route']
+df_HEB.columns = ['TripKey', 'Date', 'First_Stop', 'Last_Stop', 'Start_Time', 'End_Time', 'Route']
+df_BEB.columns = ['TripKey', 'Date', 'First_Stop', 'Last_Stop', 'Start_Time', 'End_Time', 'Route']
+print("Dataframe columns list:", df_CDB.columns)
 
 # Define parameters
 #D = len(set(df_CDB['Date'].unique()))  # Create a set of unique dates
