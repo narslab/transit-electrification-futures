@@ -79,6 +79,21 @@ df_BEB = df_BEB.groupby(['TripKey', 'Date']).agg({
 df_CDB.columns = ['_'.join(col).strip() for col in df_CDB.columns.values]
 df_HEB.columns = ['_'.join(col).strip() for col in df_HEB.columns.values]
 df_BEB.columns = ['_'.join(col).strip() for col in df_BEB.columns.values]
+df_CDB = df_CDB.rename(columns={'TripKey_': 'TripKey'})
+df_CDB = df_CDB.rename(columns={'Date_': 'Date'})
+df_CDB = df_CDB.rename(columns={'Route_first': 'Route'})
+df_CDB = df_CDB.rename(columns={'Energy_sum': 'Energy'})
+df_CDB = df_CDB.rename(columns={'Powertrain_first': 'Powertrain'})
+df_HEB = df_HEB.rename(columns={'TripKey_': 'TripKey'})
+df_HEB = df_HEB.rename(columns={'Date_': 'Date'})
+df_HEB = df_HEB.rename(columns={'Route_first': 'Route'})
+df_HEB = df_HEB.rename(columns={'Energy_sum': 'Energy'})
+df_HEB = df_HEB.rename(columns={'Powertrain_first': 'Powertrain'})
+df_BEB = df_BEB.rename(columns={'TripKey_': 'TripKey'})
+df_BEB = df_BEB.rename(columns={'Date_': 'Date'})
+df_BEB = df_BEB.rename(columns={'Route_first': 'Route'})
+df_BEB = df_BEB.rename(columns={'Energy_sum': 'Energy'})
+df_BEB = df_BEB.rename(columns={'Powertrain_first': 'Powertrain'})
 print("Dataframe columns list:", df_CDB.columns)
 
 # Define parameters
