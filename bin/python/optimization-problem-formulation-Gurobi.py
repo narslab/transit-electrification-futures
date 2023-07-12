@@ -54,25 +54,31 @@ report_usage()
 df_CDB = df_CDB.groupby(['TripKey', 'Date']).agg({
     'Stop': ['first', 'last'],
     'ServiceDateTime': ['min', 'max'],
-    'Route': 'first'
+    'Route': 'first',
+    'Energy':'sum',
+    'Powertrain':'first'
 }).reset_index()
 
 df_HEB = df_HEB.groupby(['TripKey', 'Date']).agg({
     'Stop': ['first', 'last'],
     'ServiceDateTime': ['min', 'max'],
-    'Route': 'first'
+    'Route': 'first',
+    'Energy':'sum',
+    'Powertrain':'first'
 }).reset_index()
 
 df_BEB = df_BEB.groupby(['TripKey', 'Date']).agg({
     'Stop': ['first', 'last'],
     'ServiceDateTime': ['min', 'max'],
-    'Route': 'first'
+    'Route': 'first',
+    'Energy':'sum',
+    'Powertrain':'first'
 }).reset_index()
 
 # Renaming columns
-df_CDB.columns = ['TripKey', 'Date', 'First_Stop', 'Last_Stop', 'Start_Time', 'End_Time', 'Route']
-df_HEB.columns = ['TripKey', 'Date', 'First_Stop', 'Last_Stop', 'Start_Time', 'End_Time', 'Route']
-df_BEB.columns = ['TripKey', 'Date', 'First_Stop', 'Last_Stop', 'Start_Time', 'End_Time', 'Route']
+df_CDB.columns = ['_'.join(col).strip() for col in df_CDB.columns.values]
+df_HEB.columns = ['_'.join(col).strip() for col in df_HEB.columns.values]
+df_BEB.columns = ['_'.join(col).strip() for col in df_BEB.columns.values]
 print("Dataframe columns list:", df_CDB.columns)
 
 # Define parameters
@@ -134,19 +140,37 @@ N = {
 # then, create the 'Diesel' column based on the condition for 'Powertrain'
 
 # For df_CDB
-energy_CDB = df_CDB.groupby(['Date', 'Route', 'TripKey']).agg({'Energy': 'sum', 'Powertrain': 'first'}).reset_index()
+energy_CDB = df_CDB.groupby(['Date', 'Route', 'TripKey']).agg({    
+    'First_Stop': 'first',
+    'Last_Stop': 'last',
+    'Start_Time': 'min',
+    'End_Time': 'max',
+    'Energy': 'sum', 
+    'Powertrain': 'first'}).reset_index()
 energy_CDB['Diesel'] = (energy_CDB['Powertrain'].isin(['conventional', 'hybrid']) * energy_CDB['Energy'])
 #energy_CDB_dict = energy_CDB.set_index(['Date', 'Route', 'TripKey']).to_dict('index')
 energy_CDB_dict = energy_CDB.set_index(['TripKey']).to_dict('index')
 
 # For df_HEB
-energy_HEB = df_HEB.groupby(['Date', 'Route', 'TripKey']).agg({'Energy': 'sum', 'Powertrain': 'first'}).reset_index()
+energy_HEB = df_HEB.groupby(['Date', 'Route', 'TripKey']).agg({    
+    'First_Stop': 'first',
+    'Last_Stop': 'last',
+    'Start_Time': 'min',
+    'End_Time': 'max',
+    'Energy': 'sum', 
+    'Powertrain': 'first'}).reset_index()
 energy_HEB['Diesel'] = (energy_HEB['Powertrain'].isin(['conventional', 'hybrid']) * energy_HEB['Energy'])
 #energy_HEB_dict = energy_HEB.set_index(['Date', 'Route', 'TripKey']).to_dict('index')
 energy_HEB_dict = energy_HEB.set_index(['TripKey']).to_dict('index')
 
 # For df_BEB
-energy_BEB = df_BEB.groupby(['Date', 'Route', 'TripKey']).agg({'Energy': 'sum', 'Powertrain': 'first'}).reset_index()
+energy_BEB = df_BEB.groupby(['Date', 'Route', 'TripKey']).agg({    
+    'First_Stop': 'first',
+    'Last_Stop': 'last',
+    'Start_Time': 'min',
+    'End_Time': 'max',
+    'Energy': 'sum', 
+    'Powertrain': 'first'}).reset_index()
 energy_BEB['Diesel'] = (energy_BEB['Powertrain'].isin(['conventional', 'hybrid']) * energy_BEB['Energy'])
 #energy_BEB_dict = energy_BEB.set_index(['Date', 'Route', 'TripKey']).to_dict('index')
 energy_BEB_dict = energy_BEB.set_index(['TripKey']).to_dict('index')
