@@ -147,6 +147,15 @@ N = {
     ('B', 0): 15,
 }
 
+# average energy consumption per unit distance for each powertrain in kWh/km
+energy_consumption = {
+    'conventional': 0.18,  # mean fuel (gal) economy of CDBs=5.5 MPG 
+    'hybrid': 0.15, # mean fuel (gal) economy of HEBs=6.5 MPG 
+    'electric': 0, # mean fuel (gal) economy of BEBs= 0
+    # add other powertrain types as needed
+}
+
+
 # Groupby to compute energy consumption for each unique vehicle, date, route, and trip key
 # then, create the 'Diesel' column based on the condition for 'Powertrain'
 
@@ -273,6 +282,42 @@ model.setObjective(
 
 print("Done setting objective function")
 report_usage()
+
+### Compute the time and distance between each two trips
+distance_df = pd.read_csv(r'../../results/stops-pairwise-distances.csv', low_memory=False)
+
+# Define a function to get the distance between two stops
+def get_distance(stop1, stop2):
+    distance_row = distance_df[(distance_df['Stop1'] == stop1) & (distance_df['Stop2'] == stop2)]
+    if distance_row.empty:
+        return float('inf')
+    else:
+        return distance_row.iloc[0]['Distance']
+
+# Compute the duration of each trip in minutes
+df_combined_dict['Duration'] = (df_combined_dict['ServiceDateTime_max'] - df_combined_dict['ServiceDateTime_min']).dt.total_seconds() / 60
+
+# Compute the distance between the first and last stop of each trip
+df_combined_dict['Distance'] = df_combined_dict.apply(lambda row: get_distance(row['Stop_first'], row['Stop_last']), axis=1)
+
+# Initialize an empty graph
+graph = {trip: [] for trip in df_combined_dict.index}
+
+# Populate the graph with edges
+for trip1 in df_combined_dict.index:
+    for trip2 in df_combined_dict.index:
+        if df_combined_dict.loc[trip1]['ServiceDateTime_max'] <= df_combined_dict.loc[trip2]['ServiceDateTime_min']:
+            distance = get_distance(df_combined_dict.loc[trip1]['Stop_last'], df_combined_dict.loc[trip2]['Stop_first'])
+            time = (df_combined_dict.loc[trip2]['ServiceDateTime_min'] - df_combined_dict.loc[trip1]['ServiceDateTime_max']).total_seconds() / 60
+            graph[trip1].append((trip2, time, distance))
+
+# Define a function to check if a bus can go from trip1 to trip2
+def can_go(trip1, trip2):
+    for next_trip, time, distance in graph[trip1]:
+        if next_trip == trip2:
+            return True
+    return False
+
      
 ## Define Constraints
 
@@ -348,6 +393,15 @@ model.addConstrs(
 )
 print("Done defining constraint 6")
 report_usage()
+
+
+# Constraint 7: Sequential Trips Constraint
+for i in bus_keys:
+    for y in year_keys:
+        for trip1 in keys_CDB + keys_HEB + keys_BEB:
+            for trip2 in keys_CDB + keys_HEB + keys_BEB:
+                if can_go(trip1, trip2):
+                    model.addConstr(x[trip1, i, y] <= x[trip2, i, y])
 
 # Print model statistics
 model.update()
