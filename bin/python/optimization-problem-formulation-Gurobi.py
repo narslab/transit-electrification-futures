@@ -330,7 +330,7 @@ model.addConstrs(
 print("Done defining constraint 4")
 report_usage()
 
-# Constraint 5: Bus range. Daily energy consumption by each BEB should not exceed its battery capacity
+# Constraint 5: Bus Range Constraint- Add a constraint that ensures that a bus doesn't exceed its maximum range in a day
 model.addConstrs(
     (quicksum(energy_BEB_dict[key]['Energy'] * x_BEB[s, i, y, key] for s in S for i in bus_keys for key in keys_BEB) <= cap for y in year_keys),
     name="C5"
