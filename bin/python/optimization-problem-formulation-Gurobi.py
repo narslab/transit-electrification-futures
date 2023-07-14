@@ -338,6 +338,31 @@ df_combined_dict['Distance'] = df_combined_dict.apply(lambda row: get_distance(r
 
 ## Define Constraints
 
+# Constraint 7: Enforce the sequence of the trips. If u[s, i, y, (t, bus_type)] represents the sequence number of trip t of type bus_type assigned to bus i in year y under scenario s
+bus_types = ['CDB', 'HEB', 'BEB']
+for s in S:
+    for i in bus_keys:
+        for y in year_keys:
+            for bus_type in bus_types:
+                if bus_type == 'CDB':
+                    keys = keys_CDB
+                    x = x_CDB
+                elif bus_type == 'HEB':
+                    keys = keys_HEB
+                    x = x_HEB
+                else:  # bus_type == 'BEB'
+                    keys = keys_BEB
+                    x = x_BEB
+                sorted_trips = sorted([(key, bus_type) for key in keys], 
+                                      key=lambda x: df_combined_dict.loc[x[0],'ServiceDateTime_min'])
+                for j in range(len(sorted_trips) - 1):
+                    #model.addConstr(u[s, i, y, sorted_trips[j]] <= u[s, i, y, sorted_trips[j + 1]], 'sequence')
+                    model.addConstr(u[s, i, y, sorted_trips[j][0], sorted_trips[j][1]] <= u[s, i, y, sorted_trips[j + 1][0], sorted_trips[j + 1][1]], 'sequence')
+
+print("Done defining constraint 7")
+report_usage()    
+
+
 # Constraint 1: Linking the number of each type of bus at each year variable with trip assignment variables
 model.addConstrs(
    (y_CDB[s, y] == quicksum(x_CDB[s, i, y, key] for i in bus_keys for key in keys_CDB) for s in S for y in year_keys)
@@ -411,29 +436,7 @@ model.addConstrs(
 print("Done defining constraint 6")
 report_usage()
 
-# Constraint 7: Enforce the sequence of the trips. If u[s, i, y, (t, bus_type)] represents the sequence number of trip t of type bus_type assigned to bus i in year y under scenario s
-bus_types = ['CDB', 'HEB', 'BEB']
-for s in S:
-    for i in bus_keys:
-        for y in year_keys:
-            for bus_type in bus_types:
-                if bus_type == 'CDB':
-                    keys = keys_CDB
-                    x = x_CDB
-                elif bus_type == 'HEB':
-                    keys = keys_HEB
-                    x = x_HEB
-                else:  # bus_type == 'BEB'
-                    keys = keys_BEB
-                    x = x_BEB
-                sorted_trips = sorted([(key, bus_type) for key in keys], 
-                                      key=lambda x: df_combined_dict.loc[x[0],'ServiceDateTime_min'])
-                for j in range(len(sorted_trips) - 1):
-                    #model.addConstr(u[s, i, y, sorted_trips[j]] <= u[s, i, y, sorted_trips[j + 1]], 'sequence')
-                    model.addConstr(u[s, i, y, sorted_trips[j][0], sorted_trips[j][1]] <= u[s, i, y, sorted_trips[j + 1][0], sorted_trips[j + 1][1]], 'sequence')
-
-print("Done defining constraint 7")
-report_usage()       
+ 
 
 
 # Constraint 8: The start times of each trip in the sequence of all trips assigned to a unique bus is greater than equal to the start time of the previous trip plus the time it takes from the last stop of the first trip to the first stop of the second trip
