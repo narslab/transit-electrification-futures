@@ -151,6 +151,9 @@ N = {
 trips_time_lag = 10 # min
 trips_distance_lag = 5 # min
 
+# Averga speed of buses
+mean_v = 25 #mph
+
 # Groupby to compute energy consumption for each unique vehicle, date, route, and trip key
 # then, create the 'Diesel' column based on the condition for 'Powertrain'
 
@@ -403,8 +406,58 @@ model.addConstrs(
 print("Done defining constraint 6")
 report_usage()
 
-# Stage 1: Assign all trips without considering "reachable" constraint
+# Constraint 7: Enforce the sequence of the trips. If u[s, i, y, (t, bus_type)] represents the sequence number of trip t of type bus_type assigned to bus i in year y under scenario s
+bus_types = ['CDB', 'HEB', 'BEB']
 
+for s in S:
+    for i in bus_keys:
+        for y in year_keys:
+            for bus_type in bus_types:
+                if bus_type == 'CDB':
+                    keys = keys_CDB
+                    x = x_CDB
+                elif bus_type == 'HEB':
+                    keys = keys_HEB
+                    x = x_HEB
+                else:  # bus_type == 'BEB'
+                    keys = keys_BEB
+                    x = x_BEB
+                sorted_trips = sorted([(key, bus_type) for key in keys], 
+                                      key=lambda x: df_combined_dict.loc[x[0],'ServiceDateTime_min'])
+                for t, bus_type in sorted_trips[1:]:
+                    model.addConstr(u[s, i, y, (sorted_trips[0][0], bus_type)] <= u[s, i, y, (t, bus_type)], 'sequence')
+                del sorted_trips[0]
+print("Done defining constraint 7")
+report_usage()            
+
+
+# Constraint 8: The start times of each trip in the sequence of all trips assigned to a unique bus is greater than equal to the start time of the previous trip plus the time it takes from the last stop of the first trip to the first stop of the second trip
+for s in S:
+    for i in bus_keys:
+        for y in year_keys:
+            for bus_type in bus_types:
+                if bus_type == 'CDB':
+                    keys = keys_CDB
+                    x = x_CDB
+                elif bus_type == 'HEB':
+                    keys = keys_HEB
+                    x = x_HEB
+                else:  # bus_type == 'BEB'
+                    keys = keys_BEB
+                    x = x_BEB
+                sorted_trips = sorted([(key, bus_type) for key in keys], 
+                                      key=lambda x: df_combined_dict.loc[x[0],'ServiceDateTime_min'])
+                for j in range(1, len(sorted_trips)):
+                    trip1 = sorted_trips[j-1]
+                    trip2 = sorted_trips[j]
+                    model.addConstr(
+                        x[s, i, y, trip2] * df_combined_dict.loc[trip2[0],'ServiceDateTime_min'] >=
+                        x[s, i, y, trip1] * (df_combined_dict.loc[trip1[0],'ServiceDateTime_min'] + df_combined_dict.loc[trip1[0],'Trip_duration'] +
+                        get_distance(df_combined_dict.loc[trip1[0],'Stop_last'], df_combined_dict.loc[trip2[0],'Stop_first']) / mean_v),
+                        'travel_time'
+                    )
+print("Done defining constraint 8")
+report_usage()           
 
 # Print model statistics
 model.update()
@@ -416,35 +469,37 @@ model.optimize()
 report_usage()
 
 
-# Stage 2: Update assignments to enforce the "reachable" constraint
-while True:
-    # Optimize the model
-    model.optimize()
-    
-    # Constraint 7: Check for violations of the "reachable" trips for a given bus
-    violations = []
-    for s in S:
-        for i in bus_keys:
-            for y in year_keys:
-                assigned_trips = [trip for trip in keys_CDB + keys_HEB + keys_BEB if model.getVarByName(f'x_{s}_{i}_{y}_{trip}').x > 0.5]
-                for trip1 in assigned_trips:
-                    if not any(can_go(trip1, trip2) for trip2 in assigned_trips if trip1 != trip2):
-                        violations.append((s, i, y, trip1))
-    
-    if not violations:
-        # If there are no more violations, we're done
-        break
-    
-    # Otherwise, reassign the trips that caused violations and re-optimize
-    for s, i, y, trip in violations:
-        var = model.getVarByName(f'x_{s}_{i}_{y}_{trip}')
-        var.lb = 0
-        var.ub = 0
-        model.addConstr(var == 0)
-
-
-print("Done completing stage 2")
-report_usage()
+# =============================================================================
+# # Stage 2: Update assignments to enforce the "reachable" constraint
+# while True:
+#     # Optimize the model
+#     model.optimize()
+#     
+#     # Constraint 7: Check for violations of the "reachable" trips for a given bus
+#     violations = []
+#     for s in S:
+#         for i in bus_keys:
+#             for y in year_keys:
+#                 assigned_trips = [trip for trip in keys_CDB + keys_HEB + keys_BEB if model.getVarByName(f'x_{s}_{i}_{y}_{trip}').x > 0.5]
+#                 for trip1 in assigned_trips:
+#                     if not any(can_go(trip1, trip2) for trip2 in assigned_trips if trip1 != trip2):
+#                         violations.append((s, i, y, trip1))
+#     
+#     if not violations:
+#         # If there are no more violations, we're done
+#         break
+#     
+#     # Otherwise, reassign the trips that caused violations and re-optimize
+#     for s, i, y, trip in violations:
+#         var = model.getVarByName(f'x_{s}_{i}_{y}_{trip}')
+#         var.lb = 0
+#         var.ub = 0
+#         model.addConstr(var == 0)
+# 
+# 
+# print("Done completing stage 2")
+# report_usage()
+# =============================================================================
 
 
 # Prepare dictionaries of coeesicients to save
