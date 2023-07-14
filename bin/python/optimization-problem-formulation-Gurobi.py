@@ -298,6 +298,10 @@ def get_distance(stop1, stop2):
     else:
         return distance_row.iloc[0]['Distance']
 
+# Convert the string to datetime format
+df_combined_dict['ServiceDateTime_max'] = pd.to_datetime(df_combined_dict['ServiceDateTime_max'])
+df_combined_dict['ServiceDateTime_min'] = pd.to_datetime(df_combined_dict['ServiceDateTime_min'])
+
 # Compute the duration of each trip in minutes
 df_combined_dict['Duration'] = (df_combined_dict['ServiceDateTime_max'] - df_combined_dict['ServiceDateTime_min']).dt.total_seconds() / 60
 
