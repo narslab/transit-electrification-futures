@@ -311,24 +311,29 @@ df_combined_dict['Duration'] = (df_combined_dict['ServiceDateTime_max'] - df_com
 # Compute the distance between the first and last stop of each trip
 df_combined_dict['Distance'] = df_combined_dict.apply(lambda row: get_distance(row['Stop_first'], row['Stop_last']), axis=1)
 
-# Initialize an empty graph
-graph = {trip: [] for trip in df_combined_dict.index}
-
-# Populate the graph with edges
-for trip1 in df_combined_dict.index:
-    for trip2 in df_combined_dict.index:
-        time = (df_combined_dict.loc[trip2]['ServiceDateTime_min'] - df_combined_dict.loc[trip1]['ServiceDateTime_max']).total_seconds() / 60
-        if time >= trips_time_lag :  # ensure there's a 10-minute gap
-            distance = get_distance(df_combined_dict.loc[trip1]['Stop_last'], df_combined_dict.loc[trip2]['Stop_first'])
-            if distance <= trips_distance_lag :  # ensure distance is no more than 5 miles
-                graph[trip1].append((trip2, time, distance))
-
-# Define a function to check if a bus can go from trip1 to trip2
-def can_go(trip1, trip2):
-    for next_trip, time, distance in graph[trip1]:
-        if next_trip == trip2:
-            return True
-    return False
+# =============================================================================
+# # Initialize an empty graph
+# graph = {trip: [] for trip in df_combined_dict.index}
+# 
+# # Populate the graph with edges
+# for trip1 in df_combined_dict.index:
+#     for trip2 in df_combined_dict.index:
+#         time = (df_combined_dict.loc[trip2]['ServiceDateTime_min'] - df_combined_dict.loc[trip1]['ServiceDateTime_max']).total_seconds() / 60
+#         if time >= trips_time_lag :  # ensure there's a 10-minute gap
+#             distance = get_distance(df_combined_dict.loc[trip1]['Stop_last'], df_combined_dict.loc[trip2]['Stop_first'])
+#             if distance <= trips_distance_lag :  # ensure distance is no more than 5 miles
+#                 graph[trip1].append((trip2, time, distance))
+# 
+# print("Done defining a graph of all the trips")
+# report_usage()
+# 
+# # Define a function to check if a bus can go from trip1 to trip2
+# def can_go(trip1, trip2):
+#     for next_trip, time, distance in graph[trip1]:
+#         if next_trip == trip2:
+#             return True
+#     return False
+# =============================================================================
 
 
 ## Define Constraints
