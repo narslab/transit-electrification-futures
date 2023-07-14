@@ -147,14 +147,9 @@ N = {
     ('B', 0): 15,
 }
 
-# average energy consumption per unit distance for each powertrain in kWh/km
-energy_consumption = {
-    'conventional': 0.18,  # mean fuel (gal) economy of CDBs=5.5 MPG 
-    'hybrid': 0.15, # mean fuel (gal) economy of HEBs=6.5 MPG 
-    'electric': 0, # mean fuel (gal) economy of BEBs= 0
-    # add other powertrain types as needed
-}
-
+# Define reasonable time and distance lags between two trips
+trips_time_lag = 10 # min
+trips_distance_lag = 5 # min
 
 # Groupby to compute energy consumption for each unique vehicle, date, route, and trip key
 # then, create the 'Diesel' column based on the condition for 'Powertrain'
@@ -273,6 +268,10 @@ z_BEB = model.addVars(S, bus_keys, year_keys, vtype=GRB.BINARY, name="z_BEB")
 print("Done setting z variables")
 report_usage()
 
+# Variables indicating the sequence of trips for each bus
+u = model.addVars(S, bus_keys, year_keys, keys_CDB + keys_HEB + keys_BEB, vtype=GRB.INTEGER, name='u')
+### The variable u represents the position of a trip in the route of a bus. If a bus serves n trips, the trips should be numbered from 1 to n, in the order they are served.
+
 model.setObjective(
 (quicksum([energy_CDB_dict[key]['Diesel'] * x_CDB[s, i, y, key] for s in S for key in keys_CDB for i in bus_keys for y in year_keys if key in energy_CDB_dict]) +
  quicksum([energy_HEB_dict[key]['Diesel'] * x_HEB[s, i, y, key] for s in S for key in keys_HEB for i in bus_keys for y in year_keys if key in energy_HEB_dict]) +
@@ -306,10 +305,11 @@ graph = {trip: [] for trip in df_combined_dict.index}
 # Populate the graph with edges
 for trip1 in df_combined_dict.index:
     for trip2 in df_combined_dict.index:
-        if df_combined_dict.loc[trip1]['ServiceDateTime_max'] <= df_combined_dict.loc[trip2]['ServiceDateTime_min']:
+        time = (df_combined_dict.loc[trip2]['ServiceDateTime_min'] - df_combined_dict.loc[trip1]['ServiceDateTime_max']).total_seconds() / 60
+        if time >= trips_time_lag :  # ensure there's a 10-minute gap
             distance = get_distance(df_combined_dict.loc[trip1]['Stop_last'], df_combined_dict.loc[trip2]['Stop_first'])
-            time = (df_combined_dict.loc[trip2]['ServiceDateTime_min'] - df_combined_dict.loc[trip1]['ServiceDateTime_max']).total_seconds() / 60
-            graph[trip1].append((trip2, time, distance))
+            if distance <= trips_distance_lag :  # ensure distance is no more than 5 miles
+                graph[trip1].append((trip2, time, distance))
 
 # Define a function to check if a bus can go from trip1 to trip2
 def can_go(trip1, trip2):
@@ -318,7 +318,7 @@ def can_go(trip1, trip2):
             return True
     return False
 
-     
+
 ## Define Constraints
 
 # Constraint 1: Linking the number of each type of bus at each year variable with trip assignment variables
@@ -394,14 +394,8 @@ model.addConstrs(
 print("Done defining constraint 6")
 report_usage()
 
+# Stage 1: Assign all trips without considering "reachable" constraint
 
-# Constraint 7: Sequential Trips Constraint
-for i in bus_keys:
-    for y in year_keys:
-        for trip1 in keys_CDB + keys_HEB + keys_BEB:
-            for trip2 in keys_CDB + keys_HEB + keys_BEB:
-                if can_go(trip1, trip2):
-                    model.addConstr(x[trip1, i, y] <= x[trip2, i, y])
 
 # Print model statistics
 model.update()
@@ -411,6 +405,38 @@ print(model)
 model.tune()
 model.optimize()
 report_usage()
+
+
+# Stage 2: Update assignments to enforce the "reachable" constraint
+while True:
+    # Optimize the model
+    model.optimize()
+    
+    # Constraint 7: Check for violations of the "reachable" trips for a given bus
+    violations = []
+    for s in S:
+        for i in bus_keys:
+            for y in year_keys:
+                assigned_trips = [trip for trip in keys_CDB + keys_HEB + keys_BEB if model.getVarByName(f'x_{s}_{i}_{y}_{trip}').x > 0.5]
+                for trip1 in assigned_trips:
+                    if not any(can_go(trip1, trip2) for trip2 in assigned_trips if trip1 != trip2):
+                        violations.append((s, i, y, trip1))
+    
+    if not violations:
+        # If there are no more violations, we're done
+        break
+    
+    # Otherwise, reassign the trips that caused violations and re-optimize
+    for s, i, y, trip in violations:
+        var = model.getVarByName(f'x_{s}_{i}_{y}_{trip}')
+        var.lb = 0
+        var.ub = 0
+        model.addConstr(var == 0)
+
+
+print("Done completing stage 2")
+report_usage()
+
 
 # Prepare dictionaries of coeesicients to save
 coeff_dict_CDB = {(s, i, y, key): energy_CDB_dict[key]['Diesel'] for s in S for key in keys_CDB for i in bus_keys for y in year_keys if key in energy_CDB_dict}
