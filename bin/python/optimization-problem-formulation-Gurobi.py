@@ -269,7 +269,10 @@ print("Done setting z variables")
 report_usage()
 
 # Variables indicating the sequence of trips for each bus
-u = model.addVars(S, bus_keys, year_keys, keys_CDB + keys_HEB + keys_BEB, vtype=GRB.INTEGER, name='u')
+u = model.addVars(S, bus_keys, year_keys, [(key, 'CDB') for key in keys_CDB] +
+                                          [(key, 'HEB') for key in keys_HEB] +
+                                          [(key, 'BEB') for key in keys_BEB], 
+                  vtype=GRB.INTEGER, name='u')
 ### The variable u represents the position of a trip in the route of a bus. If a bus serves n trips, the trips should be numbered from 1 to n, in the order they are served.
 print("Done setting u variables")
 report_usage()
