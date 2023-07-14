@@ -197,7 +197,7 @@ combined_dict.update(energy_BEB_dict)
 df_combined_dict = pd.DataFrame.from_dict(combined_dict, orient='index')
 
 # Write the DataFrame to a CSV file
-combined_dict.to_csv(r'../../results/busiest-day-trips-info.csv', index=False)
+df_combined_dict.to_csv(r'../../results/busiest-day-trips-info.csv', index=False)
 
 # Now delete the DataFrame to free up memory
 del df_CDB
