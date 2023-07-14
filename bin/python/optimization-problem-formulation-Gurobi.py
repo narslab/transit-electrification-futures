@@ -429,8 +429,11 @@ for s in S:
                 sorted_trips = sorted([(key, bus_type) for key in keys], 
                                       key=lambda x: df_combined_dict.loc[x[0],'ServiceDateTime_min'])
                 for j in range(len(sorted_trips) - 1):
-                    model.addConstr(u[s, i, y, sorted_trips[j]] <= u[s, i, y, sorted_trips[j + 1]], 'sequence')
-       
+                    #model.addConstr(u[s, i, y, sorted_trips[j]] <= u[s, i, y, sorted_trips[j + 1]], 'sequence')
+                    model.addConstr(u[s, i, y, sorted_trips[j][0], sorted_trips[j][1]] <= u[s, i, y, sorted_trips[j + 1][0], sorted_trips[j + 1][1]], 'sequence')
+
+print("Done defining constraint 7")
+report_usage()       
 
 
 # Constraint 8: The start times of each trip in the sequence of all trips assigned to a unique bus is greater than equal to the start time of the previous trip plus the time it takes from the last stop of the first trip to the first stop of the second trip
