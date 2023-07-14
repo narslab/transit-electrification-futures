@@ -271,6 +271,8 @@ report_usage()
 # Variables indicating the sequence of trips for each bus
 u = model.addVars(S, bus_keys, year_keys, keys_CDB + keys_HEB + keys_BEB, vtype=GRB.INTEGER, name='u')
 ### The variable u represents the position of a trip in the route of a bus. If a bus serves n trips, the trips should be numbered from 1 to n, in the order they are served.
+print("Done setting u variables")
+report_usage()
 
 model.setObjective(
 (quicksum([energy_CDB_dict[key]['Diesel'] * x_CDB[s, i, y, key] for s in S for key in keys_CDB for i in bus_keys for y in year_keys if key in energy_CDB_dict]) +
