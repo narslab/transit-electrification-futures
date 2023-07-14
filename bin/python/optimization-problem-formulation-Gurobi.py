@@ -413,7 +413,6 @@ report_usage()
 
 # Constraint 7: Enforce the sequence of the trips. If u[s, i, y, (t, bus_type)] represents the sequence number of trip t of type bus_type assigned to bus i in year y under scenario s
 bus_types = ['CDB', 'HEB', 'BEB']
-
 for s in S:
     for i in bus_keys:
         for y in year_keys:
@@ -429,11 +428,9 @@ for s in S:
                     x = x_BEB
                 sorted_trips = sorted([(key, bus_type) for key in keys], 
                                       key=lambda x: df_combined_dict.loc[x[0],'ServiceDateTime_min'])
-                for t, bus_type in sorted_trips[1:]:
-                    model.addConstr(u[s, i, y, (sorted_trips[0][0], bus_type)] <= u[s, i, y, (t, bus_type)], 'sequence')
-                del sorted_trips[0]
-print("Done defining constraint 7")
-report_usage()            
+                for j in range(len(sorted_trips) - 1):
+                    model.addConstr(u[s, i, y, sorted_trips[j]] <= u[s, i, y, sorted_trips[j + 1]], 'sequence')
+       
 
 
 # Constraint 8: The start times of each trip in the sequence of all trips assigned to a unique bus is greater than equal to the start time of the previous trip plus the time it takes from the last stop of the first trip to the first stop of the second trip
