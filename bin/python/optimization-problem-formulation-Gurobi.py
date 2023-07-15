@@ -4,6 +4,8 @@ from gurobipy import Model, GRB, quicksum
 import time
 import psutil
 import os
+from tqdm import tqdm
+
 
 start = time.time()
 
@@ -443,35 +445,67 @@ report_usage()
 # print("Done defining constraint 8")
 # report_usage()    
 # =============================================================================
-df_combined_dict['ServiceDateTime_min'] = df_combined_dict['ServiceDateTime_min'].apply(lambda x: x.timestamp())
-df_combined_dict['ServiceDateTime_max'] = df_combined_dict['ServiceDateTime_max'].apply(lambda x: x.timestamp())
+# =============================================================================
+# 
+# df_combined_dict['ServiceDateTime_min'] = df_combined_dict['ServiceDateTime_min'].apply(lambda x: x.timestamp())
+# df_combined_dict['ServiceDateTime_max'] = df_combined_dict['ServiceDateTime_max'].apply(lambda x: x.timestamp())
+# for s in S:
+#     for i in bus_keys:
+#         for y in year_keys:
+#             for bus_type in bus_types:
+#                 if bus_type == 'CDB':
+#                     keys = keys_CDB
+#                     x = x_CDB
+#                 elif bus_type == 'HEB':
+#                     keys = keys_HEB
+#                     x = x_HEB
+#                 else:  # bus_type == 'BEB'
+#                     keys = keys_BEB
+#                     x = x_BEB
+#                 sorted_trips = sorted(keys, key=lambda x: df_combined_dict.loc[x,'ServiceDateTime_min'])
+#                 for j in range(1, len(sorted_trips)):
+#                     trip1 = sorted_trips[j-1]
+#                     trip2 = sorted_trips[j]
+#                     if trip1 in df_combined_dict.index and trip2 in df_combined_dict.index:
+#                         model.addConstr(
+#                             x[s, i, y, trip2] * df_combined_dict.loc[trip2,'ServiceDateTime_min'] >=
+#                             x[s, i, y, trip1] * (df_combined_dict.loc[trip1,'ServiceDateTime_max'] +
+#                                                  get_distance(df_combined_dict.loc[trip1,'Stop_last'], df_combined_dict.loc[trip2,'Stop_first']) / mean_v)*3600,
+#         'travel_time'
+#     )
+# print("Done defining constraint 8")
+# report_usage()
+# =============================================================================
+### Improved version of constraint 8
+sorted_trips_CDB = sorted(keys_CDB, key=lambda x: df_combined_dict.loc[x,'ServiceDateTime_min'])
+sorted_trips_HEB = sorted(keys_HEB, key=lambda x: df_combined_dict.loc[x,'ServiceDateTime_min'])
+sorted_trips_BEB = sorted(keys_BEB, key=lambda x: df_combined_dict.loc[x,'ServiceDateTime_min'])
+
+bus_types_keys = {'CDB': (keys_CDB, x_CDB, sorted_trips_CDB),
+                  'HEB': (keys_HEB, x_HEB, sorted_trips_HEB),
+                  'BEB': (keys_BEB, x_BEB, sorted_trips_BEB)}
+
+pbar = tqdm(total=len(S)*len(bus_keys)*len(year_keys)*len(bus_types)*len(sorted_trips_CDB))  # assuming all sorted_trips have the same length, change if not
+
 for s in S:
     for i in bus_keys:
         for y in year_keys:
             for bus_type in bus_types:
-                if bus_type == 'CDB':
-                    keys = keys_CDB
-                    x = x_CDB
-                elif bus_type == 'HEB':
-                    keys = keys_HEB
-                    x = x_HEB
-                else:  # bus_type == 'BEB'
-                    keys = keys_BEB
-                    x = x_BEB
-                sorted_trips = sorted(keys, key=lambda x: df_combined_dict.loc[x,'ServiceDateTime_min'])
+                keys, x, sorted_trips = bus_types_keys[bus_type]
                 for j in range(1, len(sorted_trips)):
                     trip1 = sorted_trips[j-1]
                     trip2 = sorted_trips[j]
-                    if trip1 in df_combined_dict.index and trip2 in df_combined_dict.index:
-                        model.addConstr(
-                            x[s, i, y, trip2] * df_combined_dict.loc[trip2,'ServiceDateTime_min'] >=
-                            x[s, i, y, trip1] * (df_combined_dict.loc[trip1,'ServiceDateTime_max'] +
-                                                 get_distance(df_combined_dict.loc[trip1,'Stop_last'], df_combined_dict.loc[trip2,'Stop_first']) / mean_v)*3600,
-        'travel_time'
-    )
+                    model.addConstr(
+                        x[s, i, y, trip2] * df_combined_dict.loc[trip2,'ServiceDateTime_min'] >=
+                        x[s, i, y, trip1] * (df_combined_dict.loc[trip1,'ServiceDateTime_max'] +
+                                             get_distance(df_combined_dict.loc[trip1,'Stop_last'], df_combined_dict.loc[trip2,'Stop_first']) / mean_v)*3600,
+                    'travel_time'
+                    )
+                    pbar.update()
+
+pbar.close()
 print("Done defining constraint 8")
 report_usage()
-
 
 
 # Constraint 1: Linking the number of each type of bus at each year variable with trip assignment variables
