@@ -443,6 +443,8 @@ report_usage()
 # print("Done defining constraint 8")
 # report_usage()    
 # =============================================================================
+df_combined_dict['ServiceDateTime_min'] = df_combined_dict['ServiceDateTime_min'].apply(lambda x: x.timestamp())
+df_combined_dict['ServiceDateTime_max'] = df_combined_dict['ServiceDateTime_max'].apply(lambda x: x.timestamp())
 for s in S:
     for i in bus_keys:
         for y in year_keys:
