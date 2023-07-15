@@ -297,7 +297,7 @@ distance_df = pd.read_csv(r'../../results/stops-pairwise-distances.csv', low_mem
 def get_distance(stop1, stop2):
     distance_row = distance_df[(distance_df['Stop1'] == stop1) & (distance_df['Stop2'] == stop2)]
     if distance_row.empty:
-        return float('inf')
+        return 200  # Return 200 miles when there is no direct path
     else:
         return distance_row.iloc[0]['Distance']
 
