@@ -419,9 +419,9 @@ for bus_type in bus_types:
         travel_times[(trip1, trip2)] = (df_combined_dict.loc[trip1,'ServiceDateTime_max'] +
                                          get_distance(df_combined_dict.loc[trip1,'Stop_last'], df_combined_dict.loc[trip2,'Stop_first']) / mean_v)*3600
 
-def create_constraint(s, bus_keys, year_keys, bus_types_keys, df_combined_dict, travel_times):
+def create_constraint(bus_key, S, year_keys, bus_types_keys, df_combined_dict, travel_times):
     constraints = []
-    for i in bus_keys:
+    for s in S:
         for y in year_keys:
             for bus_type in bus_types:
                 keys, x, sorted_trips = bus_types_keys[bus_type]
@@ -429,18 +429,20 @@ def create_constraint(s, bus_keys, year_keys, bus_types_keys, df_combined_dict, 
                     trip1 = sorted_trips[j-1]
                     trip2 = sorted_trips[j]
                     constraints.append(
-                        x[s, i, y, trip2] * df_combined_dict.loc[trip2,'ServiceDateTime_min'] >=
-                        x[s, i, y, trip1] * travel_times[(trip1, trip2)]
+                        x[s, bus_key, y, trip2] * df_combined_dict.loc[trip2,'ServiceDateTime_min'] >=
+                        x[s, bus_key, y, trip1] * travel_times[(trip1, trip2)]
                     )
     return constraints
 
-pool = mp.Pool(processes=mp.cpu_count())
-total_tasks = len(S)
+# Using a pool of 64 processes
+pool = mp.Pool(processes=64)
+total_tasks = len(bus_keys)
 with tqdm(total=total_tasks) as pbar:
-    for i, _ in enumerate(pool.imap_unordered(partial(create_constraint, bus_keys=bus_keys, year_keys=year_keys, bus_types_keys=bus_types_keys, df_combined_dict=df_combined_dict, travel_times=travel_times), S)):
+    for i, _ in enumerate(pool.imap_unordered(partial(create_constraint, S=S, year_keys=year_keys, bus_types_keys=bus_types_keys, df_combined_dict=df_combined_dict, travel_times=travel_times), bus_keys)):
         pbar.update()
     constraints = _
 pool.close()
+
 
 # Flatten list of constraints
 constraints = [item for sublist in constraints for item in sublist]
