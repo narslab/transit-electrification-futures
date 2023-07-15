@@ -477,6 +477,8 @@ report_usage()
 # report_usage()
 # =============================================================================
 ### Improved version of constraint 8
+df_combined_dict['ServiceDateTime_min'] = df_combined_dict['ServiceDateTime_min'].apply(lambda x: x.timestamp())
+df_combined_dict['ServiceDateTime_max'] = df_combined_dict['ServiceDateTime_max'].apply(lambda x: x.timestamp())
 sorted_trips_CDB = sorted(keys_CDB, key=lambda x: df_combined_dict.loc[x,'ServiceDateTime_min'])
 sorted_trips_HEB = sorted(keys_HEB, key=lambda x: df_combined_dict.loc[x,'ServiceDateTime_min'])
 sorted_trips_BEB = sorted(keys_BEB, key=lambda x: df_combined_dict.loc[x,'ServiceDateTime_min'])
