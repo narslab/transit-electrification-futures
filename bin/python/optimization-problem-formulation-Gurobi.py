@@ -228,7 +228,7 @@ model.setParam('Heuristics', 0.1)  # Controls the effort put into MIP heuristics
 #model.setParam('Cuts', 2)  # This parameter controls the aggressiveness of cut generation. Cutting planes are additional constraints that can potentially improve the LP relaxation of the problem, thus leading to a quicker solution. A higher value means more aggressive cut generation, but this could potentially slow down the solver because of the extra overhead.
 #model.setParam('Presolve', 1)  # This parameter controls the presolve level. Presolve is a phase during which the solver tries to simplify the model before the actual optimization takes place. A higher presolve level means the solver puts more effort into simplification, which can often reduce solving time. (-1: automatic (default) - Gurobi will decide based on the problem characteristics whether to use presolve or not.0: no presolve. 1: conservative presolve. 2: aggressive presolve.)
 #model.setParam('MIPGap', 0.01) # This parameter sets the relative gap for the MIP search termination. The solver will stop as soon as the relative gap between the lower and upper objective bound is less than this value. The lower this value, the closer to optimality the solution has to be before the solver stops.  
-model.setParam('Threads', 35)  # Set number of threads to be used for parallel processing.
+model.setParam('Threads', 72)  # Set number of threads to be used for parallel processing.
 print("Done setting model parameters")
 report_usage()
 
@@ -419,6 +419,40 @@ for bus_type in bus_types:
         travel_times[(trip1, trip2)] = (df_combined_dict.loc[trip1,'ServiceDateTime_max'] +
                                          get_distance(df_combined_dict.loc[trip1,'Stop_last'], df_combined_dict.loc[trip2,'Stop_first']) / mean_v)*3600
 
+# =============================================================================
+# def create_constraint(bus_key, S, year_keys, bus_types_keys, df_combined_dict, travel_times):
+#     constraints = []
+#     for s in S:
+#         for y in year_keys:
+#             for bus_type in bus_types:
+#                 keys, x, sorted_trips = bus_types_keys[bus_type]
+#                 for j in range(1, len(sorted_trips)):
+#                     trip1 = sorted_trips[j-1]
+#                     trip2 = sorted_trips[j]
+#                     constraints.append(
+#                         x[s, bus_key, y, trip2] * df_combined_dict.loc[trip2,'ServiceDateTime_min'] >=
+#                         x[s, bus_key, y, trip1] * travel_times[(trip1, trip2)]
+#                     )
+#     return constraints
+# 
+# # Using a pool of 35 processes
+# pool = mp.Pool(processes=35)
+# total_tasks = len(bus_keys)
+# with tqdm(total=total_tasks) as pbar:
+#     for i, _ in enumerate(pool.imap_unordered(partial(create_constraint, S=S, year_keys=year_keys, bus_types_keys=bus_types_keys, df_combined_dict=df_combined_dict, travel_times=travel_times), bus_keys)):
+#         pbar.update()
+#     constraints = _
+# pool.close()
+# 
+# 
+# # Flatten list of constraints
+# constraints = [item for sublist in constraints for item in sublist]
+# 
+# # Add constraints to model
+# model.addConstrs(constraints, 'travel_time')
+# =============================================================================
+
+### Removing multiprocessing since it was causing an error
 def create_constraint(bus_key, S, year_keys, bus_types_keys, df_combined_dict, travel_times):
     constraints = []
     for s in S:
@@ -434,21 +468,18 @@ def create_constraint(bus_key, S, year_keys, bus_types_keys, df_combined_dict, t
                     )
     return constraints
 
-# Using a pool of 35 processes
-pool = mp.Pool(processes=35)
-total_tasks = len(bus_keys)
-with tqdm(total=total_tasks) as pbar:
-    for i, _ in enumerate(pool.imap_unordered(partial(create_constraint, S=S, year_keys=year_keys, bus_types_keys=bus_types_keys, df_combined_dict=df_combined_dict, travel_times=travel_times), bus_keys)):
-        pbar.update()
-    constraints = _
-pool.close()
-
+constraints = []
+for bus_key in tqdm(bus_keys, desc="Generating constraints"):
+    constraints.extend(create_constraint(bus_key, S, year_keys, bus_types_keys, df_combined_dict, travel_times))
 
 # Flatten list of constraints
 constraints = [item for sublist in constraints for item in sublist]
 
 # Add constraints to model
 model.addConstrs(constraints, 'travel_time')
+
+print("Done defining constraint 8")
+report_usage()
 
 
 print("Done defining constraint 8")
