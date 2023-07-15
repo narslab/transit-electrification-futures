@@ -228,7 +228,7 @@ model.setParam('Heuristics', 0.1)  # Controls the effort put into MIP heuristics
 #model.setParam('Cuts', 2)  # This parameter controls the aggressiveness of cut generation. Cutting planes are additional constraints that can potentially improve the LP relaxation of the problem, thus leading to a quicker solution. A higher value means more aggressive cut generation, but this could potentially slow down the solver because of the extra overhead.
 #model.setParam('Presolve', 1)  # This parameter controls the presolve level. Presolve is a phase during which the solver tries to simplify the model before the actual optimization takes place. A higher presolve level means the solver puts more effort into simplification, which can often reduce solving time. (-1: automatic (default) - Gurobi will decide based on the problem characteristics whether to use presolve or not.0: no presolve. 1: conservative presolve. 2: aggressive presolve.)
 #model.setParam('MIPGap', 0.01) # This parameter sets the relative gap for the MIP search termination. The solver will stop as soon as the relative gap between the lower and upper objective bound is less than this value. The lower this value, the closer to optimality the solution has to be before the solver stops.  
-model.setParam('Threads', 72)  # Set number of threads to be used for parallel processing.
+model.setParam('Threads', 35)  # Set number of threads to be used for parallel processing.
 print("Done setting model parameters")
 report_usage()
 
@@ -434,8 +434,8 @@ def create_constraint(bus_key, S, year_keys, bus_types_keys, df_combined_dict, t
                     )
     return constraints
 
-# Using a pool of 64 processes
-pool = mp.Pool(processes=64)
+# Using a pool of 35 processes
+pool = mp.Pool(processes=35)
 total_tasks = len(bus_keys)
 with tqdm(total=total_tasks) as pbar:
     for i, _ in enumerate(pool.imap_unordered(partial(create_constraint, S=S, year_keys=year_keys, bus_types_keys=bus_types_keys, df_combined_dict=df_combined_dict, travel_times=travel_times), bus_keys)):
