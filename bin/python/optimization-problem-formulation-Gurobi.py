@@ -454,7 +454,7 @@ for bus_type in bus_types:
 
 ### Remove multiprocessing since it was causing an error
 def create_constraint(bus_key, S, year_keys, bus_types_keys, df_combined_dict, travel_times):
-    constraints = []
+    constraints = {}
     for s in S:
         for y in year_keys:
             for bus_type in bus_types:
@@ -462,15 +462,17 @@ def create_constraint(bus_key, S, year_keys, bus_types_keys, df_combined_dict, t
                 for j in range(1, len(sorted_trips)):
                     trip1 = sorted_trips[j-1]
                     trip2 = sorted_trips[j]
-                    constraints.append(
+                    # Assuming that (s, bus_key, y, trip2) is a unique index for each constraint
+                    constraints[(s, bus_key, y, trip2)] = (
                         x[s, bus_key, y, trip2] * df_combined_dict.loc[trip2,'ServiceDateTime_min'] >=
                         x[s, bus_key, y, trip1] * travel_times[(trip1, trip2)]
                     )
     return constraints
 
-constraints = []
+constraints = {}
 for bus_key in tqdm(bus_keys, desc="Generating constraints"):
-    constraints.extend(create_constraint(bus_key, S, year_keys, bus_types_keys, df_combined_dict, travel_times))
+    new_constraints = create_constraint(bus_key, S, year_keys, bus_types_keys, df_combined_dict, travel_times)
+    constraints.update(new_constraints)  # merge new_constraints into the main constraints dictionary
 
 # Add constraints to model
 model.addConstrs(constraints, 'travel_time')
