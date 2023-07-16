@@ -452,7 +452,7 @@ for bus_type in bus_types:
 # model.addConstrs(constraints, 'travel_time')
 # =============================================================================
 
-### Removing multiprocessing since it was causing an error
+### Remove multiprocessing since it was causing an error
 def create_constraint(bus_key, S, year_keys, bus_types_keys, df_combined_dict, travel_times):
     constraints = []
     for s in S:
@@ -472,19 +472,11 @@ constraints = []
 for bus_key in tqdm(bus_keys, desc="Generating constraints"):
     constraints.extend(create_constraint(bus_key, S, year_keys, bus_types_keys, df_combined_dict, travel_times))
 
-# Flatten list of constraints
-constraints = [item for sublist in constraints for item in sublist]
-
 # Add constraints to model
 model.addConstrs(constraints, 'travel_time')
 
 print("Done defining constraint 8")
 report_usage()
-
-
-print("Done defining constraint 8")
-report_usage()
-
 
 # Constraint 1: Linking the number of each type of bus at each year variable with trip assignment variables
 model.addConstrs(
