@@ -7,6 +7,8 @@ import os
 from tqdm import tqdm
 import multiprocessing as mp
 from functools import partial
+import gurobipy as grb
+
 
 
 start = time.time()
@@ -222,13 +224,35 @@ report_usage()
 # Enable logging and print progress
 model.setParam('OutputFlag', 1)
 
-# Set heuristic parameters
-#model.setParam('MIPFocus', 1)  # This parameter lets control the MIP solver's focus. The options are: 1. Finds feasible solutions quickly. This is useful if the problem is difficult to solve and you're satisfied with any feasible solution. 2: Works to improve the best bound. This is useful when the best objective bound is poor. 3: Tries to prove optimality of the best solution found. This is useful if you're sure a nearly-optimal solution exists and you want the solver to focus on proving its optimality.
-model.setParam('Heuristics', 0.1)  # Controls the effort put into MIP heuristics (range is 0 to 1). A higher value means more effort is put into finding solutions, but at the cost of slower overall performance. 
-#model.setParam('Cuts', 2)  # This parameter controls the aggressiveness of cut generation. Cutting planes are additional constraints that can potentially improve the LP relaxation of the problem, thus leading to a quicker solution. A higher value means more aggressive cut generation, but this could potentially slow down the solver because of the extra overhead.
+# Set solver parameters
+model.setParam('MIPFocus', 1)  # This parameter lets control the MIP solver's focus. The options are: 1. Finds feasible solutions quickly. This is useful if the problem is difficult to solve and you're satisfied with any feasible solution. 2: Works to improve the best bound. This is useful when the best objective bound is poor. 3: Tries to prove optimality of the best solution found. This is useful if you're sure a nearly-optimal solution exists and you want the solver to focus on proving its optimality.
+model.setParam('Heuristics', 0.5)  # Controls the effort put into MIP heuristics (range is 0 to 1). A higher value means more effort is put into finding solutions, but at the cost of slower overall performance. 
 #model.setParam('Presolve', 1)  # This parameter controls the presolve level. Presolve is a phase during which the solver tries to simplify the model before the actual optimization takes place. A higher presolve level means the solver puts more effort into simplification, which can often reduce solving time. (-1: automatic (default) - Gurobi will decide based on the problem characteristics whether to use presolve or not.0: no presolve. 1: conservative presolve. 2: aggressive presolve.)
 #model.setParam('MIPGap', 0.01) # This parameter sets the relative gap for the MIP search termination. The solver will stop as soon as the relative gap between the lower and upper objective bound is less than this value. The lower this value, the closer to optimality the solution has to be before the solver stops.  
 model.setParam('Threads', 72)  # Set number of threads to be used for parallel processing.
+
+# Adjust the Model Tolerance
+model.setParam('FeasibilityTol', 1e-3)  # Feasibility tolerance. The default value is 1e-6
+model.setParam('IntFeasTol', 1e-2)  # Integrality Tolerance. The default value is 1e-5
+model.setParam('OptimalityTol', 1e-3)  # Optimality Tolerance. The default value is 1e-6
+
+# Adjust time limit
+#model.setParam('TimeLimit', 86400)  # in seconds. The default value is infinity
+
+# Change the variable selection strategy: sets the method used to solve the LP relaxation at each node in the MIP tree
+#model.setParam('NodeMethod', 0)  # 0: Automatic (let Gurobi choose), 1: Primal simplex, 2: Dual simplex. 
+
+# Change the variable selection strategy used at each node in the MIP tree
+#model.setParam('VarBranch', 0)  # -1: Pseudo-reduced cost branching, 0: Automatic (let Gurobi choose), 1: Maximum infeasibility, 2: Strong branching, 3: Pseudo-reduced cost branching, 4: Maximum infeasibility on unsatisfied (MaxInf*), 5: Pseudo-shadow price (PSP), 6: Strong branching on variables with high pseudo costs 
+
+# Change the aggressiveness of the cut generation during the Branch-and-Cut process of solving mixed integer programs (MIPs)
+#model.setParam('Cuts', 2)  #  Cutting planes are additional constraints that can potentially improve the LP relaxation of the problem, thus leading to a quicker solution. A higher value means more aggressive cut generation, but this could potentially slow down the solver because of the extra overhead.
+#model.setParam('Cuts', -1)  # No cuts
+#model.setParam('Cuts', 1)  # Conservative level
+#model.setParam('Cuts', 2)  # Aggressive level
+#model.setParam('Cuts', 3)  # Very aggressive level
+
+
 print("Done setting model parameters")
 report_usage()
 
@@ -342,141 +366,6 @@ df_combined_dict['Distance'] = df_combined_dict.apply(lambda row: get_distance(r
 
 ## Define Constraints
 
-# Constraint 7: Enforce the sequence of the trips. If u[s, i, y, (t, bus_type)] represents the sequence number of trip t of type bus_type assigned to bus i in year y under scenario s
-bus_types = ['CDB', 'HEB', 'BEB']
-for s in S:
-    for i in bus_keys:
-        for y in year_keys:
-            for bus_type in bus_types:
-                if bus_type == 'CDB':
-                    keys = keys_CDB
-                    x = x_CDB
-                elif bus_type == 'HEB':
-                    keys = keys_HEB
-                    x = x_HEB
-                else:  # bus_type == 'BEB'
-                    keys = keys_BEB
-                    x = x_BEB
-                sorted_trips = sorted(keys, key=lambda x: df_combined_dict.loc[x,'ServiceDateTime_min'])
-                for j in range(len(sorted_trips) - 1):
-                    model.addConstr(u[s, i, y, sorted_trips[j], bus_type] <= u[s, i, y, sorted_trips[j + 1], bus_type], 'sequence')
-                    
-print("Done defining constraint 7")
-report_usage()
-
-
-
-# Constraint 8: The start times of each trip in the sequence of all trips assigned to a unique bus is greater than equal to the start time of the previous trip plus the time it takes from the last stop of the first trip to the first stop of the second trip
-df_combined_dict['ServiceDateTime_min'] = df_combined_dict['ServiceDateTime_min'].apply(lambda x: x.timestamp())
-df_combined_dict['ServiceDateTime_max'] = df_combined_dict['ServiceDateTime_max'].apply(lambda x: x.timestamp())
-sorted_trips_CDB = sorted(keys_CDB, key=lambda x: df_combined_dict.loc[x,'ServiceDateTime_min'])
-sorted_trips_HEB = sorted(keys_HEB, key=lambda x: df_combined_dict.loc[x,'ServiceDateTime_min'])
-sorted_trips_BEB = sorted(keys_BEB, key=lambda x: df_combined_dict.loc[x,'ServiceDateTime_min'])
-
-bus_types_keys = {'CDB': (keys_CDB, x_CDB, sorted_trips_CDB),
-                  'HEB': (keys_HEB, x_HEB, sorted_trips_HEB),
-                  'BEB': (keys_BEB, x_BEB, sorted_trips_BEB)}
-
-pbar = tqdm(total=len(S)*len(bus_keys)*len(year_keys)*len(bus_types)*len(sorted_trips_CDB))  # assuming all sorted_trips have the same length, change if not
-
-# =============================================================================
-# for s in S:
-#     for i in bus_keys:
-#         for y in year_keys:
-#             for bus_type in bus_types:
-#                 keys, x, sorted_trips = bus_types_keys[bus_type]
-#                 for j in range(1, len(sorted_trips)):
-#                     trip1 = sorted_trips[j-1]
-#                     trip2 = sorted_trips[j]
-#                     
-#                     # The start time of the second trip
-#                     start_trip2 = df_combined_dict.loc[trip2,'ServiceDateTime_min']
-#                     
-#                     # The end time of the first trip
-#                     end_trip1 = df_combined_dict.loc[trip1,'ServiceDateTime_max']
-#                     
-#                     # The travel time from the last stop of the first trip to the first stop of the second trip, in seconds
-#                     travel_time = get_distance(df_combined_dict.loc[trip1,'Stop_last'], df_combined_dict.loc[trip2,'Stop_first']) / mean_v * 3600
-#                     
-#                     # Add the constraint: the second trip can't start until the first trip has ended and the bus has had enough time to travel to the start of the second trip
-#                     model.addConstr(
-#                         x[s, i, y, trip2] * start_trip2 >=
-#                         x[s, i, y, trip1] * (end_trip1 + travel_time),
-#                     'travel_time'
-#                     )
-#                     
-#                     pbar.update()
-# =============================================================================
-
-### Improved version of constraint 8
-# Pre-calculate travel times
-travel_times = {}
-for bus_type in bus_types:
-    keys, x, sorted_trips = bus_types_keys[bus_type]
-    for j in range(1, len(sorted_trips)):
-        trip1 = sorted_trips[j-1]
-        trip2 = sorted_trips[j]
-        travel_times[(trip1, trip2)] = (df_combined_dict.loc[trip1,'ServiceDateTime_max'] +
-                                         get_distance(df_combined_dict.loc[trip1,'Stop_last'], df_combined_dict.loc[trip2,'Stop_first']) / mean_v)*3600
-
-# =============================================================================
-# def create_constraint(bus_key, S, year_keys, bus_types_keys, df_combined_dict, travel_times):
-#     constraints = []
-#     for s in S:
-#         for y in year_keys:
-#             for bus_type in bus_types:
-#                 keys, x, sorted_trips = bus_types_keys[bus_type]
-#                 for j in range(1, len(sorted_trips)):
-#                     trip1 = sorted_trips[j-1]
-#                     trip2 = sorted_trips[j]
-#                     constraints.append(
-#                         x[s, bus_key, y, trip2] * df_combined_dict.loc[trip2,'ServiceDateTime_min'] >=
-#                         x[s, bus_key, y, trip1] * travel_times[(trip1, trip2)]
-#                     )
-#     return constraints
-# 
-# # Using a pool of 35 processes
-# pool = mp.Pool(processes=35)
-# total_tasks = len(bus_keys)
-# with tqdm(total=total_tasks) as pbar:
-#     for i, _ in enumerate(pool.imap_unordered(partial(create_constraint, S=S, year_keys=year_keys, bus_types_keys=bus_types_keys, df_combined_dict=df_combined_dict, travel_times=travel_times), bus_keys)):
-#         pbar.update()
-#     constraints = _
-# pool.close()
-# 
-# 
-# # Flatten list of constraints
-# constraints = [item for sublist in constraints for item in sublist]
-# 
-# # Add constraints to model
-# model.addConstrs(constraints, 'travel_time')
-# =============================================================================
-
-### Remove multiprocessing since it was causing an error
-def create_constraint(bus_key, S, year_keys, bus_types_keys, df_combined_dict, travel_times):
-    constraints = []
-    for s in S:
-        for y in year_keys:
-            for bus_type in bus_types:
-                keys, x, sorted_trips = bus_types_keys[bus_type]
-                for j in range(1, len(sorted_trips)):
-                    trip1 = sorted_trips[j-1]
-                    trip2 = sorted_trips[j]
-                    constraints.append(
-                        x[s, bus_key, y, trip2] * df_combined_dict.loc[trip2,'ServiceDateTime_min'] >=
-                        x[s, bus_key, y, trip1] * travel_times[(trip1, trip2)]
-                    )
-    return constraints
-
-for bus_key in tqdm(bus_keys, desc="Generating constraints"):
-    constraints = create_constraint(bus_key, S, year_keys, bus_types_keys, df_combined_dict, travel_times)
-    for c in constraints:
-        model.addConstr(c, 'travel_time')
-
-
-print("Done defining constraint 8")
-report_usage()
-
 # Constraint 1: Linking the number of each type of bus at each year variable with trip assignment variables
 model.addConstrs(
    (y_CDB[s, y] == quicksum(x_CDB[s, i, y, key] for i in bus_keys for key in keys_CDB) for s in S for y in year_keys)
@@ -551,9 +440,76 @@ print("Done defining constraint 6")
 report_usage()
 
  
+# Constraint 7: Enforce the sequence of the trips. If u[s, i, y, (t, bus_type)] represents the sequence number of trip t of type bus_type assigned to bus i in year y under scenario s
+bus_types = ['CDB', 'HEB', 'BEB']
+for s in S:
+    for i in bus_keys:
+        for y in year_keys:
+            for bus_type in bus_types:
+                if bus_type == 'CDB':
+                    keys = keys_CDB
+                    x = x_CDB
+                elif bus_type == 'HEB':
+                    keys = keys_HEB
+                    x = x_HEB
+                else:  # bus_type == 'BEB'
+                    keys = keys_BEB
+                    x = x_BEB
+                sorted_trips = sorted(keys, key=lambda x: df_combined_dict.loc[x,'ServiceDateTime_min'])
+                for j in range(len(sorted_trips) - 1):
+                    model.addConstr(u[s, i, y, sorted_trips[j], bus_type] <= u[s, i, y, sorted_trips[j + 1], bus_type], 'sequence')
+                    
+print("Done defining constraint 7")
+report_usage()
 
 
-       
+
+# Constraint 8: The start times of each trip in the sequence of all trips assigned to a unique bus is greater than equal to the start time of the previous trip plus the time it takes from the last stop of the first trip to the first stop of the second trip
+df_combined_dict['ServiceDateTime_min'] = df_combined_dict['ServiceDateTime_min'].apply(lambda x: x.timestamp())
+df_combined_dict['ServiceDateTime_max'] = df_combined_dict['ServiceDateTime_max'].apply(lambda x: x.timestamp())
+sorted_trips_CDB = sorted(keys_CDB, key=lambda x: df_combined_dict.loc[x,'ServiceDateTime_min'])
+sorted_trips_HEB = sorted(keys_HEB, key=lambda x: df_combined_dict.loc[x,'ServiceDateTime_min'])
+sorted_trips_BEB = sorted(keys_BEB, key=lambda x: df_combined_dict.loc[x,'ServiceDateTime_min'])
+
+bus_types_keys = {'CDB': (keys_CDB, x_CDB, sorted_trips_CDB),
+                  'HEB': (keys_HEB, x_HEB, sorted_trips_HEB),
+                  'BEB': (keys_BEB, x_BEB, sorted_trips_BEB)}
+
+pbar = tqdm(total=len(S)*len(bus_keys)*len(year_keys)*len(bus_types)*len(sorted_trips_CDB))  # assuming all sorted_trips have the same length, change if not
+# Pre-calculate travel times
+travel_times = {}
+for bus_type in bus_types:
+    keys, x, sorted_trips = bus_types_keys[bus_type]
+    for j in range(1, len(sorted_trips)):
+        trip1 = sorted_trips[j-1]
+        trip2 = sorted_trips[j]
+        travel_times[(trip1, trip2)] = (df_combined_dict.loc[trip1,'ServiceDateTime_max'] +
+                                         get_distance(df_combined_dict.loc[trip1,'Stop_last'], df_combined_dict.loc[trip2,'Stop_first']) / mean_v)*3600
+
+def create_constraint(bus_key, S, year_keys, bus_types_keys, df_combined_dict, travel_times):
+    constraints = []
+    for s in S:
+        for y in year_keys:
+            for bus_type in bus_types:
+                keys, x, sorted_trips = bus_types_keys[bus_type]
+                for j in range(1, len(sorted_trips)):
+                    trip1 = sorted_trips[j-1]
+                    trip2 = sorted_trips[j]
+                    constraints.append(
+                        x[s, bus_key, y, trip2] * df_combined_dict.loc[trip2,'ServiceDateTime_min'] >=
+                        x[s, bus_key, y, trip1] * travel_times[(trip1, trip2)]
+                    )
+    return constraints
+
+for bus_key in tqdm(bus_keys, desc="Generating constraints"):
+    constraints = create_constraint(bus_key, S, year_keys, bus_types_keys, df_combined_dict, travel_times)
+    for c in constraints:
+        model.addConstr(c, 'travel_time')
+
+
+print("Done defining constraint 8")
+report_usage()
+     
 
 # Print model statistics
 model.update()
@@ -563,39 +519,6 @@ print(model)
 model.tune()
 model.optimize()
 report_usage()
-
-
-# =============================================================================
-# # Stage 2: Update assignments to enforce the "reachable" constraint
-# while True:
-#     # Optimize the model
-#     model.optimize()
-#     
-#     # Constraint 7: Check for violations of the "reachable" trips for a given bus
-#     violations = []
-#     for s in S:
-#         for i in bus_keys:
-#             for y in year_keys:
-#                 assigned_trips = [trip for trip in keys_CDB + keys_HEB + keys_BEB if model.getVarByName(f'x_{s}_{i}_{y}_{trip}').x > 0.5]
-#                 for trip1 in assigned_trips:
-#                     if not any(can_go(trip1, trip2) for trip2 in assigned_trips if trip1 != trip2):
-#                         violations.append((s, i, y, trip1))
-#     
-#     if not violations:
-#         # If there are no more violations, we're done
-#         break
-#     
-#     # Otherwise, reassign the trips that caused violations and re-optimize
-#     for s, i, y, trip in violations:
-#         var = model.getVarByName(f'x_{s}_{i}_{y}_{trip}')
-#         var.lb = 0
-#         var.ub = 0
-#         model.addConstr(var == 0)
-# 
-# 
-# print("Done completing stage 2")
-# report_usage()
-# =============================================================================
 
 
 # Prepare dictionaries of coeesicients to save
@@ -610,7 +533,20 @@ coeff_df = pd.DataFrame(list(coeff_dict_CDB.items()) + list(coeff_dict_HEB.items
 vars = model.getVars()
 
 # Create DataFrame directly from the variables and their values
-df = pd.DataFrame({"Variable": [v.varName for v in vars], "Value": [v.x for v in vars]})
+if model.status == grb.GRB.Status.OPTIMAL:
+    df = pd.DataFrame({"Variable": [v.varName for v in vars], "Value": [v.X for v in vars]})
+else:
+    print('No solution found')
+
+# Identify the smallest infeasible subset of constraints and variable bounds
+if model.status == grb.GRB.INFEASIBLE:
+    model.computeIIS()
+    model.write("model.ilp")
+
+# Generate a feasibility report
+if model.status == grb.GRB.INFEASIBLE:
+    model.feasRelaxS(0, False, False, True)
+    model.optimize()
 
 # Get optimal objective value
 optimal_value = model.ObjVal
