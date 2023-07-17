@@ -225,7 +225,7 @@ report_usage()
 model.setParam('OutputFlag', 1)
 
 # Set solver parameters
-model.setParam('MIPFocus', 1)  # This parameter lets control the MIP solver's focus. The options are: 1. Finds feasible solutions quickly. This is useful if the problem is difficult to solve and you're satisfied with any feasible solution. 2: Works to improve the best bound. This is useful when the best objective bound is poor. 3: Tries to prove optimality of the best solution found. This is useful if you're sure a nearly-optimal solution exists and you want the solver to focus on proving its optimality.
+model.setParam('MIPFocus', 1)  # This parameter lets control the  In. The options are: 1. Finds feasible solutions quickly. This is useful if the problem is difficult to solve and you're satisfied with any feasible solution. 2: Works to improve the best bound. This is useful when the best objective bound is poor. 3: Tries to prove optimality of the best solution found. This is useful if you're sure a nearly-optimal solution exists and you want the solver to focus on proving its optimality.
 model.setParam('Heuristics', 0.5)  # Controls the effort put into MIP heuristics (range is 0 to 1). A higher value means more effort is put into finding solutions, but at the cost of slower overall performance. 
 #model.setParam('Presolve', 1)  # This parameter controls the presolve level. Presolve is a phase during which the solver tries to simplify the model before the actual optimization takes place. A higher presolve level means the solver puts more effort into simplification, which can often reduce solving time. (-1: automatic (default) - Gurobi will decide based on the problem characteristics whether to use presolve or not.0: no presolve. 1: conservative presolve. 2: aggressive presolve.)
 #model.setParam('MIPGap', 0.01) # This parameter sets the relative gap for the MIP search termination. The solver will stop as soon as the relative gap between the lower and upper objective bound is less than this value. The lower this value, the closer to optimality the solution has to be before the solver stops.  
@@ -304,6 +304,11 @@ u = model.addVars(S, bus_keys, year_keys, [(key, 'CDB') for key in keys_CDB] +
                                           [(key, 'HEB') for key in keys_HEB] +
                                           [(key, 'BEB') for key in keys_BEB], 
                   vtype=GRB.INTEGER, name='u')
+#u_CDB = model.addVars(S, bus_keys, year_keys, keys_CDB, vtype=GRB.INTEGER, name='u_CDB')
+#u_HEB = model.addVars(S, bus_keys, year_keys, keys_HEB, vtype=GRB.INTEGER, name='u_HEB')
+#u_BEB = model.addVars(S, bus_keys, year_keys, keys_BEB, vtype=GRB.INTEGER, name='u_BEB')
+
+
 ### The variable u represents the position of a trip in the route of a bus. If a bus serves n trips, the trips should be numbered from 1 to n, in the order they are served.
 print("Done setting u variables")
 report_usage()
@@ -510,6 +515,41 @@ for bus_key in tqdm(bus_keys, desc="Generating constraints"):
 print("Done defining constraint 8")
 report_usage()
      
+# Constraint 9: Linking the bus type variable with trip assignment variables
+model.addConstrs(
+    (x_CDB[s, i, y, key] <= z_CDB[s, i, y] for s in S for i in bus_keys for y in year_keys for key in keys_CDB),
+    name="C9_CDB"
+)
+model.addConstrs(
+    (x_HEB[s, i, y, key] <= z_HEB[s, i, y] for s in S for i in bus_keys for y in year_keys for key in keys_HEB),
+    name="C9_HEB"
+)
+model.addConstrs(
+    (x_BEB[s, i, y, key] <= z_BEB[s, i, y] for s in S for i in bus_keys for y in year_keys for key in keys_BEB),
+    name="C9_BEB"
+)
+
+print("Done defining constraint 9")
+report_usage()
+
+
+# Constraint 10: Linking the sequence variable with trip assignment variables
+model.addConstrs(
+    (u[s, i, y, key, 'CDB'] <= quicksum(x_CDB[s, i, y, key] for key in keys_CDB) for s in S for i in bus_keys for y in year_keys for key in keys_CDB),
+    name="C10_CDB"
+)
+model.addConstrs(
+    (u[s, i, y, key, 'HEB'] <= quicksum(x_HEB[s, i, y, key] for key in keys_HEB) for s in S for i in bus_keys for y in year_keys for key in keys_HEB),
+    name="C10_HEB"
+)
+model.addConstrs(
+    (u[s, i, y, key, 'BEB'] <= quicksum(x_BEB[s, i, y, key] for key in keys_BEB) for s in S for i in bus_keys for y in year_keys for key in keys_BEB),
+    name="C10_BEB"
+)
+
+print("Done defining constraint 10")
+report_usage()
+
 
 # Print model statistics
 model.update()
