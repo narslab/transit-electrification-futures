@@ -306,8 +306,8 @@ u = model.addVars(S, bus_keys, year_keys, [(key, 'CDB') for key in keys_CDB] +
 #u_HEB = model.addVars(S, bus_keys, year_keys, keys_HEB, vtype=GRB.INTEGER, name='u_HEB')
 #u_BEB = model.addVars(S, bus_keys, year_keys, keys_BEB, vtype=GRB.INTEGER, name='u_BEB')
 
+### The variable u represents the position of a trip in the set of assigned trips to a bus. If a bus serves n trips, the trips should be numbered from 1 to n, in the order they are served.
 
-### The variable u represents the position of a trip in the route of a bus. If a bus serves n trips, the trips should be numbered from 1 to n, in the order they are served.
 print("Done setting u variables")
 report_usage()
 
@@ -361,6 +361,7 @@ model.addConstrs(
 ,
     name="C1_BEB"
 )
+
 ### Aditional explanation: 
 #x_CDB[i, y, d, r, rho] >= 1 is a binary condition that checks if bus 'i' is used at least once in a trip during year 'y'. This will return True (or 1) if bus 'i' is used, and False (or 0) otherwise. 
 #Regardless of the values of d, r, and rho, the result of this expression is either 1 (if the bus 'i' is used at least once) or 0 (if the bus 'i' is not used at all).
@@ -389,24 +390,42 @@ report_usage()
 
 # Constraint 3: Linking the sequence variable with trip assignment variables
 ###the sequence in which a bus serves its trips cannot exceed the total number of trips assigned to that bus
-model.addConstrs(
-    (u[s, i, y, key, 'CDB'] <= quicksum(x_CDB[s, i, y, key] for key in keys_CDB) for s in S for i in bus_keys for y in year_keys for key in keys_CDB),
-    name="C3_CDB"
-)
-model.addConstrs(
-    (u[s, i, y, key, 'HEB'] <= quicksum(x_HEB[s, i, y, key] for key in keys_HEB) for s in S for i in bus_keys for y in year_keys for key in keys_HEB),
-    name="C3_HEB"
-)
-model.addConstrs(
-    (u[s, i, y, key, 'BEB'] <= quicksum(x_BEB[s, i, y, key] for key in keys_BEB) for s in S for i in bus_keys for y in year_keys for key in keys_BEB),
-    name="C3_BEB"
-)
+# =============================================================================
+# model.addConstrs(
+#     (u[s, i, y, key, 'CDB'] <= quicksum(x_CDB[s, i, y, key] for key in keys_CDB) for s in S for i in bus_keys for y in year_keys for key in keys_CDB),
+#     name="C3_CDB"
+# )
+# model.addConstrs(
+#     (u[s, i, y, key, 'HEB'] <= quicksum(x_HEB[s, i, y, key] for key in keys_HEB) for s in S for i in bus_keys for y in year_keys for key in keys_HEB),
+#     name="C3_HEB"
+# )
+# model.addConstrs(
+#     (u[s, i, y, key, 'BEB'] <= quicksum(x_BEB[s, i, y, key] for key in keys_BEB) for s in S for i in bus_keys for y in year_keys for key in keys_BEB),
+#     name="C3_BEB"
+# )
+# 
+# =============================================================================
+
+# Improve constaint 3 to do pre-calculation and see the progress 
+# Pre-calculate sums
+sums_CDB = {(s, i, y): quicksum(x_CDB[s, i, y, key] for key in keys_CDB) for s in S for i in bus_keys for y in year_keys}
+sums_HEB = {(s, i, y): quicksum(x_HEB[s, i, y, key] for key in keys_HEB) for s in S for i in bus_keys for y in year_keys}
+sums_BEB = {(s, i, y): quicksum(x_BEB[s, i, y, key] for key in keys_BEB) for s in S for i in bus_keys for y in year_keys}
+
+pbar = tqdm(total=3*len(S)*len(bus_keys)*len(year_keys)*len(keys_CDB))  # assuming all keys have the same length
+
+# Add constraints
+for bus_type, sums, keys in [('CDB', sums_CDB, keys_CDB), ('HEB', sums_HEB, keys_HEB), ('BEB', sums_BEB, keys_BEB)]:
+    for s in S:
+        for i in bus_keys:
+            for y in year_keys:
+                for key in keys:
+                    model.addConstr(u[s, i, y, key, bus_type] <= sums[(s, i, y)], name=f"C3_{bus_type}")
+                    pbar.update()
+pbar.close()
 
 print("Done defining constraint 3")
 report_usage()
-
-# Split constraint 3 creation for a chunk of buses to see the progress
-
 
 # Constraint 4: The sum of decision variables for each bus and year across all powertrains should be <= 1
 model.addConstrs(
