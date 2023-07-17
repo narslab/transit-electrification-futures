@@ -5,8 +5,6 @@ import time
 import psutil
 import os
 from tqdm import tqdm
-import multiprocessing as mp
-from functools import partial
 import gurobipy as grb
 
 
@@ -406,6 +404,8 @@ model.addConstrs(
 
 print("Done defining constraint 3")
 report_usage()
+
+# Split constraint 3 creation for a chunk of buses to see the progress
 
 
 # Constraint 4: The sum of decision variables for each bus and year across all powertrains should be <= 1
