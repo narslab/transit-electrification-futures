@@ -371,6 +371,7 @@ report_usage()
 
 
 # Constraint 2: Linking the bus type variable with trip assignment variables
+###you can only assign a trip to a bus of type CDB if that bus is available
 model.addConstrs(
     (x_CDB[s, i, y, key] <= z_CDB[s, i, y] for s in S for i in bus_keys for y in year_keys for key in keys_CDB),
     name="C2_CDB"
@@ -389,6 +390,7 @@ report_usage()
 
 
 # Constraint 3: Linking the sequence variable with trip assignment variables
+###the sequence in which a bus serves its trips cannot exceed the total number of trips assigned to that bus
 model.addConstrs(
     (u[s, i, y, key, 'CDB'] <= quicksum(x_CDB[s, i, y, key] for key in keys_CDB) for s in S for i in bus_keys for y in year_keys for key in keys_CDB),
     name="C3_CDB"
@@ -480,7 +482,6 @@ print("Done defining constraint 9")
 report_usage()
 
 
-
 # Constraint 10: The start times of each trip in the sequence of all trips assigned to a unique bus is greater than equal to the start time of the previous trip plus the time it takes from the last stop of the first trip to the first stop of the second trip
 df_combined_dict['ServiceDateTime_min'] = df_combined_dict['ServiceDateTime_min'].apply(lambda x: x.timestamp())
 df_combined_dict['ServiceDateTime_max'] = df_combined_dict['ServiceDateTime_max'].apply(lambda x: x.timestamp())
@@ -527,8 +528,6 @@ for bus_key in tqdm(bus_keys, desc="Generating constraints"):
 print("Done defining constraint 10")
 report_usage()
      
-
-
 
 # Print model statistics
 model.update()
