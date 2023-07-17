@@ -383,7 +383,7 @@ model.addConstrs(
     name="C1_HEB"
 )
 model.addConstrs(
-    (y_BEB[s, y] == quicksum(x_BEB[s, i, y, key] for i in bus_keys for key in keys_CDB) for s in S for y in year_keys)
+    (y_BEB[s, y] == quicksum(x_BEB[s, i, y, key] for i in bus_keys for key in keys_BEB) for s in S for y in year_keys)
 ,
     name="C1_BEB"
 )
