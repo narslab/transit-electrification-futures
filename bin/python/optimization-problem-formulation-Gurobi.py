@@ -344,30 +344,6 @@ df_combined_dict['Duration'] = (df_combined_dict['ServiceDateTime_max'] - df_com
 # Compute the distance between the first and last stop of each trip
 df_combined_dict['Distance'] = df_combined_dict.apply(lambda row: get_distance(row['Stop_first'], row['Stop_last']), axis=1)
 
-# =============================================================================
-# # Initialize an empty graph
-# graph = {trip: [] for trip in df_combined_dict.index}
-# 
-# # Populate the graph with edges
-# for trip1 in df_combined_dict.index:
-#     for trip2 in df_combined_dict.index:
-#         time = (df_combined_dict.loc[trip2]['ServiceDateTime_min'] - df_combined_dict.loc[trip1]['ServiceDateTime_max']).total_seconds() / 60
-#         if time >= trips_time_lag :  # ensure there's a 10-minute gap
-#             distance = get_distance(df_combined_dict.loc[trip1]['Stop_last'], df_combined_dict.loc[trip2]['Stop_first'])
-#             if distance <= trips_distance_lag :  # ensure distance is no more than 5 miles
-#                 graph[trip1].append((trip2, time, distance))
-# 
-# print("Done defining a graph of all the trips")
-# report_usage()
-# 
-# # Define a function to check if a bus can go from trip1 to trip2
-# def can_go(trip1, trip2):
-#     for next_trip, time, distance in graph[trip1]:
-#         if next_trip == trip2:
-#             return True
-#     return False
-# =============================================================================
-
 
 ## Define Constraints
 
@@ -393,16 +369,52 @@ model.addConstrs(
 print("Done defining constraint 1")
 report_usage()
 
-# Constraint 2: The sum of decision variables for each bus and year across all powertrains should be <= 1
+
+# Constraint 2: Linking the bus type variable with trip assignment variables
 model.addConstrs(
-    (z_CDB[s, i, y] + z_HEB[s, i, y] + z_BEB[s, i, y] <= 1 for s in S for i in bus_keys for y in year_keys),
-    name="C2"
+    (x_CDB[s, i, y, key] <= z_CDB[s, i, y] for s in S for i in bus_keys for y in year_keys for key in keys_CDB),
+    name="C2_CDB"
 )
+model.addConstrs(
+    (x_HEB[s, i, y, key] <= z_HEB[s, i, y] for s in S for i in bus_keys for y in year_keys for key in keys_HEB),
+    name="C2_HEB"
+)
+model.addConstrs(
+    (x_BEB[s, i, y, key] <= z_BEB[s, i, y] for s in S for i in bus_keys for y in year_keys for key in keys_BEB),
+    name="C2_BEB"
+)
+
 print("Done defining constraint 2")
 report_usage()
 
 
-# Constraint 3: Each trip is assigned to exactly one bus
+# Constraint 3: Linking the sequence variable with trip assignment variables
+model.addConstrs(
+    (u[s, i, y, key, 'CDB'] <= quicksum(x_CDB[s, i, y, key] for key in keys_CDB) for s in S for i in bus_keys for y in year_keys for key in keys_CDB),
+    name="C3_CDB"
+)
+model.addConstrs(
+    (u[s, i, y, key, 'HEB'] <= quicksum(x_HEB[s, i, y, key] for key in keys_HEB) for s in S for i in bus_keys for y in year_keys for key in keys_HEB),
+    name="C3_HEB"
+)
+model.addConstrs(
+    (u[s, i, y, key, 'BEB'] <= quicksum(x_BEB[s, i, y, key] for key in keys_BEB) for s in S for i in bus_keys for y in year_keys for key in keys_BEB),
+    name="C3_BEB"
+)
+
+print("Done defining constraint 3")
+report_usage()
+
+
+# Constraint 4: The sum of decision variables for each bus and year across all powertrains should be <= 1
+model.addConstrs(
+    (z_CDB[s, i, y] + z_HEB[s, i, y] + z_BEB[s, i, y] <= 1 for s in S for i in bus_keys for y in year_keys),
+    name="C4"
+)
+print("Done defining constraint 4")
+report_usage()
+
+# Constraint 5: Each trip is assigned to exactly one bus
 unique_keys = set(keys_CDB) | set(keys_HEB) | set(keys_BEB)  # Union of all keys
 model.addConstrs(
     (
@@ -412,40 +424,40 @@ model.addConstrs(
             quicksum(x_BEB[s, i, y, key] for s in S for i in bus_keys for y in year_keys if key in energy_BEB_dict)
         ) == 1 for key in unique_keys
     ), 
-    name="C3"
-)
-print("Done defining constraint 3")
-report_usage()
-
-# Constraint 4: Maximum daily charging capacity
-model.addConstrs(
-    (quicksum(energy_BEB_dict[key]['Energy'] * x_BEB.sum(s, i, y, key) for s in S for i in bus_keys for key in keys_BEB) <= M_cap[y] for y in year_keys),
-    name="C4"
-)
-print("Done defining constraint 4")
-report_usage()
-
-# Constraint 5: Bus Range Constraint- Add a constraint that ensures that a bus doesn't exceed its maximum range in a day
-model.addConstrs(
-    (quicksum(energy_BEB_dict[key]['Energy'] * x_BEB[s, i, y, key] for s in S for i in bus_keys for key in keys_BEB) <= cap for y in year_keys),
     name="C5"
 )
 print("Done defining constraint 5")
 report_usage()
 
-# Constraint 6: Maximum yearly investment
+# Constraint 6: Maximum daily charging capacity
 model.addConstrs(
-    (quicksum(cost_inv[('C', year)] * y_CDB.sum(year, '*') for year in range(y + 1)) +
-    quicksum(cost_inv[('H', year)] * y_HEB.sum(year, '*') for year in range(y + 1)) +
-    quicksum(cost_inv[('B', year)] * y_BEB.sum(year, '*') for year in range(y + 1)) <= M_inv[s, y]
-    for y in year_keys for s in S),
+    (quicksum(energy_BEB_dict[key]['Energy'] * x_BEB.sum(s, i, y, key) for s in S for i in bus_keys for key in keys_BEB) <= M_cap[y] for y in year_keys),
     name="C6"
 )
 print("Done defining constraint 6")
 report_usage()
 
+# Constraint 7: Bus Range Constraint- Add a constraint that ensures that a bus doesn't exceed its maximum range in a day
+model.addConstrs(
+    (quicksum(energy_BEB_dict[key]['Energy'] * x_BEB[s, i, y, key] for s in S for i in bus_keys for key in keys_BEB) <= cap for y in year_keys),
+    name="C7"
+)
+print("Done defining constraint 7")
+report_usage()
+
+# Constraint 8: Maximum yearly investment
+model.addConstrs(
+    (quicksum(cost_inv[('C', year)] * y_CDB.sum(year, '*') for year in range(y + 1)) +
+    quicksum(cost_inv[('H', year)] * y_HEB.sum(year, '*') for year in range(y + 1)) +
+    quicksum(cost_inv[('B', year)] * y_BEB.sum(year, '*') for year in range(y + 1)) <= M_inv[s, y]
+    for y in year_keys for s in S),
+    name="C8"
+)
+print("Done defining constraint 8")
+report_usage()
+
  
-# Constraint 7: Enforce the sequence of the trips. If u[s, i, y, (t, bus_type)] represents the sequence number of trip t of type bus_type assigned to bus i in year y under scenario s
+# Constraint 9: Enforce the sequence of the trips. If u[s, i, y, (t, bus_type)] represents the sequence number of trip t of type bus_type assigned to bus i in year y under scenario s
 bus_types = ['CDB', 'HEB', 'BEB']
 for s in S:
     for i in bus_keys:
@@ -462,14 +474,14 @@ for s in S:
                     x = x_BEB
                 sorted_trips = sorted(keys, key=lambda x: df_combined_dict.loc[x,'ServiceDateTime_min'])
                 for j in range(len(sorted_trips) - 1):
-                    model.addConstr(u[s, i, y, sorted_trips[j], bus_type] <= u[s, i, y, sorted_trips[j + 1], bus_type], 'sequence')
+                    model.addConstr(u[s, i, y, sorted_trips[j], bus_type] <= u[s, i, y, sorted_trips[j + 1], bus_type], 'sequence_c9')
                     
-print("Done defining constraint 7")
+print("Done defining constraint 9")
 report_usage()
 
 
 
-# Constraint 8: The start times of each trip in the sequence of all trips assigned to a unique bus is greater than equal to the start time of the previous trip plus the time it takes from the last stop of the first trip to the first stop of the second trip
+# Constraint 10: The start times of each trip in the sequence of all trips assigned to a unique bus is greater than equal to the start time of the previous trip plus the time it takes from the last stop of the first trip to the first stop of the second trip
 df_combined_dict['ServiceDateTime_min'] = df_combined_dict['ServiceDateTime_min'].apply(lambda x: x.timestamp())
 df_combined_dict['ServiceDateTime_max'] = df_combined_dict['ServiceDateTime_max'].apply(lambda x: x.timestamp())
 sorted_trips_CDB = sorted(keys_CDB, key=lambda x: df_combined_dict.loc[x,'ServiceDateTime_min'])
@@ -509,46 +521,13 @@ def create_constraint(bus_key, S, year_keys, bus_types_keys, df_combined_dict, t
 for bus_key in tqdm(bus_keys, desc="Generating constraints"):
     constraints = create_constraint(bus_key, S, year_keys, bus_types_keys, df_combined_dict, travel_times)
     for c in constraints:
-        model.addConstr(c, 'travel_time')
+        model.addConstr(c, 'travel_time_c10')
 
-
-print("Done defining constraint 8")
-report_usage()
-     
-# Constraint 9: Linking the bus type variable with trip assignment variables
-model.addConstrs(
-    (x_CDB[s, i, y, key] <= z_CDB[s, i, y] for s in S for i in bus_keys for y in year_keys for key in keys_CDB),
-    name="C9_CDB"
-)
-model.addConstrs(
-    (x_HEB[s, i, y, key] <= z_HEB[s, i, y] for s in S for i in bus_keys for y in year_keys for key in keys_HEB),
-    name="C9_HEB"
-)
-model.addConstrs(
-    (x_BEB[s, i, y, key] <= z_BEB[s, i, y] for s in S for i in bus_keys for y in year_keys for key in keys_BEB),
-    name="C9_BEB"
-)
-
-print("Done defining constraint 9")
-report_usage()
-
-
-# Constraint 10: Linking the sequence variable with trip assignment variables
-model.addConstrs(
-    (u[s, i, y, key, 'CDB'] <= quicksum(x_CDB[s, i, y, key] for key in keys_CDB) for s in S for i in bus_keys for y in year_keys for key in keys_CDB),
-    name="C10_CDB"
-)
-model.addConstrs(
-    (u[s, i, y, key, 'HEB'] <= quicksum(x_HEB[s, i, y, key] for key in keys_HEB) for s in S for i in bus_keys for y in year_keys for key in keys_HEB),
-    name="C10_HEB"
-)
-model.addConstrs(
-    (u[s, i, y, key, 'BEB'] <= quicksum(x_BEB[s, i, y, key] for key in keys_BEB) for s in S for i in bus_keys for y in year_keys for key in keys_BEB),
-    name="C10_BEB"
-)
 
 print("Done defining constraint 10")
 report_usage()
+     
+
 
 
 # Print model statistics
