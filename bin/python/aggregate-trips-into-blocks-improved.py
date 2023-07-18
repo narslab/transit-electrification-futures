@@ -43,7 +43,6 @@ for route, group in df.groupby('Route'):
             
             if not next_trip.empty:
                 bundle.append(next_trip.index[0])
-                pbar.update(1)  # Update the progress bar
             else:
                 break
 
@@ -58,6 +57,9 @@ for route, group in df.groupby('Route'):
             i = unassigned_trips.index[0]
         else:
             break
+        
+        pbar.update(len(bundle))  # Update the progress bar after each row is processed
+
 
 # Close the progress bar
 pbar.close()
