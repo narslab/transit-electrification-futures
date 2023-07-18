@@ -41,6 +41,7 @@ while i < len(df):
 
         if not next_trip.empty:
             bundle.append(next_trip.index[0])
+            pbar.update(1)  # Update the progress bar
         else:
             break
 
@@ -52,8 +53,6 @@ while i < len(df):
     # Move to the next trip that doesn't have a block_id yet
     i = df[df['block_id'].isna()].index[0]
     
-    # Update the progress bar
-    pbar.update(len(bundle))
 
 # Close the progress bar
 pbar.close()
