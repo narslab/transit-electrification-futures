@@ -3,7 +3,6 @@ import numpy as np
 from datetime import timedelta
 from tqdm import tqdm
 
-
 df = pd.read_csv(r'../../results/trips-mapped-into-blocks.csv', low_memory=False)
 
 # Ensure Start_time and End_time are datetime objects
@@ -32,16 +31,14 @@ while i < len(df):
     bundle = [i]
     
     # Try adding trips to the bundle
-    while len(bundle) < 10:
-        # Find the next trip that starts within 0.6 minutes after the last one in the bundle ends and shares the same route
-        next_trip = df[(df['Start_time'] - df.at[bundle[-1], 'End_time'] <= timedelta(minutes=0.6)) & 
-                       (df['Route'] == df.at[bundle[-1], 'Route']) & 
-                       (df['block_id'].isna()) &
-                       (df.index > bundle[-1])]
-
-        if not next_trip.empty:
-            bundle.append(next_trip.index[0])
+    for j in range(i + 1, len(df)):
+        if df.at[j, 'block_id'] is not np.nan:
+            continue
+        if (df.at[j, 'Start_time'] - df.at[bundle[-1], 'End_time'] <= timedelta(minutes=0.6)) and (df.at[j, 'Route'] == df.at[bundle[-1], 'Route']):
+            bundle.append(j)
             pbar.update(1)  # Update the progress bar
+            if len(bundle) == 10:
+                break
         else:
             break
 
@@ -51,8 +48,7 @@ while i < len(df):
         block_id += 1
 
     # Move to the next trip that doesn't have a block_id yet
-    i = df[df['block_id'].isna()].index[0]
-    
+    i = j + 1
 
 # Close the progress bar
 pbar.close()
