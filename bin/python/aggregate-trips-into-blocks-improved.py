@@ -18,26 +18,29 @@ df.reset_index(drop=True, inplace=True)
 # Initialize an empty array for block_ids
 df['block_id'] = np.nan
 
-# Initialize block_id
+# Initialize variables
 block_id = 1
 
 # Initialize the progress bar
 pbar = tqdm(total=len(df))
 
-# Iterate over DataFrame grouped by 'Route'
-for route, group in df.groupby('Route'):
-    group.sort_values(by=['Start_time', 'End_time'], inplace=True)
-
-    # Iterate over rows in group
-    i = 0
-    while i < len(group):
+# Iterate over the unique routes
+for route in df['Route'].unique():
+    # Work on a subset of df with only the current route
+    group = df[df['Route'] == route].copy()
+    
+    # Start with the first trip
+    i = group.index[0]
+    
+    # Iterate over DataFrame rows of the group
+    while i in group.index:
         # Start a bundle
         bundle = [i]
         
         # Try adding trips to the bundle
         while len(bundle) < 10:
             # Find the next trip that starts within 0.6 minutes after the last one in the bundle ends
-            next_trip = group[(group['Start_time'] - group.iloc[bundle[-1]]['End_time'] <= timedelta(minutes=0.6)) & 
+            next_trip = group[(group['Start_time'] - group.at[bundle[-1], 'End_time'] <= timedelta(minutes=0.6)) & 
                               (group['block_id'].isna()) &
                               (group.index > bundle[-1])]
             
@@ -45,12 +48,12 @@ for route, group in df.groupby('Route'):
                 bundle.append(next_trip.index[0])
             else:
                 break
-
+        
         # If a bundle of at least 2 was formed, assign a block_id to it
         if len(bundle) >= 2:
             df.loc[bundle, 'block_id'] = block_id
             block_id += 1
-
+        
         # Move to the next trip that doesn't have a block_id yet
         unassigned_trips = group[group['block_id'].isna()]
         if not unassigned_trips.empty:
@@ -58,8 +61,7 @@ for route, group in df.groupby('Route'):
         else:
             break
         
-        pbar.update(len(bundle))  # Update the progress bar after each row is processed
-
+        pbar.update(len(bundle))  # Update the progress bar
 
 # Close the progress bar
 pbar.close()
