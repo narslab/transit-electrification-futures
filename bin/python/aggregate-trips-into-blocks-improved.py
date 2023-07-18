@@ -34,6 +34,7 @@ with tqdm(total=len(routes), desc='Routes', position=0) as pbar_routes:
 
                 if len(bundle) >= 2:
                     df.loc[bundle, 'block_id'] = block_id
+                    print("A new bundle formed:", block_id, "len is:", len(bundle))
                     block_id += 1
                 
                 pbar_trips.update(len(bundle))
