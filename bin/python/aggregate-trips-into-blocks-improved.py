@@ -18,37 +18,46 @@ df.reset_index(drop=True, inplace=True)
 # Initialize an empty array for block_ids
 df['block_id'] = np.nan
 
-# Initialize variables
+# Initialize block_id
 block_id = 1
-i = 0
 
 # Initialize the progress bar
 pbar = tqdm(total=len(df))
 
-# Iterate over DataFrame rows
-while i < len(df):
-    # Start a bundle
-    bundle = [i]
-    
-    # Try adding trips to the bundle
-    for j in range(i + 1, len(df)):
-        if df.at[j, 'block_id'] is not np.nan:
-            continue
-        if (df.at[j, 'Start_time'] - df.at[bundle[-1], 'End_time'] <= timedelta(minutes=0.6)) and (df.at[j, 'Route'] == df.at[bundle[-1], 'Route']):
-            bundle.append(j)
-            pbar.update(1)  # Update the progress bar
-            if len(bundle) == 10:
+# Iterate over DataFrame grouped by 'Route'
+for route, group in df.groupby('Route'):
+    group.sort_values(by=['Start_time', 'End_time'], inplace=True)
+
+    # Iterate over rows in group
+    i = 0
+    while i < len(group):
+        # Start a bundle
+        bundle = [i]
+        
+        # Try adding trips to the bundle
+        while len(bundle) < 10:
+            # Find the next trip that starts within 0.6 minutes after the last one in the bundle ends
+            next_trip = group[(group['Start_time'] - group.iloc[bundle[-1]]['End_time'] <= timedelta(minutes=0.6)) & 
+                              (group['block_id'].isna()) &
+                              (group.index > bundle[-1])]
+            
+            if not next_trip.empty:
+                bundle.append(next_trip.index[0])
+                pbar.update(1)  # Update the progress bar
+            else:
                 break
+
+        # If a bundle of at least 2 was formed, assign a block_id to it
+        if len(bundle) >= 2:
+            df.loc[bundle, 'block_id'] = block_id
+            block_id += 1
+
+        # Move to the next trip that doesn't have a block_id yet
+        unassigned_trips = group[group['block_id'].isna()]
+        if not unassigned_trips.empty:
+            i = unassigned_trips.index[0]
         else:
             break
-
-    # If a bundle of at least 2 was formed, assign a block_id to it
-    if len(bundle) >= 2:
-        df.loc[bundle, 'block_id'] = block_id
-        block_id += 1
-
-    # Move to the next trip that doesn't have a block_id yet
-    i = j + 1
 
 # Close the progress bar
 pbar.close()
