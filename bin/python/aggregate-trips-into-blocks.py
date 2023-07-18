@@ -43,30 +43,29 @@ current_block = []
 for route in tqdm(trips_df['Route'].unique()):
     # filter trips for current route
     trips_of_route = trips_df[trips_df['Route'] == route].copy().reset_index(drop=True)
+    last_unassigned_trip_index = 0
+    
+    while last_unassigned_trip_index < len(trips_of_route):
+        current_block = [trips_of_route.iloc[last_unassigned_trip_index]]
+        last_unassigned_trip_index += 1
 
-    # Initialize the list of blocks with the first trip
-    blocks = [[trips_of_route.iloc[0]]]
+        while last_unassigned_trip_index < len(trips_of_route):
+            last_trip = current_block[-1]
+            next_trip = trips_of_route.iloc[last_unassigned_trip_index]
 
-    for i in range(1, len(trips_of_route)):
-        next_trip = trips_of_route.iloc[i]
-        best_block_index = -1
+            # Check if the next trip can be added to the current block based only on time
+            can_add_next_trip = next_trip['ServiceDateTime_start'] >= last_trip['ServiceDateTime_end'] and len(current_block) < 10
 
-        # Find the fullest block that the next trip can be added to
-        for j in range(len(blocks)):
-            last_trip = blocks[j][-1]
-            can_add_next_trip = next_trip['ServiceDateTime_start'] >= last_trip['ServiceDateTime_end'] and len(blocks[j]) < 10
-
+            # If the next trip can be added, add it to the current block
             if can_add_next_trip:
-                if best_block_index == -1 or len(blocks[j]) > len(blocks[best_block_index]):
-                    best_block_index = j
+                current_block.append(next_trip)
+                last_unassigned_trip_index += 1
+            else:
+                break
 
-        # If the next trip can be added to an existing block, add it to the best block
-        if best_block_index != -1:
-            blocks[best_block_index].append(next_trip)
-        # If the next trip can't be added to any block, start a new block
-        else:
-            blocks.append([next_trip])
+        blocks.append(current_block)
 
+        
 # Flatten list of blocks to dataframe for saving, including additional info
 block_df = pd.DataFrame([(i, trip['TripKey'], trip['Route'], trip['ServiceDateTime_start'], trip['ServiceDateTime_end'], trip['Stop_start'], trip['Stop_end']) for i, block in enumerate(blocks) for trip in block], columns=['block_id', 'TripKey', 'Route', 'Start_time', 'End_time', 'First_stop', 'Last_stop'])
 
