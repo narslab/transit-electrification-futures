@@ -25,17 +25,19 @@ with tqdm(total=len(routes), desc='Routes', position=0) as pbar_routes:
                 bundle = [i]
                 while len(bundle) < 10:
                     next_trip = group[(group['Start_time'] - group.at[bundle[-1], 'End_time'] <= timedelta(minutes=0.6)) & 
-                                      (group['block_id'].isna()) &
-                                      (group.index > bundle[-1])]
+                      (group['block_id'].isna()) &
+                      (group.index > bundle[-1])]
+
                     if not next_trip.empty:
                         bundle.append(next_trip.index[0])
                     else:
                         break
 
-                if len(bundle) >= 2:
-                    df.loc[bundle, 'block_id'] = block_id
-                    print("A new bundle formed:", block_id, "len is:", len(bundle))
-                    block_id += 1
+            if len(bundle) >= 2:
+                df.loc[bundle, 'block_id'] = block_id
+                group.loc[bundle, 'block_id'] = block_id  # update 'block_id' in 'group' DataFrame as well
+                print("A new bundle formed:", block_id, "len is:", len(bundle))
+                block_id += 1
                 
                 pbar_trips.update(len(bundle))
 
