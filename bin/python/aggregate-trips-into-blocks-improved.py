@@ -33,19 +33,22 @@ with tqdm(total=len(routes), desc='Routes', position=0) as pbar_routes:
                     else:
                         break
 
-            if len(bundle) >= 2:
-                df.loc[bundle, 'block_id'] = block_id
-                group.loc[bundle, 'block_id'] = block_id  # update 'block_id' in 'group' DataFrame as well
-                print("A new bundle formed:", block_id, "len is:", len(bundle))
-                block_id += 1
-                
-                pbar_trips.update(len(bundle))
+                if len(bundle) >= 2:
+                    df.loc[bundle, 'block_id'] = block_id
+                    group.loc[bundle, 'block_id'] = block_id  # update 'block_id' in 'group' DataFrame as well
+                    print("A new bundle formed:", block_id, "len is:", len(bundle))
+                    block_id += 1
+                    
+                    pbar_trips.update(len(bundle))
 
-                unassigned_trips = group[group['block_id'].isna()]
-                if not unassigned_trips.empty:
-                    i = unassigned_trips.index[0]
+                    unassigned_trips = group[group['block_id'].isna()]
+                    if not unassigned_trips.empty:
+                        i = unassigned_trips.index[0]
+                    else:
+                        i = None
                 else:
-                    i = None
+                    # avoid infinite loop when a block is not formed
+                    i = i + 1 if (i + 1) in group.index else None
         pbar_routes.update(1)
 
 df.to_csv(r'../../results/trips-mapped-into-blocks-improved.csv', index=False)
