@@ -147,7 +147,7 @@ C_max = {
 
 # The maximum yearly investment
 M_inv = {
-    (s, y): C_max[s]
+    (s, y): 0 if y == 0 else C_max[s]
     for y in range(Y) for s in S
 }
 
