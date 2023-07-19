@@ -341,28 +341,25 @@ for s in S:
         )
 
 
-
 print("Done defining constraint 1")
 report_usage()
 
 
-# =============================================================================
-# # Constraint 2: Each trip is assigned to exactly one bus
-# unique_keys = set(keys_CDB) | set(keys_HEB) | set(keys_BEB)  # Union of all keys
-# for key in unique_keys:
-#     for s in S:
-#         for y in year_keys:
-#             model.addConstr(
-#                 (
-#                     quicksum(x_CDB[s, y, key] for y in year_keys if key in energy_CDB_dict) +
-#                     quicksum(x_HEB[s, y, key] for y in year_keys if key in energy_HEB_dict) +
-#                     quicksum(x_BEB[s, y, key] for y in year_keys if key in energy_BEB_dict)
-#                 ) == 1
-#             , name=f"C2_{key}_{s}_{y}")
-# 
-# print("Done defining constraint 2")
-# report_usage()
-# =============================================================================
+# Constraint 2: Each trip is assigned to exactly one bus
+unique_keys = set(keys_CDB) | set(keys_HEB) | set(keys_BEB)  # Union of all keys
+for key in unique_keys:
+    for s in S:
+        for y in year_keys:
+            model.addConstr(
+                (
+                    (x_CDB[s, y, key] if key in energy_CDB_dict else 0) +
+                    (x_HEB[s, y, key] if key in energy_HEB_dict else 0) +
+                    (x_BEB[s, y, key] if key in energy_BEB_dict else 0)
+                ) == 1
+            , name=f"C2_{key}_{s}_{y}")
+
+print("Done defining constraint 2")
+report_usage()
 
 # Constraint 3: Maximum daily charging capacity
 model.addConstrs(
