@@ -301,7 +301,7 @@ for s in S:
             name=f"C1_CDB_ge_{s}_{y}"
         )
         model.addConstr(
-            y_CDB[s, y] * range_CDB < total_distance_CDB + range_CDB,
+            y_CDB[s, y] * range_CDB <= total_distance_CDB + range_CDB,
             name=f"C1_CDB_lt_{s}_{y}"
         )
 
@@ -315,7 +315,7 @@ for s in S:
             name=f"C1_HEB_ge_{s}_{y}"
         )
         model.addConstr(
-            y_HEB[s, y] * range_HEB < total_distance_HEB + range_HEB,
+            y_HEB[s, y] * range_HEB <= total_distance_HEB + range_HEB,
             name=f"C1_HEB_lt_{s}_{y}"
         )
 
@@ -329,7 +329,7 @@ for s in S:
             name=f"C1_BEB_ge_{s}_{y}"
         )
         model.addConstr(
-            y_BEB[s, y] * range_BEB < total_distance_BEB + range_BEB,
+            y_BEB[s, y] * range_BEB <= total_distance_BEB + range_BEB,
             name=f"C1_BEB_lt_{s}_{y}"
         )
 
