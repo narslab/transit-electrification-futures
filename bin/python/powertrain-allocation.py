@@ -108,14 +108,16 @@ print("Dataframe columns list:", df_CDB.columns)
 
 # Define parameters
 #D = len(set(df_CDB['Date'].unique()))  # Create a set of unique dates
-Y = 13  # Years in simulation
+Y = 14  # Years in simulation (including year 0)
 max_number_of_buses = 1000 # 213*4 (current numnumber of fleet*4, assuming buses are going to be replaced with electric at most with ratio of 1:4)
 
 # Batery capacity of an electric bus
 battery_cap=350 #kWh 
 
 # Maximum daily charging capacity in year y
-M_cap = {y: val for y, val in enumerate([5600, 8400, 10500, 12950, 15400, 18900] + [float('inf')] * (Y - 6))}
+#M_cap = {y: val for y, val in enumerate([5600, 8400, 10500, 12950, 15400, 18900] + [float('inf')] * (Y - 6))}
+#M_cap = {y: val for y, val in enumerate([15, 23, 23, 27, 38, 42, 52] + [float('inf')] * (Y - 7))}
+M_cap = {y: val for y, val in enumerate([15*battery_cap, 23*battery_cap, 23*battery_cap, 27*battery_cap, 38*battery_cap, 42*battery_cap, 52*battery_cap] + [float('inf')] * (Y - 7))}
 
 # Set of scenarios
 #S = {'low-cap', 'mid-cap', 'high-cap'}
@@ -273,6 +275,11 @@ y_BEB = model.addVars(S, year_keys, vtype=GRB.INTEGER, name='y_BEB')
 print("Done setting y variables")
 report_usage()
 
+# Initialize y_CDB, y_HEB, and y_BEB for the first year
+for s in S:
+    y_CDB[s, 0].start = N[('C', 0)]
+    y_HEB[s, 0].start = N[('H', 0)]
+    y_BEB[s, 0].start = N[('B', 0)]
 
 print("Done setting u variables")
 report_usage()
@@ -339,21 +346,23 @@ print("Done defining constraint 1")
 report_usage()
 
 
-# Constraint 2: Each trip is assigned to exactly one bus
-unique_keys = set(keys_CDB) | set(keys_HEB) | set(keys_BEB)  # Union of all keys
-for key in unique_keys:
-    for s in S:
-        for y in year_keys:
-            model.addConstr(
-                (
-                    quicksum(x_CDB[s, y, key] for y in year_keys if key in energy_CDB_dict) +
-                    quicksum(x_HEB[s, y, key] for y in year_keys if key in energy_HEB_dict) +
-                    quicksum(x_BEB[s, y, key] for y in year_keys if key in energy_BEB_dict)
-                ) == 1
-            , name=f"C2_{key}_{s}_{y}")
-
-print("Done defining constraint 2")
-report_usage()
+# =============================================================================
+# # Constraint 2: Each trip is assigned to exactly one bus
+# unique_keys = set(keys_CDB) | set(keys_HEB) | set(keys_BEB)  # Union of all keys
+# for key in unique_keys:
+#     for s in S:
+#         for y in year_keys:
+#             model.addConstr(
+#                 (
+#                     quicksum(x_CDB[s, y, key] for y in year_keys if key in energy_CDB_dict) +
+#                     quicksum(x_HEB[s, y, key] for y in year_keys if key in energy_HEB_dict) +
+#                     quicksum(x_BEB[s, y, key] for y in year_keys if key in energy_BEB_dict)
+#                 ) == 1
+#             , name=f"C2_{key}_{s}_{y}")
+# 
+# print("Done defining constraint 2")
+# report_usage()
+# =============================================================================
 
 # Constraint 3: Maximum daily charging capacity
 model.addConstrs(
