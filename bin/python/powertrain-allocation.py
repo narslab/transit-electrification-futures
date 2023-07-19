@@ -291,30 +291,48 @@ report_usage()
 
 # Constraint 1: Linking the number of each type of bus at each year variable with trip assignment variables
 ### ensure the number of buses of type X (y_X[s, y]) is at least the total distance traveled by all trips assigned to buses of type X divided by the range of the bus (rounded up to ensure all trips are covered).
-
 # For CDB buses
 for s in S:
     for y in year_keys:
+        total_distance_CDB = quicksum(energy_CDB_dict[key]['dist'] * x_CDB[s, y, key] for key in keys_CDB if key in energy_CDB_dict)
+        
         model.addConstr(
-            y_CDB[s, y] * range_CDB >= quicksum(energy_CDB_dict[key]['dist'] * x_CDB[s, y, key] for key in keys_CDB if key in energy_CDB_dict),
-            name=f"C1_CDB_{s}_{y}"
+            y_CDB[s, y] * range_CDB >= total_distance_CDB, 
+            name=f"C1_CDB_ge_{s}_{y}"
+        )
+        model.addConstr(
+            y_CDB[s, y] * range_CDB < total_distance_CDB + range_CDB,
+            name=f"C1_CDB_lt_{s}_{y}"
         )
 
 # For HEB buses
 for s in S:
     for y in year_keys:
+        total_distance_HEB = quicksum(energy_HEB_dict[key]['dist'] * x_HEB[s, y, key] for key in keys_HEB if key in energy_HEB_dict)
+        
         model.addConstr(
-            y_HEB[s, y] * range_HEB >= quicksum(energy_HEB_dict[key]['dist'] * x_HEB[s, y, key] for key in keys_HEB if key in energy_HEB_dict),
-            name=f"C1_HEB_{s}_{y}"
+            y_HEB[s, y] * range_HEB >= total_distance_HEB, 
+            name=f"C1_HEB_ge_{s}_{y}"
+        )
+        model.addConstr(
+            y_HEB[s, y] * range_HEB < total_distance_HEB + range_HEB,
+            name=f"C1_HEB_lt_{s}_{y}"
         )
 
 # For BEB buses
 for s in S:
     for y in year_keys:
+        total_distance_BEB = quicksum(energy_BEB_dict[key]['dist'] * x_BEB[s, y, key] for key in keys_BEB if key in energy_BEB_dict)
+        
         model.addConstr(
-            y_BEB[s, y] * range_BEB >= quicksum(energy_BEB_dict[key]['dist'] * x_BEB[s, y, key] for key in keys_BEB if key in energy_BEB_dict),
-            name=f"C1_BEB_{s}_{y}"
+            y_BEB[s, y] * range_BEB >= total_distance_BEB, 
+            name=f"C1_BEB_ge_{s}_{y}"
         )
+        model.addConstr(
+            y_BEB[s, y] * range_BEB < total_distance_BEB + range_BEB,
+            name=f"C1_BEB_lt_{s}_{y}"
+        )
+
 
 
 print("Done defining constraint 1")
