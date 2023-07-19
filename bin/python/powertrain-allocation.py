@@ -119,7 +119,7 @@ M_cap = {y: val for y, val in enumerate([5600, 8400, 10500, 12950, 15400, 18900]
 
 # Set of scenarios
 #S = {'low-cap', 'mid-cap', 'high-cap'}
-S = {'high-cap'}
+S = {'mid-cap'}
 
 # Define R and Rho
 R = df_CDB['Route'].nunique()
@@ -139,8 +139,8 @@ cost_inv.update({
 # Max investment per scenario per year
 C_max = {
 #    'low-cap': 7,  # in million dollars
-#    'mid-cap': 14,  # in million dollars
-    'high-cap': 21  # in million dollars
+     'mid-cap': 14,  # in million dollars
+#    'high-cap': 21  # in million dollars
 }
 
 # The maximum yearly investment
@@ -431,7 +431,7 @@ df_objective = pd.DataFrame({"Year": year_keys, "Objective_Value": [optimal_valu
 print("optimal_value:",optimal_value)
 
 # Save the DataFrame to a CSV file
-df.to_csv(r'../../results/balanced-transition-highcap-optimized-variables.csv', index=False)
+df.to_csv(r'../../results/balanced-transition-midcap-optimized-variables.csv', index=False)
 coeff_df.to_csv(r'../../results/variable_coefficients.csv', index=False)
 
 end = time.time()
