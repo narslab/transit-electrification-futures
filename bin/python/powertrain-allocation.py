@@ -401,9 +401,9 @@ report_usage()
 
 # Constraint 5: Maximum yearly investment
 model.addConstrs(
-    (quicksum(cost_inv[('C', year)] * y_CDB.sum(year, '*') for year in range(y + 1)) +
-    quicksum(cost_inv[('H', year)] * y_HEB.sum(year, '*') for year in range(y + 1)) +
-    quicksum(cost_inv[('B', year)] * y_BEB.sum(year, '*') for year in range(y + 1)) <= M_inv[s, y]
+    (cost_inv[('C', y)] * (y_CDB.sum(y, '*') - (y_CDB.sum(y-1, '*') if y > 0 else 0)) +
+    cost_inv[('H', y)] * (y_HEB.sum(y, '*') - (y_HEB.sum(y-1, '*') if y > 0 else 0)) +
+    cost_inv[('B', y)] * (y_BEB.sum(y, '*') - (y_BEB.sum(y-1, '*') if y > 0 else 0)) <= M_inv[s, y]
     for y in year_keys for s in S),
     name="C5"
 )
