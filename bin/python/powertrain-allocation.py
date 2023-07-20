@@ -156,8 +156,8 @@ M_inv = {
 #range_HEB= 701-10 # in miles (minues 20 miles buffer to go to the garage) 
 #range_BEB= 200-10 # in miles (minues 20 miles buffer to go to the garage)
 range_CDB= 93 # in miles (NEW flyer XD40 tank cap= 473 liters or 125 gal, mean fuel economy = 5.52 MPG)
-range_HEB= 55 # in miles (minues 20 miles buffer to go to the garage) 
-range_BEB= 110 # in miles (minues 20 miles buffer to go to the garage)
+range_HEB= 110 # in miles (minues 20 miles buffer to go to the garage) 
+range_BEB= 55 # in miles (minues 20 miles buffer to go to the garage)
 
 
 # Total number of fleet from each powertrain in year 0
