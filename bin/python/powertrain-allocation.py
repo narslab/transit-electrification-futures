@@ -337,7 +337,7 @@ for s in S:
         )
         model.addConstr(
             y_BEB[s, y] * range_BEB <= total_distance_BEB + range_BEB,
-            name=f"C1_BEB_lt_{s}_{y}"
+            name="C1: Total fleet and bus range"
         )
 
 
@@ -345,7 +345,7 @@ print("Done defining constraint 1")
 report_usage()
 
 
-# Constraint 2: Each trip is assigned to exactly one bus
+# Constraint 2: Each trip is assigned to exactly one bus powertrain
 unique_keys = set(keys_CDB) | set(keys_HEB) | set(keys_BEB)  # Union of all keys
 for key in unique_keys:
     for s in S:
@@ -356,7 +356,7 @@ for key in unique_keys:
                     (x_HEB[s, y, key] if key in energy_HEB_dict else 0) +
                     (x_BEB[s, y, key] if key in energy_BEB_dict else 0)
                 ) == 1
-            , name=f"C2_{key}_{s}_{y}")
+            , name="C2:Each trip is assigned to only one powertrain")
 
 print("Done defining constraint 2")
 report_usage()
@@ -364,48 +364,60 @@ report_usage()
 # Constraint 3: Maximum daily charging capacity
 model.addConstrs(
     (quicksum(energy_BEB_dict[key]['Energy'] * x_BEB.sum(s, y, key) for s in S for key in keys_BEB) <= M_cap[y] for y in year_keys),
-    name="C3"
+    name="C3: daily charging capacity"
 )
 print("Done defining constraint 3")
 report_usage()
 
-# Constraint 4: Bus Range Constraint- Add a constraint that ensures that a bus doesn't exceed its maximum range in a day
-# For CDB buses
-for y in year_keys:
-    for s in S:
-        model.addConstr(
-            quicksum(energy_CDB_dict[key]['dist'] * x_CDB[s, y, key] for key in keys_CDB if key in energy_CDB_dict) <= range_CDB,
-            name=f"C4_CDB_{s}_{y}"
-        )
+# =============================================================================
+# # Constraint 4: Bus Range Constraint- Add a constraint that ensures that a bus doesn't exceed its maximum range in a day
+# # For CDB buses
+# for y in year_keys:
+#     for s in S:
+#         model.addConstr(
+#             quicksum(energy_CDB_dict[key]['dist'] * x_CDB[s, y, key] for key in keys_CDB if key in energy_CDB_dict) <= range_CDB,
+#             name=f"C4_CDB_{s}_{y}"
+#         )
+# 
+# # For HEB buses
+# for y in year_keys:
+#     for s in S:
+#         model.addConstr(
+#             quicksum(energy_HEB_dict[key]['dist'] * x_HEB[s, y, key] for key in keys_HEB if key in energy_HEB_dict) <= range_HEB,
+#             name=f"C4_HEB_{s}_{y}"
+#         )
+# 
+# # For BEB buses
+# for y in year_keys:
+#     for s in S:
+#         model.addConstr(
+#             quicksum(energy_BEB_dict[key]['dist'] * x_BEB[s, y, key] for key in keys_BEB if key in energy_BEB_dict) <= range_BEB,
+#             name=f"C4_BEB_{s}_{y}"
+#         )
+# print("Done defining constraint 4")
+# report_usage()
+# =============================================================================
 
-# For HEB buses
-for y in year_keys:
-    for s in S:
-        model.addConstr(
-            quicksum(energy_HEB_dict[key]['dist'] * x_HEB[s, y, key] for key in keys_HEB if key in energy_HEB_dict) <= range_HEB,
-            name=f"C4_HEB_{s}_{y}"
-        )
-
-# For BEB buses
-for y in year_keys:
-    for s in S:
-        model.addConstr(
-            quicksum(energy_BEB_dict[key]['dist'] * x_BEB[s, y, key] for key in keys_BEB if key in energy_BEB_dict) <= range_BEB,
-            name=f"C4_BEB_{s}_{y}"
-        )
-print("Done defining constraint 4")
-report_usage()
-
-# Constraint 5: Maximum yearly investment
+# Constraint 4: Maximum yearly investment
 model.addConstrs(
     (cost_inv[('C', y)] * (y_CDB.sum(y, '*') - (y_CDB.sum(y-1, '*') if y > 0 else 0)) +
     cost_inv[('H', y)] * (y_HEB.sum(y, '*') - (y_HEB.sum(y-1, '*') if y > 0 else 0)) +
     cost_inv[('B', y)] * (y_BEB.sum(y, '*') - (y_BEB.sum(y-1, '*') if y > 0 else 0)) <= M_inv[s, y]
     for y in year_keys for s in S),
-    name="C5"
+    name="C4: Max yearly investment"
 )
 print("Done defining constraint 5")
 report_usage()
+
+
+# Constraint 5: Maximum yearly investment: Total number of buses (y) (summed over all powertrain) per year cannot exceed 1000
+for s in S:
+    for y in year_keys:
+        model.addConstr(
+            y_CDB[s, y] + y_HEB[s, y] + y_BEB[s, y] <= max_number_of_buses,
+            name="C5:TotalFleetSize"
+        )
+
   
 
 # Print model statistics
