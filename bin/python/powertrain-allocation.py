@@ -152,9 +152,13 @@ M_inv = {
 }
 
 # Bus ranges
-range_CDB= 690-10 # in miles ( NEW flyer XD40 tank cap= 473 liters or 125 gal, mean fuel economy = 5.52 MPG)
-range_HEB= 701-10 # in miles (minues 20 miles buffer to go to the garage) 
-range_BEB= 200-10 # in miles (minues 20 miles buffer to go to the garage)
+#range_CDB= 690-10 # in miles (NEW flyer XD40 tank cap= 473 liters or 125 gal, mean fuel economy = 5.52 MPG)
+#range_HEB= 701-10 # in miles (minues 20 miles buffer to go to the garage) 
+#range_BEB= 200-10 # in miles (minues 20 miles buffer to go to the garage)
+range_CDB= 93 # in miles (NEW flyer XD40 tank cap= 473 liters or 125 gal, mean fuel economy = 5.52 MPG)
+range_HEB= 55 # in miles (minues 20 miles buffer to go to the garage) 
+range_BEB= 110 # in miles (minues 20 miles buffer to go to the garage)
+
 
 # Total number of fleet from each powertrain in year 0
 N = {
@@ -276,11 +280,13 @@ print("Done setting y variables")
 report_usage()
 
 # Define decision variables delta to show number of new buses
-delta_CDB = model.addVars(S, year_keys, lb=0, vtype=GRB.CONTINUOUS, name='delta_CDB')
-delta_HEB = model.addVars(S, year_keys, lb=0, vtype=GRB.CONTINUOUS, name='delta_HEB')
-delta_BEB = model.addVars(S, year_keys, lb=0, vtype=GRB.CONTINUOUS, name='delta_BEB')
-print("Done setting delta variables")
-report_usage()
+# =============================================================================
+# delta_CDB = model.addVars(S, year_keys, lb=0, vtype=GRB.CONTINUOUS, name='delta_CDB')
+# delta_HEB = model.addVars(S, year_keys, lb=0, vtype=GRB.CONTINUOUS, name='delta_HEB')
+# delta_BEB = model.addVars(S, year_keys, lb=0, vtype=GRB.CONTINUOUS, name='delta_BEB')
+# print("Done setting delta variables")
+# report_usage()
+# =============================================================================
 
 # Initialize y_CDB, y_HEB, and y_BEB for the first year
 # =============================================================================
@@ -290,9 +296,13 @@ report_usage()
 #     y_BEB[s, 0].start = N[('B', 0)]
 # =============================================================================
 for s in S:
-    y_CDB[s, 0] = N[('C', 0)]
-    y_HEB[s, 0] = N[('H', 0)]
-    y_BEB[s, 0] = N[('B', 0)]
+    y_CDB[s, 0].setAttr('LB', 189)
+    y_CDB[s, 0].setAttr('UB', 189)
+    y_HEB[s, 0].setAttr('LB', 9)
+    y_HEB[s, 0].setAttr('UB', 9)
+    y_BEB[s, 0].setAttr('LB', 15)
+    y_BEB[s, 0].setAttr('UB', 15)
+
 
 print("Done setting u variables")
 report_usage()
@@ -431,28 +441,43 @@ report_usage()
 # 
 # =============================================================================
 
+# Constraint 4: Maximum yearly investment
 for s in S:
     for y in year_keys:
-        # Constraints to capture increase for CDB
-        model.addConstr(delta_CDB[s, y] >= y_CDB[s, y] - (y_CDB[s, y-1] if y > 0 else 0))
-        model.addConstr(delta_CDB[s, y] >= 0)
+        # Introduce binary variables
+        z_CDB = model.addVar(vtype=GRB.BINARY, name=f"z_CDB_{s}_{y}")
+        z_HEB = model.addVar(vtype=GRB.BINARY, name=f"z_HEB_{s}_{y}")
+        z_BEB = model.addVar(vtype=GRB.BINARY, name=f"z_BEB_{s}_{y}")
 
-        # Same for HEB
-        model.addConstr(delta_HEB[s, y] >= y_HEB[s, y] - (y_HEB[s, y-1] if y > 0 else 0))
-        model.addConstr(delta_HEB[s, y] >= 0)
+        # Use a large M constant
+        big_M = 1e6  # Adjust this value based on the context of your problem
 
-        # Same for BEB
-        model.addConstr(delta_BEB[s, y] >= y_BEB[s, y] - (y_BEB[s, y-1] if y > 0 else 0))
-        model.addConstr(delta_BEB[s, y] >= 0)
+        # Create constraints for binary variable logic
+        delta_fleet_CDB = y_CDB[s, y] - (y_CDB[s, y-1] if y > 0 else 0)
+        delta_fleet_HEB = y_HEB[s, y] - (y_HEB[s, y-1] if y > 0 else 0)
+        delta_fleet_BEB = y_BEB[s, y] - (y_BEB[s, y-1] if y > 0 else 0)
 
-        # Updated Constraint 4
-        CDB_investment = delta_CDB[s, y] * cost_inv[('C', y)]
-        HEB_investment = delta_HEB[s, y] * cost_inv[('H', y)]
-        BEB_investment = delta_BEB[s, y] * cost_inv[('B', y)]
+        # Enforce z = 1 if fleet size increased, 0 otherwise
+        model.addConstr(delta_fleet_CDB <= big_M * z_CDB)
+        model.addConstr(delta_fleet_HEB <= big_M * z_HEB)
+        model.addConstr(delta_fleet_BEB <= big_M * z_BEB)
         
-        model.addConstr(CDB_investment + HEB_investment + BEB_investment <= M_inv[s, y], name=f"C4: Max yearly investment_{y}_{s}")
+        # This will enforce z = 0 if delta_fleet is non-positive
+        model.addConstr(0 <= delta_fleet_CDB + big_M * (1 - z_CDB))
+        model.addConstr(0 <= delta_fleet_HEB + big_M * (1 - z_HEB))
+        model.addConstr(0 <= delta_fleet_BEB + big_M * (1 - z_BEB))
 
+        # Calculate the investment for each bus type using binary variable
+        CDB_investment = delta_fleet_CDB * z_CDB * cost_inv[('C', y)]
+        HEB_investment = delta_fleet_HEB * z_HEB * cost_inv[('H', y)]
+        BEB_investment = delta_fleet_BEB * z_BEB * cost_inv[('B', y)]
 
+        # Define the total investment constraint for the year and scenario
+        total_investment = CDB_investment + HEB_investment + BEB_investment
+        model.addConstr(total_investment <= M_inv[s, y], name=f"C4: Max yearly investment_{y}_{s}")
+
+print("Done defining constraint 4")
+report_usage()
 
 # Constraint 5: Maximum yearly investment: Total number of buses (y) (summed over all powertrain) per year cannot exceed 1000
 for s in S:
@@ -461,7 +486,9 @@ for s in S:
             y_CDB[s, y] + y_HEB[s, y] + y_BEB[s, y] <= max_number_of_buses,
             name=f"C5: TotalFleetSize_{y}_{s}"
         )
- 
+
+print("Done defining constraint 5")
+report_usage()    
 
 # Print model statistics
 model.update()
@@ -487,6 +514,7 @@ vars = model.getVars()
 # Create DataFrame directly from the variables and their values
 if model.status == grb.GRB.Status.OPTIMAL:
     df = pd.DataFrame({"Variable": [v.varName for v in vars], "Value": [v.X for v in vars]})
+#    df.to_csv(r'../../results/balanced-transition-highcap-optimized-variables.csv', index=False)
 else:
     print('No solution found')
 
@@ -508,6 +536,8 @@ df_objective = pd.DataFrame({"Year": year_keys, "Objective_Value": [optimal_valu
 
 # Print objective value
 print("optimal_value:",optimal_value)
+
+df = pd.DataFrame({"Variable": [v.varName for v in vars], "Value": [v.X for v in vars]})
 
 # Save the DataFrame to a CSV file
 df.to_csv(r'../../results/balanced-transition-highcap-optimized-variables.csv', index=False)
