@@ -54,6 +54,16 @@ df_HEB = df_HEB.loc[df_HEB['Date']==date_with_max_trips]
 df_BEB = df_BEB.loc[df_BEB['Date']==date_with_max_trips]
 report_usage()
 
+## Remove Trips with zero Energy consumption with CDB vehicles
+# Find the TripKey values in df_CDB where sum of Energy column is zero when grouped by TripKey
+tripkeys_to_remove = df_CDB.groupby('TripKey').filter(lambda group: group['Energy'].sum() == 0)['TripKey'].unique()
+
+# Remove the rows from all three dataframes that match the TripKey values found above
+df_CDB = df_CDB[~df_CDB['TripKey'].isin(tripkeys_to_remove)]
+df_HEB = df_HEB[~df_HEB['TripKey'].isin(tripkeys_to_remove)]
+df_BEB = df_BEB[~df_BEB['TripKey'].isin(tripkeys_to_remove)]
+report_usage()
+
 # Group the dataframes to capture first and last stop, start and ened time and route for each trip
 df_CDB = df_CDB.groupby(['TripKey', 'Date']).agg({
     'Stop': ['first', 'last'],
@@ -117,7 +127,8 @@ battery_cap=350 #kWh
 # Maximum daily charging capacity in year y
 #M_cap = {y: val for y, val in enumerate([5600, 8400, 10500, 12950, 15400, 18900] + [float('inf')] * (Y - 6))}
 #M_cap = {y: val for y, val in enumerate([15, 23, 23, 27, 38, 42, 52] + [float('inf')] * (Y - 7))}
-M_cap = {y: val for y, val in enumerate([15*battery_cap, 23*battery_cap, 23*battery_cap, 27*battery_cap, 38*battery_cap, 42*battery_cap, 52*battery_cap] + [float('inf')] * (Y - 7))}
+#M_cap = {y: val for y, val in enumerate([15*battery_cap, 23*battery_cap, 23*battery_cap, 27*battery_cap, 38*battery_cap, 42*battery_cap, 52*battery_cap] + [float('inf')] * (Y - 7))}
+M_cap = {y: val for y, val in enumerate([15*battery_cap, 23*battery_cap, 23*battery_cap, 27*battery_cap, 38*battery_cap, 42*battery_cap, 52*battery_cap,float('inf'),float('inf'),float('inf'),float('inf'),float('inf'),float('inf'),float('inf')])}
 
 # Set of scenarios
 #S = {'low-cap', 'mid-cap', 'high-cap'}
@@ -155,9 +166,9 @@ M_inv = {
 #range_CDB= 690-10 # in miles (NEW flyer XD40 tank cap= 473 liters or 125 gal, mean fuel economy = 5.52 MPG)
 #range_HEB= 701-10 # in miles (minues 20 miles buffer to go to the garage) 
 #range_BEB= 200-10 # in miles (minues 20 miles buffer to go to the garage)
-range_CDB= 93 # in miles (NEW flyer XD40 tank cap= 473 liters or 125 gal, mean fuel economy = 5.52 MPG)
-range_HEB= 110 # in miles (minues 20 miles buffer to go to the garage) 
-range_BEB= 55 # in miles (minues 20 miles buffer to go to the garage)
+range_CDB= 93-10 # in miles (NEW flyer XD40 tank cap= 473 liters or 125 gal, mean fuel economy = 5.52 MPG)
+range_HEB= 110-10 # in miles (minues 20 miles buffer to go to the garage) 
+range_BEB= 55-10 # in miles (minues 20 miles buffer to go to the garage)
 
 
 # Total number of fleet from each powertrain in year 0
@@ -237,7 +248,7 @@ model.setParam('OutputFlag', 1)
 # Set solver parameters
 #model.setParam('MIPFocus', 1)  # This parameter lets control the  In. The options are: 1. Finds feasible solutions quickly. This is useful if the problem is difficult to solve and you're satisfied with any feasible solution. 2: Works to improve the best bound. This is useful when the best objective bound is poor. 3: Tries to prove optimality of the best solution found. This is useful if you're sure a nearly-optimal solution exists and you want the solver to focus on proving its optimality.
 #model.setParam('Heuristics', 0.5)  # Controls the effort put into MIP heuristics (range is 0 to 1). A higher value means more effort is put into finding solutions, but at the cost of slower overall performance. 
-#model.setParam('Presolve', 1)  # This parameter controls the presolve level. Presolve is a phase during which the solver tries to simplify the model before the actual optimization takes place. A higher presolve level means the solver puts more effort into simplification, which can often reduce solving time. (-1: automatic (default) - Gurobi will decide based on the problem characteristics whether to use presolve or not.0: no presolve. 1: conservative presolve. 2: aggressive presolve.)
+model.setParam('Presolve', 0)  # This parameter controls the presolve level. Presolve is a phase during which the solver tries to simplify the model before the actual optimization takes place. A higher presolve level means the solver puts more effort into simplification, which can often reduce solving time. (-1: automatic (default) - Gurobi will decide based on the problem characteristics whether to use presolve or not.0: no presolve. 1: conservative presolve. 2: aggressive presolve.)
 #model.setParam('MIPGap', 0.01) # This parameter sets the relative gap for the MIP search termination. The solver will stop as soon as the relative gap between the lower and upper objective bound is less than this value. The lower this value, the closer to optimality the solution has to be before the solver stops.  
 model.setParam('Threads', 64)  # Set number of threads to be used for parallel processing.
 

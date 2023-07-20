@@ -2364,8 +2364,8 @@ Subject To
    - 5.847957211048417 x_CDB[high-cap,0,507042]
    - 5.690528863227303 x_CDB[high-cap,0,507043]
    - 4.907396243120985 x_CDB[high-cap,0,507044]
-   - 4.733026503377276 x_CDB[high-cap,0,507069] + 93 y_CDB[high-cap,0]
-   <= 93
+   - 4.733026503377276 x_CDB[high-cap,0,507069] + 83 y_CDB[high-cap,0]
+   <= 83
 Bounds
  y_CDB[high-cap,0] >= 189
 Binaries
