@@ -434,13 +434,16 @@ report_usage()
 for s in S:
     for y in year_keys:
         # Constraints to capture increase for CDB
-        model.addConstr(delta_CDB[s, y] == max(0, y_CDB[s, y] - (y_CDB[s, y-1] if y > 0 else 0)))
+        model.addConstr(delta_CDB[s, y] >= y_CDB[s, y] - (y_CDB[s, y-1] if y > 0 else 0))
+        model.addConstr(delta_CDB[s, y] >= 0)
 
         # Same for HEB
-        model.addConstr(delta_HEB[s, y] == max(0, y_HEB[s, y] - (y_HEB[s, y-1] if y > 0 else 0)))
+        model.addConstr(delta_HEB[s, y] >= y_HEB[s, y] - (y_HEB[s, y-1] if y > 0 else 0))
+        model.addConstr(delta_HEB[s, y] >= 0)
 
         # Same for BEB
-        model.addConstr(delta_BEB[s, y] == max(0, y_BEB[s, y] - (y_BEB[s, y-1] if y > 0 else 0)))
+        model.addConstr(delta_BEB[s, y] >= y_BEB[s, y] - (y_BEB[s, y-1] if y > 0 else 0))
+        model.addConstr(delta_BEB[s, y] >= 0)
 
         # Updated Constraint 4
         CDB_investment = delta_CDB[s, y] * cost_inv[('C', y)]
@@ -449,8 +452,6 @@ for s in S:
         
         model.addConstr(CDB_investment + HEB_investment + BEB_investment <= M_inv[s, y], name=f"C4: Max yearly investment_{y}_{s}")
 
-print("Done defining constraint 4")
-report_usage()
 
 
 # Constraint 5: Maximum yearly investment: Total number of buses (y) (summed over all powertrain) per year cannot exceed 1000
