@@ -275,11 +275,24 @@ y_BEB = model.addVars(S, year_keys, vtype=GRB.INTEGER, name='y_BEB')
 print("Done setting y variables")
 report_usage()
 
+# Define decision variables delta to show number of new buses
+delta_CDB = model.addVars(S, year_keys, lb=0, vtype=GRB.CONTINUOUS, name='delta_CDB')
+delta_HEB = model.addVars(S, year_keys, lb=0, vtype=GRB.CONTINUOUS, name='delta_HEB')
+delta_BEB = model.addVars(S, year_keys, lb=0, vtype=GRB.CONTINUOUS, name='delta_BEB')
+print("Done setting delta variables")
+report_usage()
+
 # Initialize y_CDB, y_HEB, and y_BEB for the first year
+# =============================================================================
+# for s in S:
+#     y_CDB[s, 0].start = N[('C', 0)]
+#     y_HEB[s, 0].start = N[('H', 0)]
+#     y_BEB[s, 0].start = N[('B', 0)]
+# =============================================================================
 for s in S:
-    y_CDB[s, 0].start = N[('C', 0)]
-    y_HEB[s, 0].start = N[('H', 0)]
-    y_BEB[s, 0].start = N[('B', 0)]
+    y_CDB[s, 0] = N[('C', 0)]
+    y_HEB[s, 0] = N[('H', 0)]
+    y_BEB[s, 0] = N[('B', 0)]
 
 print("Done setting u variables")
 report_usage()
@@ -305,11 +318,11 @@ for s in S:
         
         model.addConstr(
             y_CDB[s, y] * range_CDB >= total_distance_CDB, 
-            name=f"C1_CDB_ge_{s}_{y}"
+            name=f"C1_numberofCDB_ge_{s}_{y}"
         )
         model.addConstr(
             y_CDB[s, y] * range_CDB <= total_distance_CDB + range_CDB,
-            name=f"C1_CDB_lt_{s}_{y}"
+            name=f"C1_numberofCDBs_le_{s}_{y}"
         )
 
 # For HEB buses
@@ -319,11 +332,11 @@ for s in S:
         
         model.addConstr(
             y_HEB[s, y] * range_HEB >= total_distance_HEB, 
-            name=f"C1_HEB_ge_{s}_{y}"
+            name=f"C1_numberofHEBs_ge_{s}_{y}"
         )
         model.addConstr(
             y_HEB[s, y] * range_HEB <= total_distance_HEB + range_HEB,
-            name=f"C1_HEB_lt_{s}_{y}"
+            name=f"C1_numberofHEBs_le_{s}_{y}"
         )
 
 # For BEB buses
@@ -333,13 +346,12 @@ for s in S:
         
         model.addConstr(
             y_BEB[s, y] * range_BEB >= total_distance_BEB, 
-            name=f"C1_BEB_ge_{s}_{y}"
+            name=f"C1_numberofBEBs_ge_{s}_{y}"
         )
         model.addConstr(
             y_BEB[s, y] * range_BEB <= total_distance_BEB + range_BEB,
-            name="C1: Total fleet and bus range"
+            name=f"C1_numberofBEBs_le_{s}_{y}"
         )
-
 
 print("Done defining constraint 1")
 report_usage()
@@ -347,25 +359,34 @@ report_usage()
 
 # Constraint 2: Each trip is assigned to exactly one bus powertrain
 unique_keys = set(keys_CDB) | set(keys_HEB) | set(keys_BEB)  # Union of all keys
-for key in unique_keys:
-    for s in S:
-        for y in year_keys:
+
+for s in S:
+    for y in year_keys:
+        for key in unique_keys:
             model.addConstr(
                 (
                     (x_CDB[s, y, key] if key in energy_CDB_dict else 0) +
                     (x_HEB[s, y, key] if key in energy_HEB_dict else 0) +
                     (x_BEB[s, y, key] if key in energy_BEB_dict else 0)
                 ) == 1
-            , name="C2:Each trip is assigned to only one powertrain")
+            , name=f"C2_Trip{key}_S{s}_Y{y}: Each trip is assigned to only one powertrain")
 
 print("Done defining constraint 2")
 report_usage()
 
 # Constraint 3: Maximum daily charging capacity
-model.addConstrs(
-    (quicksum(energy_BEB_dict[key]['Energy'] * x_BEB.sum(s, y, key) for s in S for key in keys_BEB) <= M_cap[y] for y in year_keys),
-    name="C3: daily charging capacity"
-)
+# =============================================================================
+# model.addConstrs(
+#     (quicksum(energy_BEB_dict[key]['Energy'] * x_BEB.sum(s, y, key) for s in S for key in keys_BEB) <= M_cap[y] for y in year_keys),
+#     name="C3: daily charging capacity"
+# )
+# =============================================================================
+for s in S:
+    for y in year_keys:
+        total_energy_BEB = quicksum(energy_BEB_dict[key]['Energy'] * x_BEB[s, y, key] for key in keys_BEB if key in energy_BEB_dict)
+        model.addConstr(total_energy_BEB <= M_cap[y], name=f"C3: daily charging capacity_{y}_{s}")
+
+
 print("Done defining constraint 3")
 report_usage()
 
@@ -399,14 +420,36 @@ report_usage()
 # =============================================================================
 
 # Constraint 4: Maximum yearly investment
-model.addConstrs(
-    (cost_inv[('C', y)] * (y_CDB.sum(y, '*') - (y_CDB.sum(y-1, '*') if y > 0 else 0)) +
-    cost_inv[('H', y)] * (y_HEB.sum(y, '*') - (y_HEB.sum(y-1, '*') if y > 0 else 0)) +
-    cost_inv[('B', y)] * (y_BEB.sum(y, '*') - (y_BEB.sum(y-1, '*') if y > 0 else 0)) <= M_inv[s, y]
-    for y in year_keys for s in S),
-    name="C4: Max yearly investment"
-)
-print("Done defining constraint 5")
+# =============================================================================
+# for s in S:
+#     for y in year_keys:
+#         CDB_investment = max(0, (y_CDB[s, y] - (y_CDB[s, y-1] if y > 0 else 0))) * cost_inv[('C', y)]
+#         HEB_investment = max(0, (y_HEB[s, y] - (y_HEB[s, y-1] if y > 0 else 0))) * cost_inv[('H', y)]
+#         BEB_investment = max(0, (y_BEB[s, y] - (y_BEB[s, y-1] if y > 0 else 0))) * cost_inv[('B', y)]
+#         
+#         model.addConstr(CDB_investment + HEB_investment + BEB_investment <= M_inv[s, y], name=f"C4: Max yearly investment_{y}_{s}")
+# 
+# =============================================================================
+
+for s in S:
+    for y in year_keys:
+        # Constraints to capture increase for CDB
+        model.addConstr(delta_CDB[s, y] == max(0, y_CDB[s, y] - (y_CDB[s, y-1] if y > 0 else 0)))
+
+        # Same for HEB
+        model.addConstr(delta_HEB[s, y] == max(0, y_HEB[s, y] - (y_HEB[s, y-1] if y > 0 else 0)))
+
+        # Same for BEB
+        model.addConstr(delta_BEB[s, y] == max(0, y_BEB[s, y] - (y_BEB[s, y-1] if y > 0 else 0)))
+
+        # Updated Constraint 4
+        CDB_investment = delta_CDB[s, y] * cost_inv[('C', y)]
+        HEB_investment = delta_HEB[s, y] * cost_inv[('H', y)]
+        BEB_investment = delta_BEB[s, y] * cost_inv[('B', y)]
+        
+        model.addConstr(CDB_investment + HEB_investment + BEB_investment <= M_inv[s, y], name=f"C4: Max yearly investment_{y}_{s}")
+
+print("Done defining constraint 4")
 report_usage()
 
 
@@ -415,10 +458,9 @@ for s in S:
     for y in year_keys:
         model.addConstr(
             y_CDB[s, y] + y_HEB[s, y] + y_BEB[s, y] <= max_number_of_buses,
-            name="C5:TotalFleetSize"
+            name=f"C5: TotalFleetSize_{y}_{s}"
         )
-
-  
+ 
 
 # Print model statistics
 model.update()
