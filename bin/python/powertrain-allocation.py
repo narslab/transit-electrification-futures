@@ -139,15 +139,23 @@ R = df_CDB['Route'].nunique()
 Rho = max_trips
 
 # The cost of purchasing a new bus
-cost_inv = {
-    ('B', y): 0.9 for y in range(Y)
-}  # in million dollars
-cost_inv.update({
-    ('H', y): 1.3 for y in range(Y)
-})  # in million dollars
-cost_inv.update({
-    ('C', y): 0 for y in range(Y)
-})  # Assuming no cost for existing CDB buses
+# =============================================================================
+# cost_inv = {
+#     ('B', y): 0.9 for y in range(Y)
+# }  # in million dollars
+# cost_inv.update({
+#     ('H', y): 1.3 for y in range(Y)
+# })  # in million dollars
+# cost_inv.update({
+#     ('C', y): 0 for y in range(Y)
+# })  # Assuming no cost for existing CDB buses
+# 
+# =============================================================================
+cost_inv = {('B'): 0.9 }  # in million dollars
+cost_inv.update({('H'): 1.3 })  # in million dollars
+cost_inv.update({('C'): 0 for y in range(Y)})  # Assuming no cost for existing CDB buses
+
+
 
 # Max investment per scenario per year
 C_max = {
@@ -166,9 +174,9 @@ M_inv = {
 #range_CDB= 690-10 # in miles (NEW flyer XD40 tank cap= 473 liters or 125 gal, mean fuel economy = 5.52 MPG)
 #range_HEB= 701-10 # in miles (minues 20 miles buffer to go to the garage) 
 #range_BEB= 200-10 # in miles (minues 20 miles buffer to go to the garage)
-range_CDB= 93-10 # in miles (NEW flyer XD40 tank cap= 473 liters or 125 gal, mean fuel economy = 5.52 MPG)
-range_HEB= 110-10 # in miles (minues 20 miles buffer to go to the garage) 
-range_BEB= 55-10 # in miles (minues 20 miles buffer to go to the garage)
+range_CDB= 93-10 # in miles 
+range_HEB= 110-10 # in miles 
+range_BEB= 55-10 # in miles 
 
 
 # Total number of fleet from each powertrain in year 0
@@ -479,9 +487,9 @@ for s in S:
         model.addConstr(0 <= delta_fleet_BEB + big_M * (1 - z_BEB))
 
         # Calculate the investment for each bus type using binary variable
-        CDB_investment = delta_fleet_CDB * z_CDB * cost_inv[('C', y)]
-        HEB_investment = delta_fleet_HEB * z_HEB * cost_inv[('H', y)]
-        BEB_investment = delta_fleet_BEB * z_BEB * cost_inv[('B', y)]
+        CDB_investment = delta_fleet_CDB * z_CDB * cost_inv[('C')]
+        HEB_investment = delta_fleet_HEB * z_HEB * cost_inv[('H')]
+        BEB_investment = delta_fleet_BEB * z_BEB * cost_inv[('B')]
 
         # Define the total investment constraint for the year and scenario
         total_investment = CDB_investment + HEB_investment + BEB_investment
@@ -490,7 +498,7 @@ for s in S:
 print("Done defining constraint 4")
 report_usage()
 
-# Constraint 5: Maximum yearly investment: Total number of buses (y) (summed over all powertrain) per year cannot exceed 1000
+# Constraint 5: Total number of buses (y) (summed over all powertrain) per year cannot exceed 1000
 for s in S:
     for y in year_keys:
         model.addConstr(
@@ -551,8 +559,8 @@ print("optimal_value:",optimal_value)
 df = pd.DataFrame({"Variable": [v.varName for v in vars], "Value": [v.X for v in vars]})
 
 # Save the DataFrame to a CSV file
-df.to_csv(r'../../results/balanced-transition-highcap-optimized-variables.csv', index=False)
-coeff_df.to_csv(r'../../results/variable_coefficients.csv', index=False)
+df.to_csv(r'../../results/highcap-balanced-transition-optimized-variables.csv', index=False)
+coeff_df.to_csv(r'../../results/highcap-balanced-transition-coefficients.csv', index=False)
 
 end = time.time()
 report_usage()
