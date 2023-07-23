@@ -130,7 +130,7 @@ M_cap = {y: val for y, val in enumerate([15*battery_cap, 23*battery_cap, 23*batt
 
 # Set of scenarios
 #S = {'low-cap', 'mid-cap', 'high-cap'}
-S = {'high-cap'}
+S = {'mid-cap'}
 
 # Define R and Rho
 R = df_CDB['Route'].nunique()
@@ -158,8 +158,8 @@ cost_inv.update({('B'): 1.3 })  # Assuming no cost for existing CDB buses
 # Max investment per scenario per year
 C_max = {
 #    'low-cap': 7,  # in million dollars
-#      'mid-cap': 14,  # in million dollars
-     'high-cap': 21  # in million dollars
+      'mid-cap': 14,  # in million dollars
+#     'high-cap': 21  # in million dollars
 }
 
 # The maximum yearly investment
@@ -514,8 +514,8 @@ print("optimal_value:",optimal_value)
 df = pd.DataFrame({"Variable": [v.varName for v in vars], "Value": [v.X for v in vars]})
 
 # Save the DataFrame to a CSV file
-df.to_csv(r'../../results/highcap-FE-optimized-variables.csv', index=False)
-coeff_df.to_csv(r'../../results/highcap-FE-coefficients.csv', index=False)
+df.to_csv(r'../../results/midcap-FE-optimized-variables.csv', index=False)
+coeff_df.to_csv(r'../../results/midcap-FE-coefficients.csv', index=False)
 
 end = time.time()
 report_usage()
