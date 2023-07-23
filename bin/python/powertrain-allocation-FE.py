@@ -305,22 +305,7 @@ y_BEB = model.addVars(S, year_keys, vtype=GRB.INTEGER, name='y_BEB')
 print("Done setting y variables")
 report_usage()
 
-# Define decision variables delta to show number of new buses
-# =============================================================================
-# delta_CDB = model.addVars(S, year_keys, lb=0, vtype=GRB.CONTINUOUS, name='delta_CDB')
-# delta_HEB = model.addVars(S, year_keys, lb=0, vtype=GRB.CONTINUOUS, name='delta_HEB')
-# delta_BEB = model.addVars(S, year_keys, lb=0, vtype=GRB.CONTINUOUS, name='delta_BEB')
-# print("Done setting delta variables")
-# report_usage()
-# =============================================================================
 
-# Initialize y_CDB, y_HEB, and y_BEB for the first year
-# =============================================================================
-# for s in S:
-#     y_CDB[s, 0].start = N[('C', 0)]
-#     y_HEB[s, 0].start = N[('H', 0)]
-#     y_BEB[s, 0].start = N[('B', 0)]
-# =============================================================================
 for s in S:
     y_CDB[s, 0].setAttr('LB', 189)
     y_CDB[s, 0].setAttr('UB', 189)
@@ -410,13 +395,6 @@ for s in S:
 print("Done defining constraint 2")
 report_usage()
 
-# Constraint 3: Maximum daily charging capacity
-# =============================================================================
-# model.addConstrs(
-#     (quicksum(energy_BEB_dict[key]['Energy'] * x_BEB.sum(s, y, key) for s in S for key in keys_BEB) <= M_cap[y] for y in year_keys),
-#     name="C3: daily charging capacity"
-# )
-# =============================================================================
 for s in S:
     for y in year_keys:
         total_energy_BEB = quicksum(energy_BEB_dict[key]['Energy'] * x_BEB[s, y, key] for key in keys_BEB if key in energy_BEB_dict)
@@ -426,46 +404,6 @@ for s in S:
 print("Done defining constraint 3")
 report_usage()
 
-# =============================================================================
-# # Constraint 4: Bus Range Constraint- Add a constraint that ensures that a bus doesn't exceed its maximum range in a day
-# # For CDB buses
-# for y in year_keys:
-#     for s in S:
-#         model.addConstr(
-#             quicksum(energy_CDB_dict[key]['dist'] * x_CDB[s, y, key] for key in keys_CDB if key in energy_CDB_dict) <= range_CDB,
-#             name=f"C4_CDB_{s}_{y}"
-#         )
-# 
-# # For HEB buses
-# for y in year_keys:
-#     for s in S:
-#         model.addConstr(
-#             quicksum(energy_HEB_dict[key]['dist'] * x_HEB[s, y, key] for key in keys_HEB if key in energy_HEB_dict) <= range_HEB,
-#             name=f"C4_HEB_{s}_{y}"
-#         )
-# 
-# # For BEB buses
-# for y in year_keys:
-#     for s in S:
-#         model.addConstr(
-#             quicksum(energy_BEB_dict[key]['dist'] * x_BEB[s, y, key] for key in keys_BEB if key in energy_BEB_dict) <= range_BEB,
-#             name=f"C4_BEB_{s}_{y}"
-#         )
-# print("Done defining constraint 4")
-# report_usage()
-# =============================================================================
-
-# Constraint 4: Maximum yearly investment
-# =============================================================================
-# for s in S:
-#     for y in year_keys:
-#         CDB_investment = max(0, (y_CDB[s, y] - (y_CDB[s, y-1] if y > 0 else 0))) * cost_inv[('C', y)]
-#         HEB_investment = max(0, (y_HEB[s, y] - (y_HEB[s, y-1] if y > 0 else 0))) * cost_inv[('H', y)]
-#         BEB_investment = max(0, (y_BEB[s, y] - (y_BEB[s, y-1] if y > 0 else 0))) * cost_inv[('B', y)]
-#         
-#         model.addConstr(CDB_investment + HEB_investment + BEB_investment <= M_inv[s, y], name=f"C4: Max yearly investment_{y}_{s}")
-# 
-# =============================================================================
 
 # Constraint 4: Maximum yearly investment
 for s in S:
@@ -515,6 +453,16 @@ for s in S:
 
 print("Done defining constraint 5")
 report_usage()    
+
+# Constraint 6: The number of hybrid buses (HEBs) for a given year cannot be more than the previous year
+for s in S:
+    for y in range(1, len(year_keys)):  # Start from the second year since the first year doesn't have a previous year
+        delta_HEB = y_HEB[s, y] - y_HEB[s, y-1]
+        model.addConstr(
+            delta_HEB <= 0,
+            name=f"C6_NoIncreaseInHEBs_{s}_{y}"
+        )
+
 
 # Print model statistics
 model.update()
@@ -566,8 +514,8 @@ print("optimal_value:",optimal_value)
 df = pd.DataFrame({"Variable": [v.varName for v in vars], "Value": [v.X for v in vars]})
 
 # Save the DataFrame to a CSV file
-df.to_csv(r'../../results/highcap-balanced-transition-optimized-variables.csv', index=False)
-coeff_df.to_csv(r'../../results/highcap-balanced-transition-coefficients.csv', index=False)
+df.to_csv(r'../../results/highcap-FE-optimized-variables.csv', index=False)
+coeff_df.to_csv(r'../../results/highcap-FE-coefficients.csv', index=False)
 
 end = time.time()
 report_usage()
