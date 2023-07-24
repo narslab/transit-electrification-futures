@@ -128,7 +128,7 @@ M_cap = {y: battery_values[y]*battery_cap if y < len(battery_values) else float(
 
 # Set of scenarios
 #S = {'low-cap', 'mid-cap', 'high-cap'}
-S = {'high-cap'}
+S = {'mid-cap'}
 
 # Define R and Rho
 R = df_CDB['Route'].nunique()
@@ -144,8 +144,8 @@ cost_inv = {
 # Max investment per scenario per year
 C_max = {
 #    'low-cap': 7,  # in million dollars
-#      'mid-cap': 14,  # in million dollars
-     'high-cap': 21  # in million dollars
+      'mid-cap': 14,  # in million dollars
+#     'high-cap': 21  # in million dollars
 }
 
 # The maximum yearly investment
@@ -480,11 +480,6 @@ for s in S:
 print("Done defining constraint 4")
 report_usage()
 
-
-
-print("Done defining constraint 4")
-report_usage()
-
 # Constraint 5: Total number of buses (y) (summed over all powertrain) per year cannot exceed 1000
 for s in S:
     for y in year_keys:
@@ -546,8 +541,8 @@ print("optimal_value:",optimal_value)
 df = pd.DataFrame({"Variable": [v.varName for v in vars], "Value": [v.X for v in vars]})
 
 # Save the DataFrame to a CSV file
-df.to_csv(r'../../results/highcap-BM-optimized-variables.csv', index=False)
-coeff_df.to_csv(r'../../results/highcap-BM-coefficients.csv', index=False)
+df.to_csv(r'../../results/midcap-BM-optimized-variables.csv', index=False)
+coeff_df.to_csv(r'../../results/midcap-BM-coefficients.csv', index=False)
 
 end = time.time()
 report_usage()
