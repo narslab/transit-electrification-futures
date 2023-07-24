@@ -552,8 +552,8 @@ print("optimal_value:",optimal_value)
 df = pd.DataFrame({"Variable": [v.varName for v in vars], "Value": [v.X for v in vars]})
 
 # Save the DataFrame to a CSV file
-df.to_csv(r'../../results/midcap-BM-optimized-variables.csv', index=False)
-coeff_df.to_csv(r'../../results/midcap-BM-coefficients.csv', index=False)
+df.to_csv(r'../../results/midcap-FE-optimized-variables.csv', index=False)
+coeff_df.to_csv(r'../../results/midcap-FE-coefficients.csv', index=False)
 
 end = time.time()
 report_usage()

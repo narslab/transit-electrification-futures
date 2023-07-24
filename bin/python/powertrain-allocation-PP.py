@@ -128,7 +128,7 @@ M_cap = {y: battery_values[y]*battery_cap if y < len(battery_values) else float(
 
 # Set of scenarios
 #S = {'low-cap', 'mid-cap', 'high-cap'}
-S = {'mid-cap'}
+S = {'high-cap'}
 
 # Define R and Rho
 R = df_CDB['Route'].nunique()
@@ -144,8 +144,8 @@ cost_inv = {
 # Max investment per scenario per year
 C_max = {
 #    'low-cap': 7,  # in million dollars
-      'mid-cap': 14,  # in million dollars
-#     'high-cap': 21  # in million dollars
+#      'mid-cap': 14,  # in million dollars
+     'high-cap': 21  # in million dollars
 }
 
 # The maximum yearly investment
@@ -298,8 +298,58 @@ for s in S:
     y_HEB[s, 0].setAttr('UB', 9)
     y_BEB[s, 0].setAttr('LB', 15)
     y_BEB[s, 0].setAttr('UB', 15)
-
-
+    y_HEB[s, 1].setAttr('LB', 9)
+    y_HEB[s, 1].setAttr('UB', 9)
+    y_BEB[s, 1].setAttr('LB', 23)
+    y_BEB[s, 1].setAttr('UB', 23)
+    y_HEB[s, 2].setAttr('LB', 25)
+    y_HEB[s, 2].setAttr('UB', 25)
+    y_BEB[s, 2].setAttr('LB', 23)
+    y_BEB[s, 2].setAttr('UB', 23)
+    y_HEB[s, 3].setAttr('LB', 35)
+    y_HEB[s, 3].setAttr('UB', 35)
+    y_BEB[s, 3].setAttr('LB', 27)
+    y_BEB[s, 3].setAttr('UB', 27)
+    y_HEB[s, 4].setAttr('LB', 35)
+    y_HEB[s, 4].setAttr('UB', 35)
+    y_BEB[s, 4].setAttr('LB', 38)
+    y_BEB[s, 4].setAttr('UB', 38)
+    y_HEB[s, 5].setAttr('LB', 39)
+    y_HEB[s, 5].setAttr('UB', 39)
+    y_BEB[s, 5].setAttr('LB', 42)
+    y_BEB[s, 5].setAttr('UB', 42)
+    y_HEB[s, 6].setAttr('LB', 39)
+    y_HEB[s, 6].setAttr('UB', 39)
+    y_BEB[s, 6].setAttr('LB', 52)
+    y_BEB[s, 6].setAttr('UB', 52)
+    y_HEB[s, 7].setAttr('LB', 39)
+    y_HEB[s, 7].setAttr('UB', 39)
+    y_BEB[s, 7].setAttr('LB', 52)
+    y_BEB[s, 7].setAttr('UB', 52)
+    y_HEB[s, 8].setAttr('LB', 39)
+    y_HEB[s, 8].setAttr('UB', 39)
+    y_BEB[s, 8].setAttr('LB', 52)
+    y_BEB[s, 8].setAttr('UB', 52)
+    y_HEB[s, 9].setAttr('LB', 39)
+    y_HEB[s, 9].setAttr('UB', 39)
+    y_BEB[s, 9].setAttr('LB', 52)
+    y_BEB[s, 9].setAttr('UB', 52)
+    y_HEB[s, 10].setAttr('LB', 39)
+    y_HEB[s, 10].setAttr('UB', 39)
+    y_BEB[s, 10].setAttr('LB', 52)
+    y_BEB[s, 10].setAttr('UB', 52)
+    y_HEB[s, 11].setAttr('LB', 39)
+    y_HEB[s, 11].setAttr('UB', 39)
+    y_BEB[s, 11].setAttr('LB', 52)
+    y_BEB[s, 11].setAttr('UB', 52)
+    y_HEB[s, 12].setAttr('LB', 39)
+    y_HEB[s, 12].setAttr('UB', 39)
+    y_BEB[s, 12].setAttr('LB', 52)
+    y_BEB[s, 12].setAttr('UB', 52)
+    y_HEB[s, 13].setAttr('LB', 39)
+    y_HEB[s, 13].setAttr('UB', 39)
+    y_BEB[s, 13].setAttr('LB', 52)
+    y_BEB[s, 13].setAttr('UB', 52)
 print("Done setting u variables")
 report_usage()
 
@@ -491,17 +541,6 @@ for s in S:
 print("Done defining constraint 5")
 report_usage()    
 
-# Constraint 6: The number of electric buses (BEBs) for a given year cannot be more than the previous year
-for s in S:
-    for y in range(1, len(year_keys)):  # Start from the second year since the first year doesn't have a previous year
-        delta_BEB = y_BEB[s, y] - y_BEB[s, y-1]
-        model.addConstr(
-            delta_BEB <= 0,
-            name=f"C6_NoIncreaseInBEBs_{s}_{y}"
-        )
-print("Done defining constraint 6")
-report_usage()   
-
 # Print model statistics
 model.update()
 print(model)
@@ -552,8 +591,8 @@ print("optimal_value:",optimal_value)
 df = pd.DataFrame({"Variable": [v.varName for v in vars], "Value": [v.X for v in vars]})
 
 # Save the DataFrame to a CSV file
-df.to_csv(r'../../results/midcap-FH-optimized-variables.csv', index=False)
-coeff_df.to_csv(r'../../results/midcap-FH-coefficients.csv', index=False)
+df.to_csv(r'../../results/PP-optimized-variables.csv', index=False)
+coeff_df.to_csv(r'../../results/PP-coefficients.csv', index=False)
 
 end = time.time()
 report_usage()

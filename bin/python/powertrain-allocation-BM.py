@@ -125,6 +125,9 @@ battery_cap=350 #kWh
 # Maximum daily charging capacity in year y
 battery_values = [15, 23, 23, 27, 38, 42, 52]
 M_cap = {y: battery_values[y]*battery_cap if y < len(battery_values) else float('inf') for y in range(14)}
+#M_cap = {y: battery_values[y]*battery_cap if y < len(battery_values) else max_number_of_buses for y in range(14)}
+#M_cap = [15, 23, 23, 27, 38, 42, 52, 1000, 1000, 1000, 1000, 1000, 1000, 1000]
+
 
 # Set of scenarios
 #S = {'low-cap', 'mid-cap', 'high-cap'}
@@ -303,20 +306,20 @@ for s in S:
 print("Done setting u variables")
 report_usage()
 
-# =============================================================================
+model.setObjective(
+(quicksum([energy_CDB_dict[key]['Diesel'] * x_CDB[s, y, key] for s in S for key in keys_CDB for y in year_keys if key in energy_CDB_dict]) +
+ quicksum([energy_HEB_dict[key]['Diesel'] * x_HEB[s, y, key] for s in S for key in keys_HEB for y in year_keys if key in energy_HEB_dict]) +
+ quicksum([energy_BEB_dict[key]['Diesel'] * x_BEB[s, y, key] for s in S for key in keys_BEB for y in year_keys if key in energy_BEB_dict])),
+    GRB.MINIMIZE
+ )
+
 # model.setObjective(
-# (quicksum([energy_CDB_dict[key]['Diesel'] * x_CDB[s, y, key] for s in S for key in keys_CDB for y in year_keys if key in energy_CDB_dict]) +
-#  quicksum([energy_HEB_dict[key]['Diesel'] * x_HEB[s, y, key] for s in S for key in keys_HEB for y in year_keys if key in energy_HEB_dict]) +
-#  quicksum([energy_BEB_dict[key]['Diesel'] * x_BEB[s, y, key] for s in S for key in keys_BEB for y in year_keys if key in energy_BEB_dict])),
+# (quicksum([energy_CDB_dict[key]['Diesel'] * x_CDB[s, y, key] for s in S for key in keys_CDB for y in year_keys]) +
+#  quicksum([energy_HEB_dict[key]['Diesel'] * x_HEB[s, y, key] for s in S for key in keys_HEB for y in year_keys]) +
+#  quicksum([energy_BEB_dict[key]['Diesel'] * x_BEB[s, y, key] for s in S for key in keys_BEB for y in year_keys])),
 #     GRB.MINIMIZE
 # )
 # =============================================================================
-model.setObjective(
-(quicksum([energy_CDB_dict[key]['Diesel'] * x_CDB[s, y, key] for s in S for key in keys_CDB for y in year_keys]) +
- quicksum([energy_HEB_dict[key]['Diesel'] * x_HEB[s, y, key] for s in S for key in keys_HEB for y in year_keys]) +
- quicksum([energy_BEB_dict[key]['Diesel'] * x_BEB[s, y, key] for s in S for key in keys_BEB for y in year_keys])),
-    GRB.MINIMIZE
-)
 print("Done setting objective function")
 report_usage()
 
