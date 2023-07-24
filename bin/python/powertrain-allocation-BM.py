@@ -123,10 +123,6 @@ max_number_of_buses = 1000 # 213*4 (current numnumber of fleet*4, assuming buses
 battery_cap=350 #kWh 
 
 # Maximum daily charging capacity in year y
-#M_cap = {y: val for y, val in enumerate([5600, 8400, 10500, 12950, 15400, 18900] + [float('inf')] * (Y - 6))}
-#M_cap = {y: val for y, val in enumerate([15, 23, 23, 27, 38, 42, 52] + [float('inf')] * (Y - 7))}
-#M_cap = {y: val for y, val in enumerate([15*battery_cap, 23*battery_cap, 23*battery_cap, 27*battery_cap, 38*battery_cap, 42*battery_cap, 52*battery_cap] + [float('inf')] * (Y - 7))}
-#M_cap = {y: val for y, val in enumerate([15*battery_cap, 23*battery_cap, 23*battery_cap, 27*battery_cap, 38*battery_cap, 42*battery_cap, 52*battery_cap,float('inf'),float('inf'),float('inf'),float('inf'),float('inf'),float('inf'),float('inf')])}
 battery_values = [15, 23, 23, 27, 38, 42, 52]
 M_cap = {y: battery_values[y]*battery_cap if y < len(battery_values) else float('inf') for y in range(14)}
 
@@ -144,7 +140,6 @@ cost_inv = {
     ('H'): 0.9,  # in million dollars
     ('B'): 1.3   # in million dollars
 }
-
 
 # Max investment per scenario per year
 C_max = {
@@ -296,21 +291,6 @@ print("Done setting y variables")
 report_usage()
 
 # Define decision variables delta to show number of new buses
-# =============================================================================
-# delta_CDB = model.addVars(S, year_keys, lb=0, vtype=GRB.CONTINUOUS, name='delta_CDB')
-# delta_HEB = model.addVars(S, year_keys, lb=0, vtype=GRB.CONTINUOUS, name='delta_HEB')
-# delta_BEB = model.addVars(S, year_keys, lb=0, vtype=GRB.CONTINUOUS, name='delta_BEB')
-# print("Done setting delta variables")
-# report_usage()
-# =============================================================================
-
-# Initialize y_CDB, y_HEB, and y_BEB for the first year
-# =============================================================================
-# for s in S:
-#     y_CDB[s, 0].start = N[('C', 0)]
-#     y_HEB[s, 0].start = N[('H', 0)]
-#     y_BEB[s, 0].start = N[('B', 0)]
-# =============================================================================
 for s in S:
     y_CDB[s, 0].setAttr('LB', 189)
     y_CDB[s, 0].setAttr('UB', 189)
@@ -418,6 +398,43 @@ print("Done defining constraint 3")
 report_usage()
 
 # Constraint 4: Maximum yearly investment
+# =============================================================================
+# for s in S:
+#     for y in year_keys:
+#         # Introduce binary variables
+#         z_CDB = model.addVar(vtype=GRB.BINARY, name=f"z_CDB_{s}_{y}")
+#         z_HEB = model.addVar(vtype=GRB.BINARY, name=f"z_HEB_{s}_{y}")
+#         z_BEB = model.addVar(vtype=GRB.BINARY, name=f"z_BEB_{s}_{y}")
+# 
+#         # Use a large M constant
+#         big_M = 1e6  # Adjust this value based on the context of your problem
+# 
+#         # Create constraints for binary variable logic
+#         delta_fleet_CDB = y_CDB[s, y] - (y_CDB[s, y-1] if y > 0 else 0)
+#         delta_fleet_HEB = y_HEB[s, y] - (y_HEB[s, y-1] if y > 0 else 0)
+#         delta_fleet_BEB = y_BEB[s, y] - (y_BEB[s, y-1] if y > 0 else 0)
+# 
+#         # Enforce z = 1 if fleet size increased, 0 otherwise
+#         model.addConstr(delta_fleet_CDB <= big_M * z_CDB)
+#         model.addConstr(delta_fleet_HEB <= big_M * z_HEB)
+#         model.addConstr(delta_fleet_BEB <= big_M * z_BEB)
+#         
+#         # This will enforce z = 0 if delta_fleet is non-positive
+#         model.addConstr(0 <= delta_fleet_CDB + big_M * (1 - z_CDB))
+#         model.addConstr(0 <= delta_fleet_HEB + big_M * (1 - z_HEB))
+#         model.addConstr(0 <= delta_fleet_BEB + big_M * (1 - z_BEB))
+# 
+#         # Calculate the investment for each bus type using binary variable
+#         CDB_investment = delta_fleet_CDB * z_CDB * cost_inv[('C')]
+#         HEB_investment = delta_fleet_HEB * z_HEB * cost_inv[('H')]
+#         BEB_investment = delta_fleet_BEB * z_BEB * cost_inv[('B')]
+# 
+#         # Define the total investment constraint for the year and scenario
+#         total_investment = CDB_investment + HEB_investment + BEB_investment
+#         model.addConstr(total_investment <= M_inv[s, y], name=f"C4: Max yearly investment_{y}_{s}")
+# 
+# =============================================================================
+# Constraint 4: Maximum yearly investment
 for s in S:
     for y in year_keys:
         # Introduce binary variables
@@ -425,32 +442,45 @@ for s in S:
         z_HEB = model.addVar(vtype=GRB.BINARY, name=f"z_HEB_{s}_{y}")
         z_BEB = model.addVar(vtype=GRB.BINARY, name=f"z_BEB_{s}_{y}")
 
-        # Use a large M constant
-        big_M = 1e6  # Adjust this value based on the context of your problem
+        # Introduce auxiliary variables for positive deltas
+        positive_delta_fleet_CDB = model.addVar(vtype=GRB.CONTINUOUS, lb=0, name=f"positive_delta_CDB_{s}_{y}")
+        positive_delta_fleet_HEB = model.addVar(vtype=GRB.CONTINUOUS, lb=0, name=f"positive_delta_HEB_{s}_{y}")
+        positive_delta_fleet_BEB = model.addVar(vtype=GRB.CONTINUOUS, lb=0, name=f"positive_delta_BEB_{s}_{y}")
 
-        # Create constraints for binary variable logic
+        # Actual changes in fleet sizes
         delta_fleet_CDB = y_CDB[s, y] - (y_CDB[s, y-1] if y > 0 else 0)
         delta_fleet_HEB = y_HEB[s, y] - (y_HEB[s, y-1] if y > 0 else 0)
         delta_fleet_BEB = y_BEB[s, y] - (y_BEB[s, y-1] if y > 0 else 0)
 
+        # Constraints to capture only positive changes
+        big_M = 1e6
+        model.addConstr(positive_delta_fleet_CDB >= delta_fleet_CDB)
+        model.addConstr(positive_delta_fleet_CDB <= delta_fleet_CDB + big_M * (1 - z_CDB))
+
+        model.addConstr(positive_delta_fleet_HEB >= delta_fleet_HEB)
+        model.addConstr(positive_delta_fleet_HEB <= delta_fleet_HEB + big_M * (1 - z_HEB))
+        
+        model.addConstr(positive_delta_fleet_BEB >= delta_fleet_BEB)
+        model.addConstr(positive_delta_fleet_BEB <= delta_fleet_BEB + big_M * (1 - z_BEB))
+        
         # Enforce z = 1 if fleet size increased, 0 otherwise
         model.addConstr(delta_fleet_CDB <= big_M * z_CDB)
         model.addConstr(delta_fleet_HEB <= big_M * z_HEB)
         model.addConstr(delta_fleet_BEB <= big_M * z_BEB)
-        
-        # This will enforce z = 0 if delta_fleet is non-positive
-        model.addConstr(0 <= delta_fleet_CDB + big_M * (1 - z_CDB))
-        model.addConstr(0 <= delta_fleet_HEB + big_M * (1 - z_HEB))
-        model.addConstr(0 <= delta_fleet_BEB + big_M * (1 - z_BEB))
 
         # Calculate the investment for each bus type using binary variable
-        CDB_investment = delta_fleet_CDB * z_CDB * cost_inv[('C')]
-        HEB_investment = delta_fleet_HEB * z_HEB * cost_inv[('H')]
-        BEB_investment = delta_fleet_BEB * z_BEB * cost_inv[('B')]
+        CDB_investment = positive_delta_fleet_CDB * cost_inv[('C')]
+        HEB_investment = positive_delta_fleet_HEB * cost_inv[('H')]
+        BEB_investment = positive_delta_fleet_BEB * cost_inv[('B')]
 
         # Define the total investment constraint for the year and scenario
         total_investment = CDB_investment + HEB_investment + BEB_investment
         model.addConstr(total_investment <= M_inv[s, y], name=f"C4: Max yearly investment_{y}_{s}")
+
+print("Done defining constraint 4")
+report_usage()
+
+
 
 print("Done defining constraint 4")
 report_usage()
