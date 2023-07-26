@@ -37,7 +37,6 @@ df_CDB = pd.read_csv(r'../../results/computed-fuel-rates-all-CDB.csv', low_memor
 df_HEB = pd.read_csv(r'../../results/computed-fuel-rates-all-HEB.csv', low_memory=False)
 df_BEB = pd.read_csv(r'../../results/computed-fuel-rates-all-BEB.csv', low_memory=False)
 
-
 # Find the date with the maximum number of unique trips
 date_with_max_trips = df_CDB.groupby('Date')['TripKey'].nunique().idxmax()
 max_trips = df_CDB.groupby('Date')['TripKey'].nunique().max()
@@ -111,26 +110,26 @@ df_BEB = df_BEB.rename(columns={'Route_first': 'Route'})
 df_BEB = df_BEB.rename(columns={'Energy_sum': 'Energy'})
 df_BEB = df_BEB.rename(columns={'dist_sum': 'dist'})
 df_BEB = df_BEB.rename(columns={'Powertrain_first': 'Powertrain'})
-print("Dataframe columns list:", df_CDB.columns)
 
 # Define parameters
 #D = len(set(df_CDB['Date'].unique()))  # Create a set of unique dates
-Y = 14  # Years in simulation (including year 0)
+Y = 13  # Years in simulation (including year 0)
 max_number_of_buses = 1000 # 213*4 (current numnumber of fleet*4, assuming buses are going to be replaced with electric at most with ratio of 1:4)
 
 # Batery capacity of an electric bus
 battery_cap=350 #kWh 
 
 # Maximum daily charging capacity in year y
-battery_values = [15, 23, 23, 27, 38, 42, 52]
-M_cap = {y: battery_values[y]*battery_cap if y < len(battery_values) else float('inf') for y in range(14)}
+#battery_values = [15, 23, 23, 27, 38, 42, 52]
+battery_values = [23, 23, 27, 38, 42, 52, 1000, 1000, 1000, 1000, 1000, 1000, 1000]
+M_cap = {y: battery_values[y]*battery_cap if y < len(battery_values) else float('inf') for y in range(13)}
 #M_cap = {y: battery_values[y]*battery_cap if y < len(battery_values) else max_number_of_buses for y in range(14)}
 #M_cap = [15, 23, 23, 27, 38, 42, 52, 1000, 1000, 1000, 1000, 1000, 1000, 1000]
 
 
 # Set of scenarios
 #S = {'low-cap', 'mid-cap', 'high-cap'}
-S = {'high-cap'}
+S = {'low-cap'}
 
 # Define R and Rho
 R = df_CDB['Route'].nunique()
@@ -145,9 +144,9 @@ cost_inv = {
 
 # Max investment per scenario per year
 C_max = {
-#    'low-cap': 7,  # in million dollars
+    'low-cap': 7,  # in million dollars
 #      'mid-cap': 14,  # in million dollars
-     'high-cap': 21  # in million dollars
+#     'high-cap': 21  # in million dollars
 }
 
 # The maximum yearly investment
@@ -157,13 +156,15 @@ M_inv = {
 }
 
 # Bus ranges
-#range_CDB= 690-10 # in miles (NEW flyer XD40 tank cap= 473 liters or 125 gal, mean fuel economy = 5.52 MPG)
-#range_HEB= 701-10 # in miles (minues 10 miles buffer to go to the garage) 
-#range_BEB= 200-10 # in miles (minues 10 miles buffer to go to the garage)
-range_CDB= 93-10 # in miles 
-range_HEB= 110-10 # in miles 
-range_BEB= 55-10 # in miles 
-
+#range_CDB= 332-50 # in miles (NEW flyer XD40 tank cap= 473 liters or 125 gal, mean fuel economy = 2.66 MPG)
+#range_HEB= 381-50 # in miles (minues 10 miles buffer to go to the garage), mean fuel economy = 3.05 MPG 
+#range_BEB= 200-50 # in miles (minues 10 miles buffer to go to the garage), from the manual
+range_CDB= 93-10 # mean actual values in miles 
+range_HEB= 110-10 # mean actual values in miles 
+range_BEB= 55-10 # mean actual values in miles 
+#range_CDB= 129 # 3rd quantile actual values in miles 
+#range_HEB= 133 # 3rd quantile actual values in miles 
+#range_BEB= 85 # 3rd quantile actual values in miles 
 # Total number of fleet from each powertrain in year 0
 N = {
     ('C', 0): 189,
@@ -185,6 +186,9 @@ energy_CDB = df_CDB.groupby(['Date', 'Route', 'TripKey']).agg({
     'Powertrain': 'first'}).reset_index()
 energy_CDB['Diesel'] = (energy_CDB['Powertrain'].isin(['conventional', 'hybrid']) * energy_CDB['Energy'])
 energy_CDB_dict = energy_CDB.set_index(['TripKey']).to_dict('index')
+#print("energy_CDB_dict", energy_CDB_dict)
+#energy_CDB_dict = {f"CDB_{key}": value for key, value in energy_CDB.set_index(['TripKey']).to_dict('index').items()}
+
 
 # For df_HEB
 energy_HEB = df_HEB.groupby(['Date', 'Route', 'TripKey']).agg({    
@@ -197,6 +201,8 @@ energy_HEB = df_HEB.groupby(['Date', 'Route', 'TripKey']).agg({
     'Powertrain': 'first'}).reset_index()
 energy_HEB['Diesel'] = (energy_HEB['Powertrain'].isin(['conventional', 'hybrid']) * energy_HEB['Energy'])
 energy_HEB_dict = energy_HEB.set_index(['TripKey']).to_dict('index')
+#energy_HEB_dict = {f"HEB_{key}": value for key, value in energy_HEB.set_index(['TripKey']).to_dict('index').items()}
+
 
 # For df_BEB
 energy_BEB = df_BEB.groupby(['Date', 'Route', 'TripKey']).agg({    
@@ -209,24 +215,35 @@ energy_BEB = df_BEB.groupby(['Date', 'Route', 'TripKey']).agg({
     'Powertrain': 'first'}).reset_index()
 energy_BEB['Diesel'] = (energy_BEB['Powertrain'].isin(['conventional', 'hybrid']) * energy_BEB['Energy'])
 energy_BEB_dict = energy_BEB.set_index(['TripKey']).to_dict('index')
+#energy_BEB_dict = {f"BEB_{key}": value for key, value in energy_BEB.set_index(['TripKey']).to_dict('index').items()}
+#print("energy_BEB_dict", energy_BEB_dict)
 
 ### Combine three dicts and save all trip information in a csv file
-combined_dict = {}
-combined_dict.update(energy_CDB_dict)
-combined_dict.update(energy_HEB_dict)
-combined_dict.update(energy_BEB_dict)
+#combined_dict = {}
+#combined_dict.update(energy_CDB_dict)
+#combined_dict.update(energy_HEB_dict)
+#combined_dict.update(energy_BEB_dict)
 
 # Convert the dictionary to a DataFrame
-df_combined_dict = pd.DataFrame.from_dict(combined_dict, orient='index')
+#df_combined_dict = pd.DataFrame.from_dict(combined_dict, orient='index')
+#df_combined_CDB = pd.DataFrame.from_dict(energy_CDB_dict, orient='index')
+#df_combined_HEB = pd.DataFrame.from_dict(energy_HEB_dict, orient='index')
+#df_combined_BEB = pd.DataFrame.from_dict(energy_BEB_dict, orient='index')
 
 # Reset the index
-df_combined_dict = df_combined_dict.reset_index()
+#df_combined_dict = df_combined_dict.reset_index()
 
 # Rename the 'index' column to 'TripKey'
-df_combined_dict.rename(columns={'index': 'TripKey'}, inplace=True)
+#df_combined_dict.rename(columns={'index': 'TripKey'}, inplace=True)
+#df_combined_CDB.rename(columns={'index': 'TripKey'}, inplace=True)
+#df_combined_HEB.rename(columns={'index': 'TripKey'}, inplace=True)
+#df_combined_BEB.rename(columns={'index': 'TripKey'}, inplace=True)
 
 # Write the DataFrame to a CSV file
-df_combined_dict.to_csv(r'../../results/busiest-day-trips-info.csv', index=False)
+#df_combined_dict.to_csv(r'../../results/busiest-day-trips-info.csv', index=False)
+#df_combined_CDB.to_csv(r'../../results/busiest-day-trips-info-CDB.csv', index=False)
+#df_combined_HEB.to_csv(r'../../results/busiest-day-trips-info-HEB.csv', index=False)
+#df_combined_BEB.to_csv(r'../../results/busiest-day-trips-info-BEB.csv', index=False)
 
 # Now delete the DataFrame to free up memory
 del df_CDB
@@ -265,9 +282,6 @@ year_keys = range(Y)
 keys_CDB = list(energy_CDB_dict.keys())
 keys_HEB = list(energy_HEB_dict.keys())
 keys_BEB = list(energy_BEB_dict.keys())
-print("len_keys_CDB",len(keys_CDB))
-print("len_keys_HEB",len(keys_HEB))
-print("len_keys_BEB",len(keys_BEB))
 print("Done setting necessary keys")
 report_usage()
 
@@ -290,23 +304,11 @@ print("Done setting y variables")
 report_usage()
 
 # Define decision variables delta to show number of new buses
-for s in S:
-    y_CDB[s, 0].setAttr('LB', 189)
-    y_CDB[s, 0].setAttr('UB', 189)
-    y_HEB[s, 0].setAttr('LB', 9)
-    y_HEB[s, 0].setAttr('UB', 9)
-    y_BEB[s, 0].setAttr('LB', 15)
-    y_BEB[s, 0].setAttr('UB', 15)
-
-
-print("Done setting u variables")
-report_usage()
-
 model.setObjective(
-(quicksum([energy_CDB_dict[key]['Diesel'] * x_CDB[s, y, key] for s in S for key in keys_CDB for y in year_keys if key in energy_CDB_dict]) +
- quicksum([energy_HEB_dict[key]['Diesel'] * x_HEB[s, y, key] for s in S for key in keys_HEB for y in year_keys if key in energy_HEB_dict]) +
- quicksum([energy_BEB_dict[key]['Diesel'] * x_BEB[s, y, key] for s in S for key in keys_BEB for y in year_keys if key in energy_BEB_dict])),
-    GRB.MINIMIZE
+ (quicksum([energy_CDB_dict[key]['Diesel'] * x_CDB[s, y, key] for s in S for key in keys_CDB for y in year_keys]) +
+  quicksum([energy_HEB_dict[key]['Diesel'] * x_HEB[s, y, key] for s in S for key in keys_HEB for y in year_keys]) +
+  quicksum([energy_BEB_dict[key]['Diesel'] * x_BEB[s, y, key] for s in S for key in keys_BEB for y in year_keys])),
+     GRB.MINIMIZE
  )
 
 print("Done setting objective function")
@@ -363,10 +365,11 @@ report_usage()
 
 
 # Constraint 2: Each trip is assigned to exactly one bus powertrain
-unique_keys = set(keys_CDB) | set(keys_HEB) | set(keys_BEB)  # Union of all keys
+#unique_keys = set(keys_CDB) | set(keys_HEB) | set(keys_BEB)  # Union of all keys
 for s in S:
     for y in year_keys:
-        for key in unique_keys:
+        #for key in unique_keys:
+        for key in keys_CDB:
             model.addConstr(
                 x_CDB[s, y, key] + x_HEB[s, y, key] + x_BEB[s, y, key] == 1,
                 name=f"C2_Trip{key}_S{s}_Y{y}: Each trip is assigned to only one powertrain"
@@ -378,58 +381,55 @@ report_usage()
 # Constraint 3: Maximum daily charging capacity
 for s in S:
     for y in year_keys:
-        total_energy_BEB = quicksum(energy_BEB_dict[key]['Energy'] * x_BEB[s, y, key] for key in keys_BEB if key in energy_BEB_dict)
+        total_energy_BEB = quicksum(energy_BEB_dict[key]['Energy'] * x_BEB[s, y, key] for key in keys_BEB)
         model.addConstr(total_energy_BEB <= M_cap[y], name=f"C3: daily charging capacity_{y}_{s}")
-
 
 print("Done defining constraint 3")
 report_usage()
 
 # Constraint 4: Maximum yearly investment
+
+# Initial values for year 0
+initial_fleet_CDB = 189
+initial_fleet_HEB = 9
+initial_fleet_BEB = 15
+
+# Constraint 4: Maximum yearly investment
 for s in S:
     for y in year_keys:
-        # Introduce binary variables
-        z_CDB = model.addVar(vtype=GRB.BINARY, name=f"z_CDB_{s}_{y}")
         z_HEB = model.addVar(vtype=GRB.BINARY, name=f"z_HEB_{s}_{y}")
         z_BEB = model.addVar(vtype=GRB.BINARY, name=f"z_BEB_{s}_{y}")
 
-        # Introduce auxiliary variables for positive deltas
-        positive_delta_fleet_CDB = model.addVar(vtype=GRB.CONTINUOUS, lb=0, name=f"positive_delta_CDB_{s}_{y}")
         positive_delta_fleet_HEB = model.addVar(vtype=GRB.CONTINUOUS, lb=0, name=f"positive_delta_HEB_{s}_{y}")
         positive_delta_fleet_BEB = model.addVar(vtype=GRB.CONTINUOUS, lb=0, name=f"positive_delta_BEB_{s}_{y}")
 
-        # Actual changes in fleet sizes
-        delta_fleet_CDB = y_CDB[s, y] - (y_CDB[s, y-1] if y > 0 else 0)
-        delta_fleet_HEB = y_HEB[s, y] - (y_HEB[s, y-1] if y > 0 else 0)
-        delta_fleet_BEB = y_BEB[s, y] - (y_BEB[s, y-1] if y > 0 else 0)
+        # Adjustments for year 0 to use initial values
+        if y == 0:
+            delta_fleet_HEB = y_HEB[s, y] - initial_fleet_HEB
+            delta_fleet_BEB = y_BEB[s, y] - initial_fleet_BEB
+        else:
+            delta_fleet_HEB = y_HEB[s, y] - y_HEB[s, y-1]
+            delta_fleet_BEB = y_BEB[s, y] - y_BEB[s, y-1]
 
-        # Constraints to capture only positive changes
         big_M = 1e6
-        model.addConstr(positive_delta_fleet_CDB >= delta_fleet_CDB)
-        model.addConstr(positive_delta_fleet_CDB <= delta_fleet_CDB + big_M * (1 - z_CDB))
-
         model.addConstr(positive_delta_fleet_HEB >= delta_fleet_HEB)
         model.addConstr(positive_delta_fleet_HEB <= delta_fleet_HEB + big_M * (1 - z_HEB))
-        
+         
         model.addConstr(positive_delta_fleet_BEB >= delta_fleet_BEB)
         model.addConstr(positive_delta_fleet_BEB <= delta_fleet_BEB + big_M * (1 - z_BEB))
-        
-        # Enforce z = 1 if fleet size increased, 0 otherwise
-        model.addConstr(delta_fleet_CDB <= big_M * z_CDB)
+         
         model.addConstr(delta_fleet_HEB <= big_M * z_HEB)
         model.addConstr(delta_fleet_BEB <= big_M * z_BEB)
-
-        # Calculate the investment for each bus type using binary variable
-        CDB_investment = positive_delta_fleet_CDB * cost_inv[('C')]
+ 
         HEB_investment = positive_delta_fleet_HEB * cost_inv[('H')]
         BEB_investment = positive_delta_fleet_BEB * cost_inv[('B')]
-
-        # Define the total investment constraint for the year and scenario
-        total_investment = CDB_investment + HEB_investment + BEB_investment
+ 
+        total_investment = HEB_investment + BEB_investment
         model.addConstr(total_investment <= M_inv[s, y], name=f"C4: Max yearly investment_{y}_{s}")
-
+ 
 print("Done defining constraint 4")
 report_usage()
+
 
 # Constraint 5: Total number of buses (y) (summed over all powertrain) per year cannot exceed 1000
 for s in S:
@@ -439,7 +439,7 @@ for s in S:
             name=f"C5: TotalFleetSize_{y}_{s}"
         )
 print("Done defining constraint 5")
-report_usage()    
+report_usage()   
 
 # Constraint 6: The number of hybrid buses (HEBs) for a given year cannot be more than the previous year
 for s in S:
@@ -502,8 +502,8 @@ print("optimal_value:",optimal_value)
 df = pd.DataFrame({"Variable": [v.varName for v in vars], "Value": [v.X for v in vars]})
 
 # Save the DataFrame to a CSV file
-df.to_csv(r'../../results/highcap-BM-optimized-variables.csv', index=False)
-coeff_df.to_csv(r'../../results/optimization-coefficients.csv', index=False)
+df.to_csv(r'../../results/lowcap-FE-optimized-variables.csv', index=False)
+#coeff_df.to_csv(r'../../results/optimization-coefficients.csv', index=False)
 
 end = time.time()
 report_usage()

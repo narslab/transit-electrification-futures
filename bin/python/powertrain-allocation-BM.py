@@ -234,12 +234,13 @@ df_combined_dict = pd.DataFrame.from_dict(combined_dict, orient='index')
 df_combined_dict = df_combined_dict.reset_index()
 
 # Rename the 'index' column to 'TripKey'
+df_combined_dict.rename(columns={'index': 'TripKey'}, inplace=True)
 #df_combined_CDB.rename(columns={'index': 'TripKey'}, inplace=True)
 #df_combined_HEB.rename(columns={'index': 'TripKey'}, inplace=True)
 #df_combined_BEB.rename(columns={'index': 'TripKey'}, inplace=True)
 
 # Write the DataFrame to a CSV file
-df_combined_dict.to_csv(r'../../results/busiest-day-trips-info.csv', index=False)
+#df_combined_dict.to_csv(r'../../results/busiest-day-trips-info.csv', index=False)
 #df_combined_CDB.to_csv(r'../../results/busiest-day-trips-info-CDB.csv', index=False)
 #df_combined_HEB.to_csv(r'../../results/busiest-day-trips-info-HEB.csv', index=False)
 #df_combined_BEB.to_csv(r'../../results/busiest-day-trips-info-BEB.csv', index=False)
