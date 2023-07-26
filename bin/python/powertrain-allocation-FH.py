@@ -128,7 +128,7 @@ M_cap = {y: battery_values[y]*battery_cap if y < len(battery_values) else float(
 
 # Set of scenarios
 #S = {'low-cap', 'mid-cap', 'high-cap'}
-S = {'mid-cap'}
+S = {'low-cap'}
 
 # Define R and Rho
 R = df_CDB['Route'].nunique()
@@ -143,8 +143,8 @@ cost_inv = {
 
 # Max investment per scenario per year
 C_max = {
-#    'low-cap': 7,  # in million dollars
-      'mid-cap': 14,  # in million dollars
+    'low-cap': 7,  # in million dollars
+#      'mid-cap': 14,  # in million dollars
 #     'high-cap': 21  # in million dollars
 }
 
@@ -299,18 +299,9 @@ for s in S:
     y_BEB[s, 0].setAttr('LB', 15)
     y_BEB[s, 0].setAttr('UB', 15)
 
-
 print("Done setting u variables")
 report_usage()
 
-# =============================================================================
-# model.setObjective(
-# (quicksum([energy_CDB_dict[key]['Diesel'] * x_CDB[s, y, key] for s in S for key in keys_CDB for y in year_keys if key in energy_CDB_dict]) +
-#  quicksum([energy_HEB_dict[key]['Diesel'] * x_HEB[s, y, key] for s in S for key in keys_HEB for y in year_keys if key in energy_HEB_dict]) +
-#  quicksum([energy_BEB_dict[key]['Diesel'] * x_BEB[s, y, key] for s in S for key in keys_BEB for y in year_keys if key in energy_BEB_dict])),
-#     GRB.MINIMIZE
-# )
-# =============================================================================
 model.setObjective(
 (quicksum([energy_CDB_dict[key]['Diesel'] * x_CDB[s, y, key] for s in S for key in keys_CDB for y in year_keys]) +
  quicksum([energy_HEB_dict[key]['Diesel'] * x_HEB[s, y, key] for s in S for key in keys_HEB for y in year_keys]) +
@@ -398,43 +389,6 @@ print("Done defining constraint 3")
 report_usage()
 
 # Constraint 4: Maximum yearly investment
-# =============================================================================
-# for s in S:
-#     for y in year_keys:
-#         # Introduce binary variables
-#         z_CDB = model.addVar(vtype=GRB.BINARY, name=f"z_CDB_{s}_{y}")
-#         z_HEB = model.addVar(vtype=GRB.BINARY, name=f"z_HEB_{s}_{y}")
-#         z_BEB = model.addVar(vtype=GRB.BINARY, name=f"z_BEB_{s}_{y}")
-# 
-#         # Use a large M constant
-#         big_M = 1e6  # Adjust this value based on the context of your problem
-# 
-#         # Create constraints for binary variable logic
-#         delta_fleet_CDB = y_CDB[s, y] - (y_CDB[s, y-1] if y > 0 else 0)
-#         delta_fleet_HEB = y_HEB[s, y] - (y_HEB[s, y-1] if y > 0 else 0)
-#         delta_fleet_BEB = y_BEB[s, y] - (y_BEB[s, y-1] if y > 0 else 0)
-# 
-#         # Enforce z = 1 if fleet size increased, 0 otherwise
-#         model.addConstr(delta_fleet_CDB <= big_M * z_CDB)
-#         model.addConstr(delta_fleet_HEB <= big_M * z_HEB)
-#         model.addConstr(delta_fleet_BEB <= big_M * z_BEB)
-#         
-#         # This will enforce z = 0 if delta_fleet is non-positive
-#         model.addConstr(0 <= delta_fleet_CDB + big_M * (1 - z_CDB))
-#         model.addConstr(0 <= delta_fleet_HEB + big_M * (1 - z_HEB))
-#         model.addConstr(0 <= delta_fleet_BEB + big_M * (1 - z_BEB))
-# 
-#         # Calculate the investment for each bus type using binary variable
-#         CDB_investment = delta_fleet_CDB * z_CDB * cost_inv[('C')]
-#         HEB_investment = delta_fleet_HEB * z_HEB * cost_inv[('H')]
-#         BEB_investment = delta_fleet_BEB * z_BEB * cost_inv[('B')]
-# 
-#         # Define the total investment constraint for the year and scenario
-#         total_investment = CDB_investment + HEB_investment + BEB_investment
-#         model.addConstr(total_investment <= M_inv[s, y], name=f"C4: Max yearly investment_{y}_{s}")
-# 
-# =============================================================================
-# Constraint 4: Maximum yearly investment
 for s in S:
     for y in year_keys:
         # Introduce binary variables
@@ -511,7 +465,6 @@ model.tune()
 model.optimize()
 report_usage()
 
-
 # Prepare dictionaries of coeesicients to save
 coeff_dict_CDB = {(s, y, key): energy_CDB_dict[key]['Diesel'] for s in S for key in keys_CDB for y in year_keys if key in energy_CDB_dict}
 coeff_dict_HEB = {(s, y, key): energy_HEB_dict[key]['Diesel'] for s in S for key in keys_HEB for y in year_keys if key in energy_HEB_dict}
@@ -519,7 +472,6 @@ coeff_dict_BEB = {(s, y, key): energy_BEB_dict[key]['Diesel'] for s in S for key
 
 # Combine all the dictionaries into a dataframe
 coeff_df = pd.DataFrame(list(coeff_dict_CDB.items()) + list(coeff_dict_HEB.items()) + list(coeff_dict_BEB.items()), columns=['Variable', 'Coefficient'])
-
 
 vars = model.getVars()
 
@@ -552,8 +504,8 @@ print("optimal_value:",optimal_value)
 df = pd.DataFrame({"Variable": [v.varName for v in vars], "Value": [v.X for v in vars]})
 
 # Save the DataFrame to a CSV file
-df.to_csv(r'../../results/midcap-FH-optimized-variables.csv', index=False)
-coeff_df.to_csv(r'../../results/midcap-FH-coefficients.csv', index=False)
+df.to_csv(r'../../results/lowcap-FH-optimized-variables.csv', index=False)
+coeff_df.to_csv(r'../../results/optimization-coefficients.csv', index=False)
 
 end = time.time()
 report_usage()
