@@ -122,15 +122,15 @@ battery_cap=350 #kWh
 # Maximum daily charging capacity in year y
 #battery_values = [15, 23, 23, 27, 38, 42, 52]
 battery_values = [23, 23, 27, 38, 42, 52, 1000, 1000, 1000, 1000, 1000, 1000, 1000]
-M_cap = {y: battery_values[y]*battery_cap if y < len(battery_values) else float('inf') for y in range(13)}
-#M_cap = [23, 23, 27, 38, 42, 52, 1000, 1000, 1000, 1000, 1000, 1000, 1000]
+#M_cap = {y: battery_values[y]*battery_cap if y < len(battery_values) else float('inf') for y in range(13)}
+M_cap = [23, 23, 27, 38, 42, 52, 1000, 1000, 1000, 1000, 1000, 1000, 1000]
 #M_cap = {y: battery_values[y]*battery_cap if y < len(battery_values) else max_number_of_buses for y in range(14)}
 #M_cap = [15, 23, 23, 27, 38, 42, 52, 1000, 1000, 1000, 1000, 1000, 1000, 1000]
 
 
 # Set of scenarios
 #S = {'low-cap', 'mid-cap', 'high-cap'}
-S = {'low-cap'}
+S = {'high-cap'}
 
 # Define R and Rho
 R = df_CDB['Route'].nunique()
@@ -145,8 +145,8 @@ cost_inv = {
 
 # Max investment per scenario per year
 C_max = {
-    'low-cap': 7,  # in million dollars
-#      'mid-cap': 14,  # in million dollars
+#    'low-cap': 7,  # in million dollars
+      'mid-cap': 14,  # in million dollars
 #     'high-cap': 21  # in million dollars
 }
 
@@ -385,11 +385,19 @@ print("Done defining constraint 2")
 report_usage()
 
 # Constraint 3: Maximum daily charging capacity
+# =============================================================================
+# for s in S:
+#     for y in year_keys:
+#         total_energy_BEB = quicksum(energy_BEB_dict[key]['Energy'] * x_BEB[s, y, key] for key in keys_BEB)
+#         model.addConstr(total_energy_BEB <= M_cap[y], name=f"C3: daily charging capacity_{y}_{s}")
+# 
+# =============================================================================
 for s in S:
-    for y in year_keys:
-        total_energy_BEB = quicksum(energy_BEB_dict[key]['Energy'] * x_BEB[s, y, key] for key in keys_BEB)
-        model.addConstr(total_energy_BEB <= M_cap[y], name=f"C3: daily charging capacity_{y}_{s}")
+     for y in year_keys:
+         total_BEB = y_BEB[s,y]
+         model.addConstr(total_BEB <= M_cap[y], name=f"C3: daily charging capacity_{y}_{s}")
  
+    
 # =============================================================================
 # for s in S:
 #     for y in year_keys:
@@ -523,7 +531,7 @@ print("optimal_value:",optimal_value)
 df = pd.DataFrame({"Variable": [v.varName for v in vars], "Value": [v.X for v in vars]})
 
 # Save the DataFrame to a CSV file
-df.to_csv(r'../../results/lowcap-FE-optimized-variables.csv', index=False)
+df.to_csv(r'../../results/highcap-FE-optimized-variables.csv', index=False)
 #coeff_df.to_csv(r'../../results/optimization-coefficients.csv', index=False)
 
 end = time.time()

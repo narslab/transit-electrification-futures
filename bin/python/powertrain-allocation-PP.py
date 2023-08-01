@@ -125,8 +125,8 @@ battery_cap=350 #kWh
 # Maximum daily charging capacity in year y
 #battery_values = [15, 23, 23, 27, 38, 42, 52]
 battery_values = [23, 23, 27, 38, 42, 52, 1000, 1000, 1000, 1000, 1000, 1000, 1000]
-M_cap = {y: battery_values[y]*battery_cap if y < len(battery_values) else float('inf') for y in range(13)}
-#M_cap = [23, 23, 27, 38, 42, 52, 1000, 1000, 1000, 1000, 1000, 1000, 1000]
+#M_cap = {y: battery_values[y]*battery_cap if y < len(battery_values) else float('inf') for y in range(13)}
+M_cap = [23, 23, 27, 38, 42, 52, 1000, 1000, 1000, 1000, 1000, 1000, 1000]
 #M_cap = {y: battery_values[y]*battery_cap if y < len(battery_values) else max_number_of_buses for y in range(14)}
 #M_cap = [15, 23, 23, 27, 38, 42, 52, 1000, 1000, 1000, 1000, 1000, 1000, 1000]
 
@@ -388,11 +388,19 @@ print("Done defining constraint 2")
 report_usage()
 
 # Constraint 3: Maximum daily charging capacity
+# =============================================================================
+# for s in S:
+#     for y in year_keys:
+#         total_energy_BEB = quicksum(energy_BEB_dict[key]['Energy'] * x_BEB[s, y, key] for key in keys_BEB)
+#         model.addConstr(total_energy_BEB <= M_cap[y], name=f"C3: daily charging capacity_{y}_{s}")
+
 for s in S:
-    for y in year_keys:
-        total_energy_BEB = quicksum(energy_BEB_dict[key]['Energy'] * x_BEB[s, y, key] for key in keys_BEB)
-        model.addConstr(total_energy_BEB <= M_cap[y], name=f"C3: daily charging capacity_{y}_{s}")
+     for y in year_keys:
+         total_BEB = y_BEB[s,y]
+         model.addConstr(total_BEB <= M_cap[y], name=f"C3: daily charging capacity_{y}_{s}")
  
+
+# =============================================================================
 # =============================================================================
 # for s in S:
 #     for y in year_keys:
