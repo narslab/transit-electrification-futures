@@ -146,8 +146,8 @@ cost_inv = {
 # Max investment per scenario per year
 C_max = {
 #    'low-cap': 7,  # in million dollars
-      'mid-cap': 14,  # in million dollars
-#     'high-cap': 21  # in million dollars
+#      'mid-cap': 14,  # in million dollars
+     'high-cap': 21  # in million dollars
 }
 
 # The maximum yearly investment
