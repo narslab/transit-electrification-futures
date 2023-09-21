@@ -483,7 +483,7 @@ SQ = pd.read_csv(r'../../results/computed-fuel-rates-oct2021-sep2022.csv', low_m
 SQ_filtered = SQ.loc[SQ['Date']=='2021-10-29'].copy()
 SQ_filtered['Diesel'] = (SQ_filtered['Powertrain'].isin(['conventional', 'hybrid']) * SQ_filtered['Energy'])
 print("************************************************")
-print("SQ total diesel consumption",SQ['Diesel'].sum())
+print("SQ total diesel consumption",SQ_filtered['Diesel'].sum())
 print("************************************************")
 
 def compute_energy():
