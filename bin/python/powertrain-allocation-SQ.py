@@ -203,9 +203,9 @@ range_BEB= 55-10 # mean actual values in miles
 #range_CDB_list = list(range(50, 150, 5))
 #range_HEB_list = list(range(60, 160, 5))
 #range_BEB_list = list(range(30, 130, 5))
-range_CDB_list = list(range(75, 86, 5))
-range_HEB_list = list(range(95, 106, 5))
-range_BEB_list = list(range(40, 51, 5))
+range_CDB_list = list(range(83, 84, 5))
+range_HEB_list = list(range(100, 101, 5))
+range_BEB_list = list(range(40, 46, 5))
 
 # Total number of fleet from each powertrain in year 0
 N = {
