@@ -48,13 +48,11 @@ date_with_max_trips = df_CDB.groupby('Date')['TripKey'].nunique().idxmax()
 max_trips = df_CDB.groupby('Date')['TripKey'].nunique().max()
 print("date_with_max_trips is:", date_with_max_trips)
 print("max_trips is:", max_trips)
-report_usage()
 
 # Filter dataframes by the day with max trips
 df_CDB = df_CDB.loc[df_CDB['Date']==date_with_max_trips]
 df_HEB = df_HEB.loc[df_HEB['Date']==date_with_max_trips]
 df_BEB = df_BEB.loc[df_BEB['Date']==date_with_max_trips]
-report_usage()
 
 ## Remove Trips with zero Energy consumption with CDB vehicles
 # Find the TripKey values in df_CDB where sum of Energy column is zero when grouped by TripKey
@@ -64,7 +62,6 @@ tripkeys_to_remove = df_CDB.groupby('TripKey').filter(lambda group: group['Energ
 df_CDB = df_CDB[~df_CDB['TripKey'].isin(tripkeys_to_remove)]
 df_HEB = df_HEB[~df_HEB['TripKey'].isin(tripkeys_to_remove)]
 df_BEB = df_BEB[~df_BEB['TripKey'].isin(tripkeys_to_remove)]
-report_usage()
 
 # Group the dataframes to capture first and last stop, start and end time and route for each trip
 df_CDB = df_CDB.groupby(['TripKey', 'Date']).agg({
@@ -225,14 +222,12 @@ del df_HEB
 del df_BEB
 gc.collect()
 print("Done deleting unneccesary dataframes")
-report_usage()
 
 
 def optimize():
     # Create a model
     model = Model('Minimize fleet diesel consumption')
     print("Done creating the model")
-    report_usage()
 
     # Enable logging and print progress
     model.setParam('OutputFlag', 1)
@@ -245,7 +240,6 @@ def optimize():
     model.setParam('Threads', 64)  # Set number of threads to be used for parallel processing.
 
     print("Done setting model parameters")
-    report_usage()
 
     # Additional keys for buses and years
     bus_keys = range(max_number_of_buses)
@@ -257,7 +251,6 @@ def optimize():
     keys_HEB = list(energy_HEB_dict.keys())
     keys_BEB = list(energy_BEB_dict.keys())
     print("Done setting necessary keys")
-    report_usage()
 
     print("Number of CDB variables:",len(year_keys)*len(keys_CDB))
     print("Number of HEB variables:",len(year_keys)*len(keys_HEB))
@@ -268,14 +261,12 @@ def optimize():
     x_HEB = model.addVars(S, year_keys, keys_HEB, vtype=GRB.BINARY, name='x_HEB')
     x_BEB = model.addVars(S, year_keys, keys_BEB, vtype=GRB.BINARY, name='x_BEB')
     print("Done setting x variables")
-    report_usage()
 
     # Define y_CDB, y_HEB, and y_BEB as the number of each type of bus at each year under each scenario
     y_CDB = model.addVars(S, year_keys, vtype=GRB.INTEGER, name='y_CDB')
     y_HEB = model.addVars(S, year_keys, vtype=GRB.INTEGER, name='y_HEB')
     y_BEB = model.addVars(S, year_keys, vtype=GRB.INTEGER, name='y_BEB')
     print("Done setting y variables")
-    report_usage()
 
     # Define decision variables delta to show number of new buses
     model.setObjective(
@@ -286,7 +277,6 @@ def optimize():
         )
 
     print("Done setting objective function")
-    report_usage()
 
     ## Define Constraints
     # Constraint 1: Linking the number of each type of bus at each year variable with trip assignment variables
@@ -334,7 +324,6 @@ def optimize():
                 )
 
     print("Done defining constraint 1")
-    report_usage()
 
     # Constraint 2: Each trip is assigned to exactly one bus powertrain
     #unique_keys = set(keys_CDB) | set(keys_HEB) | set(keys_BEB)  # Union of all keys
@@ -348,7 +337,6 @@ def optimize():
                         )
 
     print("Done defining constraint 2")
-    report_usage()
     
     # Constraint 3: Maximum daily charging capacity
     for s in S:
@@ -357,7 +345,6 @@ def optimize():
             model.addConstr(total_BEB <= M_cap[y], name=f"C3: daily charging capacity_{y}_{s}")
             
             print("Done defining constraint 3")
-            report_usage()
 
     # Constraint 4: Maximum yearly investment
     
@@ -399,7 +386,6 @@ def optimize():
             model.addConstr(total_investment <= M_inv[s, y], name=f"C4: Max yearly investment_{y}_{s}")
  
     print("Done defining constraint 4")
-    report_usage()
 
 
     # Constraint 5: Total number of buses (y) (summed over all powertrain) per year cannot exceed 1000
@@ -410,18 +396,15 @@ def optimize():
                 name=f"C5: TotalFleetSize_{y}_{s}"
                 )
             print("Done defining constraint 5")
-            report_usage()   
 
 
 
     # Print model statistics
     model.update()
-    print(model)
         
     # Tuning and Optimization
     model.tune()
     model.optimize()
-    report_usage()
 
     # Prepare dictionaries of coeesicients to save
     coeff_dict_CDB = {(s, y, key): energy_CDB_dict[key]['Diesel'] for s in S for key in keys_CDB for y in year_keys if key in energy_CDB_dict}
@@ -464,7 +447,6 @@ def optimize():
     # Save the DataFrame to a CSV file
     #df.to_csv(r'../../results/highcap-SQ-optimized-variables.csv', index=False)
     end = time.time()
-    report_usage()
     print("Total time spend in seconds",end - start)
     return(df)
 
