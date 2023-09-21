@@ -9,6 +9,7 @@ import psutil
 import os
 import gurobipy as grb
 from concurrent.futures import ThreadPoolExecutor
+from tqdm import tqdm
 
 
 start = time.time()
@@ -206,9 +207,9 @@ M_inv = {
 range_CDB= 93-10 # mean actual values in miles 
 range_HEB= 110-10 # mean actual values in miles 
 range_BEB= 55-10 # mean actual values in miles 
-range_CDB_list = list(range(50, 301, 2))
-range_HEB_list = list(range(60, 351, 2))
-range_BEB_list = list(range(40, 201, 2))
+range_CDB_list = list(range(50, 150, 5))
+range_HEB_list = list(range(60, 160, 5))
+range_BEB_list = list(range(30, 130, 5))
 
 
 # Total number of fleet from each powertrain in year 0
@@ -541,7 +542,12 @@ def compute_error(r_CDB, r_HEB, r_BEB):
     return {'error': error_current, 'CDB_range': r_CDB, 'HEB_range': r_HEB, 'BEB_range': r_BEB}
 
 results = []
-with ThreadPoolExecutor() as executor:
+
+# The total number of iterations to be performed, to set the total count for tqdm
+total_iterations = len(range_CDB_list) * len(range_HEB_list) * len(range_BEB_list)
+
+# Wrap the futures in the tqdm function for the progress bar
+with ThreadPoolExecutor() as executor, tqdm(total=total_iterations, desc="Processing", unit="task") as pbar:
     futures = []
     for r_CDB in range_CDB_list:
         for r_HEB in range_HEB_list:
@@ -550,9 +556,10 @@ with ThreadPoolExecutor() as executor:
     
     for future in futures:
         results.append(future.result())
+        pbar.update(1)  # Update the progress bar by one step for each completed task
 
 error_df = pd.DataFrame(results)
 error_df.to_csv(r'../../results/calibrate-ranges.csv', index=False)
 
 min_error_row = error_df.iloc[error_df['error'].abs().idxmin()]
-print(min_error_row)       
+print(min_error_row)    
