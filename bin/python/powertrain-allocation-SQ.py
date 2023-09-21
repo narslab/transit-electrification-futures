@@ -34,8 +34,6 @@ def report_usage():
     memory_info = process.memory_info()
     memory_usage = memory_info.rss  # in bytes
 
-    print(f"Process CPU usage: {cpu_percent}%")
-    print(f"Process memory usage: {memory_usage / (1024 * 1024)} MB")  # convert bytes to MB
 
 ##### Reade data and organize required dataframes
 # Read dataframes of all-CDB, all-HEB, and all BEB with runs included
@@ -46,8 +44,6 @@ df_BEB = pd.read_csv(r'../../results/computed-fuel-rates-all-BEB.csv', low_memor
 # Find the date with the maximum number of unique trips
 date_with_max_trips = df_CDB.groupby('Date')['TripKey'].nunique().idxmax()
 max_trips = df_CDB.groupby('Date')['TripKey'].nunique().max()
-print("date_with_max_trips is:", date_with_max_trips)
-print("max_trips is:", max_trips)
 
 # Filter dataframes by the day with max trips
 df_CDB = df_CDB.loc[df_CDB['Date']==date_with_max_trips]
@@ -221,16 +217,15 @@ del df_CDB
 del df_HEB
 del df_BEB
 gc.collect()
-print("Done deleting unneccesary dataframes")
 
 
 def optimize():
     # Create a model
     model = Model('Minimize fleet diesel consumption')
-    print("Done creating the model")
 
     # Enable logging and print progress
-    model.setParam('OutputFlag', 1)
+    #model.setParam('OutputFlag', 1)
+    model.setParam('OutputFlag', 0)
 
     # Set solver parameters
     #model.setParam('MIPFocus', 1)  # This parameter lets control the  In. The options are: 1. Finds feasible solutions quickly. This is useful if the problem is difficult to solve and you're satisfied with any feasible solution. 2: Works to improve the best bound. This is useful when the best objective bound is poor. 3: Tries to prove optimality of the best solution found. This is useful if you're sure a nearly-optimal solution exists and you want the solver to focus on proving its optimality.
@@ -239,7 +234,6 @@ def optimize():
     #model.setParam('MIPGap', 0.01) # This parameter sets the relative gap for the MIP search termination. The solver will stop as soon as the relative gap between the lower and upper objective bound is less than this value. The lower this value, the closer to optimality the solution has to be before the solver stops.  
     model.setParam('Threads', 64)  # Set number of threads to be used for parallel processing.
 
-    print("Done setting model parameters")
 
     # Additional keys for buses and years
     bus_keys = range(max_number_of_buses)
@@ -250,23 +244,18 @@ def optimize():
     keys_CDB = list(energy_CDB_dict.keys())
     keys_HEB = list(energy_HEB_dict.keys())
     keys_BEB = list(energy_BEB_dict.keys())
-    print("Done setting necessary keys")
 
-    print("Number of CDB variables:",len(year_keys)*len(keys_CDB))
-    print("Number of HEB variables:",len(year_keys)*len(keys_HEB))
-    print("Number of BEB variables:",len(year_keys)*len(keys_BEB))
+
 
     # Decision variables which include two additional indices for buses (i) and years (y)
     x_CDB = model.addVars(S, year_keys, keys_CDB, vtype=GRB.BINARY, name='x_CDB')
     x_HEB = model.addVars(S, year_keys, keys_HEB, vtype=GRB.BINARY, name='x_HEB')
     x_BEB = model.addVars(S, year_keys, keys_BEB, vtype=GRB.BINARY, name='x_BEB')
-    print("Done setting x variables")
 
     # Define y_CDB, y_HEB, and y_BEB as the number of each type of bus at each year under each scenario
     y_CDB = model.addVars(S, year_keys, vtype=GRB.INTEGER, name='y_CDB')
     y_HEB = model.addVars(S, year_keys, vtype=GRB.INTEGER, name='y_HEB')
     y_BEB = model.addVars(S, year_keys, vtype=GRB.INTEGER, name='y_BEB')
-    print("Done setting y variables")
 
     # Define decision variables delta to show number of new buses
     model.setObjective(
@@ -275,8 +264,6 @@ def optimize():
          quicksum([energy_BEB_dict[key]['Diesel'] * x_BEB[s, y, key] for s in S for key in keys_BEB for y in year_keys])),
         GRB.MINIMIZE
         )
-
-    print("Done setting objective function")
 
     ## Define Constraints
     # Constraint 1: Linking the number of each type of bus at each year variable with trip assignment variables
@@ -323,8 +310,6 @@ def optimize():
                 name=f"C1_numberofBEBs_le_{s}_{y}"
                 )
 
-    print("Done defining constraint 1")
-
     # Constraint 2: Each trip is assigned to exactly one bus powertrain
     #unique_keys = set(keys_CDB) | set(keys_HEB) | set(keys_BEB)  # Union of all keys
     for s in S:
@@ -335,8 +320,6 @@ def optimize():
                         x_CDB[s, y, key] + x_HEB[s, y, key] + x_BEB[s, y, key] == 1,
                         name=f"C2_Trip{key}_S{s}_Y{y}: Each trip is assigned to only one powertrain"
                         )
-
-    print("Done defining constraint 2")
     
     # Constraint 3: Maximum daily charging capacity
     for s in S:
@@ -344,7 +327,6 @@ def optimize():
             total_BEB = y_BEB[s,y]
             model.addConstr(total_BEB <= M_cap[y], name=f"C3: daily charging capacity_{y}_{s}")
             
-            print("Done defining constraint 3")
 
     # Constraint 4: Maximum yearly investment
     
@@ -385,8 +367,6 @@ def optimize():
             total_investment = HEB_investment + BEB_investment
             model.addConstr(total_investment <= M_inv[s, y], name=f"C4: Max yearly investment_{y}_{s}")
  
-    print("Done defining constraint 4")
-
 
     # Constraint 5: Total number of buses (y) (summed over all powertrain) per year cannot exceed 1000
     for s in S:
@@ -395,7 +375,6 @@ def optimize():
                 y_CDB[s, y] + y_HEB[s, y] + y_BEB[s, y] <= max_number_of_buses,
                 name=f"C5: TotalFleetSize_{y}_{s}"
                 )
-            print("Done defining constraint 5")
 
 
 
@@ -440,14 +419,12 @@ def optimize():
     df_objective = pd.DataFrame({"Year": year_keys, "Objective_Value": [optimal_value]*len(year_keys)})
 
     # Print objective value
-    print("optimal_value:",optimal_value)
 
     df = pd.DataFrame({"Variable": [v.varName for v in vars], "Value": [v.X for v in vars]})
 
     # Save the DataFrame to a CSV file
     #df.to_csv(r'../../results/highcap-SQ-optimized-variables.csv', index=False)
     end = time.time()
-    print("Total time spend in seconds",end - start)
     return(df)
 
 
@@ -465,9 +442,6 @@ h_PP_coefficients = pd.read_csv(r'../../results/optimization-coefficients.csv', 
 SQ = pd.read_csv(r'../../results/computed-fuel-rates-oct2021-sep2022.csv', low_memory=False)
 SQ_filtered = SQ.loc[SQ['Date']=='2021-10-29'].copy()
 SQ_filtered['Diesel'] = (SQ_filtered['Powertrain'].isin(['conventional', 'hybrid']) * SQ_filtered['Energy'])
-print("************************************************")
-print("SQ total diesel consumption",SQ_filtered['Diesel'].sum())
-print("************************************************")
 
 def compute_energy():
     h_PP_variables = optimize()
