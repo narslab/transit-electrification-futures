@@ -160,10 +160,15 @@ def process_dataframe(df, validation, a0, a1, hybrid):
     print("df_integrated columns",df_integrated.columns)
     # Drop rows with NaN values in 'Energy' or 'Qty' columns
     df_integrated.dropna(subset=['Energy_sum', 'Qty'], inplace=True)
+    print("1",df_integrated)
     df_integrated['Fuel_economy'] = np.divide(df_integrated['dist_sum'], df_integrated['Energy_sum'], where=df_integrated['Energy_sum'] != 0)
+    print("2",df_integrated)
     df_integrated['Real_Fuel_economy'] = np.divide(df_integrated['dist_sum'], df_integrated['Qty'], where=df_integrated['Energy_sum'] != 0)
+    print("3",df_integrated)
     df_integrated.dropna(subset=['Fuel_economy'], inplace=True)
+    print("4",df_integrated)
     df_integrated.dropna(subset=['Real_Fuel_economy'], inplace=True)
+    print("5",df_integrated)
     return df_integrated
 
 
