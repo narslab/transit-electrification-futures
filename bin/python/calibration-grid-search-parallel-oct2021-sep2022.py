@@ -146,7 +146,8 @@ def process_dataframe(df, validation, a0, a1, hybrid):
     df.sort_values(by=['Vehicle', 'ServiceDateTime'], inplace=True)
     df_integrated.sort_values(by=['Vehicle', 'ServiceDateTime'], inplace=True)
 
-
+    print('df',df)
+    print('df_integrated',df_integrated)
     # Merge operation to replace the mask filtering.
     merged_df = pd.merge_asof(df, df_integrated[['Vehicle', 'ServiceDateTime', 'ServiceDateTime_prev']], 
                               on='ServiceDateTime', by='Vehicle', 
@@ -226,7 +227,7 @@ def calibrate_parameter(a0, a1, hybrid):
         'MAPE_Economy_test': [MAPE_Economy_test]
     })
 
-    file_name = f"../../results/calibration-grid-search-oct2021-sep2022-{'heb' if hybrid else 'cdb'}-oct2021-sep2022-10112023.csv"
+    file_name = f"../../results/calibration-grid-search-oct2021-sep2022-{'heb' if hybrid else 'cdb'}-oct2021-sep2022-10122023.csv"
     results_df.to_csv(file_name, mode='a', header=False)  # Append mode so you don't overwrite for each a0, a1, hybrid combination
     
     print("--- %s seconds ---" % (time.time() - start_time))
