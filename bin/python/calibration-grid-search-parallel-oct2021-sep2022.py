@@ -136,6 +136,7 @@ del df2, mydict
 def process_dataframe(df, validation, a0, a1, hybrid):
 
     df['Energy'] = energyConsumption_d(df, hybrid=hybrid)
+    print('df[Energy] columns',df['Energy'].columns)
     df.sort_values(by=['Vehicle', 'ServiceDateTime'], inplace=True)
     df['ServiceDateTime'] = pd.to_datetime(df['ServiceDateTime'])
 
@@ -255,20 +256,12 @@ def main():
     ]
 
     with Pool(processes=n_processes) as pool:
+        results = []
         with tqdm(total=len(param_grid), desc="Processing", unit="task") as pbar:
-            for _ in pool.starmap(calibrate_parameter, param_grid):
+            for _ in pool.imap_unordered(process_with_error_handling, param_grid):
                 pbar.update()
+                results.append(_)
                 
-    # Close the pool
-    pool.close()
-
-    # Use get to extract the result from each async result
-    # This will block until the result is available
-    results = [result.get() for result in results]
-
-    # Wait for all processes to finish
-    pool.join()
-    
     # Handle errors (if any)
     for res in results:
         if "Error" in res:
