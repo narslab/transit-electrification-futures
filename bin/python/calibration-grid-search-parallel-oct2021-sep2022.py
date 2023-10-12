@@ -136,7 +136,6 @@ del df2, mydict
 def process_dataframe(df, validation, a0, a1, hybrid):
 
     df['Energy'] = energyConsumption_d(df, hybrid=hybrid)
-    print('df[Energy]',df['Energy'])
     df.sort_values(by=['Vehicle', 'ServiceDateTime'], inplace=True)
     df['ServiceDateTime'] = pd.to_datetime(df['ServiceDateTime'])
 
@@ -155,8 +154,9 @@ def process_dataframe(df, validation, a0, a1, hybrid):
     'Energy': 'sum'
     }).reset_index().rename(columns={'dist': 'dist_sum', 'Energy': 'Energy_sum'})
 
-
+    print('filtered_data',filtered_data)
     df_integrated = df_integrated.merge(filtered_data, on=['Vehicle', 'ServiceDateTime'])
+    print('df_integrated',df_integrated)
 
     #print("df_integrated columns",df_integrated.columns)
     # Drop rows with NaN values in 'Energy' or 'Qty' columns
