@@ -144,32 +144,25 @@ def process_dataframe(df, validation, a0, a1, hybrid):
     df_integrated['ServiceDateTime_prev'] = df_integrated.groupby('Vehicle')['ServiceDateTime'].shift(1)
     df_integrated = df_integrated.dropna(subset=['ServiceDateTime_prev'])
 
-    # Vectorized operation: 
-    mask = (df['Vehicle'].isin(df_integrated['Vehicle'])) & \
-           (df['ServiceDateTime'].gt(df_integrated['ServiceDateTime_prev'])) & \
-           (df['ServiceDateTime'].lt(df_integrated['ServiceDateTime']))
+    # Merge operation to replace the mask filtering.
+    merged_df = pd.merge_asof(df, df_integrated[['Vehicle', 'ServiceDateTime', 'ServiceDateTime_prev']], 
+                              on='ServiceDateTime', by='Vehicle', 
+                              direction='backward')
     
-    filtered_data = df.loc[mask].groupby(['Vehicle', 'ServiceDateTime']).agg({
+    filtered_data = merged_df.groupby(['Vehicle', 'ServiceDateTime']).agg({
     'dist': 'sum',
     'Energy': 'sum'
     }).reset_index().rename(columns={'dist': 'dist_sum', 'Energy': 'Energy_sum'})
 
-    print('filtered_data',filtered_data)
     df_integrated = df_integrated.merge(filtered_data, on=['Vehicle', 'ServiceDateTime'])
-    print('df_integrated',df_integrated)
 
-    #print("df_integrated columns",df_integrated.columns)
-    # Drop rows with NaN values in 'Energy' or 'Qty' columns
+    # The rest remains same as you had...
     df_integrated.dropna(subset=['Energy_sum', 'Qty'], inplace=True)
-    print("1",df_integrated)
     df_integrated['Fuel_economy'] = np.divide(df_integrated['dist_sum'], df_integrated['Energy_sum'], where=df_integrated['Energy_sum'] != 0)
-    print("2",df_integrated)
-    df_integrated['Real_Fuel_economy'] = np.divide(df_integrated['dist_sum'], df_integrated['Qty'], where=df_integrated['Energy_sum'] != 0)
-    print("3",df_integrated)
+    df_integrated['Real_Fuel_economy'] = np.divide(df_integrated['dist_sum'], df_integrated['Qty'], where=df_integrated['Qty'] != 0)
     df_integrated.dropna(subset=['Fuel_economy'], inplace=True)
-    print("4",df_integrated)
     df_integrated.dropna(subset=['Real_Fuel_economy'], inplace=True)
-    print("5",df_integrated)
+    print('df_integrated',df_integrated)
     return df_integrated
 
 
