@@ -136,42 +136,41 @@ del df2, mydict
 def process_dataframe(df, validation, a0, a1, hybrid):
 
     df['Energy'] = energyConsumption_d(df, hybrid=hybrid)
-    df.sort_values(by=['Vehicle', 'ServiceDateTime'], inplace=True)
     df['ServiceDateTime'] = pd.to_datetime(df['ServiceDateTime'])
+    df.sort_values(by=['Vehicle', 'ServiceDateTime'], inplace=True)
 
     df_integrated = validation.copy()
     df_integrated['ServiceDateTime_prev'] = df_integrated.groupby('Vehicle')['ServiceDateTime'].shift(1)
     df_integrated = df_integrated.dropna(subset=['ServiceDateTime_prev'])
-
-    df.sort_values(by=['Vehicle', 'ServiceDateTime'], inplace=True)
     df_integrated.sort_values(by=['Vehicle', 'ServiceDateTime'], inplace=True)
 
     print('df',df)
     print('df_integrated',df_integrated)
+    
     # Merge operation to replace the mask filtering.
     merged_df = pd.merge_asof(df, df_integrated[['Vehicle', 'ServiceDateTime', 'ServiceDateTime_prev']], 
                               on='ServiceDateTime', by='Vehicle', 
                               direction='backward')
     
-    filtered_data = merged_df.groupby(['Vehicle', 'ServiceDateTime']).agg({
-    'dist': 'sum',
-    'Energy': 'sum'
+    # Group and sum the energy and distance between the two ServiceDateTime for each vehicle
+    filtered_data = merged_df.groupby(['Vehicle', 'ServiceDateTime', 'ServiceDateTime_prev']).agg({
+        'dist': 'sum',
+        'Energy': 'sum'
     }).reset_index().rename(columns={'dist': 'dist_sum', 'Energy': 'Energy_sum'})
 
-    # Sort the dataframe based on the columns ['Vehicle', 'ServiceDateTime']
-    df_integrated.sort_values(by=['Vehicle', 'ServiceDateTime'], inplace=True)
+    # Merge dataframes
+    df_integrated = df_integrated.merge(filtered_data, on=['Vehicle', 'ServiceDateTime', 'ServiceDateTime_prev'])
     
-    #merge dataframes
-    df_integrated = df_integrated.merge(filtered_data, on=['Vehicle', 'ServiceDateTime'])
-    
-    #drop nan values and compute fuel economy
-    df_integrated.dropna(subset=['Energy_sum', 'Qty'], inplace=True)
+    # Compute fuel economy avoiding division by zero
     df_integrated['Fuel_economy'] = np.divide(df_integrated['dist_sum'], df_integrated['Energy_sum'], where=df_integrated['Energy_sum'] != 0)
     df_integrated['Real_Fuel_economy'] = np.divide(df_integrated['dist_sum'], df_integrated['Qty'], where=df_integrated['Qty'] != 0)
-    df_integrated.dropna(subset=['Fuel_economy'], inplace=True)
-    df_integrated.dropna(subset=['Real_Fuel_economy'], inplace=True)
+
+    # Drop rows with NaN values in the specified columns
+    df_integrated.dropna(subset=['Fuel_economy', 'Real_Fuel_economy'], inplace=True)
+    
     print('df_integrated',df_integrated)
     return df_integrated
+
 
 
 # Configuration Section
