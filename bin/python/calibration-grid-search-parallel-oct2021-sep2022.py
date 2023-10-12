@@ -136,7 +136,7 @@ del df2, mydict
 def process_dataframe(df, validation, a0, a1, hybrid):
 
     df['Energy'] = energyConsumption_d(df, hybrid=hybrid)
-    print('df[Energy] columns',df['Energy'].columns)
+    print('df[Energy]',df['Energy'])
     df.sort_values(by=['Vehicle', 'ServiceDateTime'], inplace=True)
     df['ServiceDateTime'] = pd.to_datetime(df['ServiceDateTime'])
 
