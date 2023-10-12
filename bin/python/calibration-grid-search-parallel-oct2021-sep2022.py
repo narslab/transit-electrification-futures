@@ -294,10 +294,10 @@ def main():
     N_POINTS = 30
 
     # Split the parameter grid equally among the available CPUs
-    param_grid = [(s1, STOP1_VAL, s2, STOP2_VAL, hybrid) 
-                  for s1 in np.linspace(START1_VAL, STOP1_VAL, N_POINTS) 
-                  for s2 in np.linspace(START2_VAL, STOP2_VAL, N_POINTS)
-                  for hybrid in [True]]  # Change this line if you want to include [False] as well
+    param_grid = [(df_conventional, df_hybrid, df_validation, s1, STOP1_VAL, s2, STOP2_VAL, hybrid) 
+              for s1 in np.linspace(START1_VAL, STOP1_VAL, N_POINTS) 
+              for s2 in np.linspace(START2_VAL, STOP2_VAL, N_POINTS)
+              for hybrid in [True, False]]
 
     # Split the parameter grid into chunks for each process
     param_grid_split = np.array_split(param_grid, n_processes)
