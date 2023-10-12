@@ -8,7 +8,6 @@ from sklearn.metrics import mean_squared_error
 from sklearn.model_selection import train_test_split
 from multiprocessing import Pool
 
-
 f = open('params-oct2021-sep2022.yaml')
 parameters = yaml.safe_load(f)
 f.close()
@@ -188,6 +187,8 @@ def calibrate_parameter(a0, a1, hybrid):
 
     validation.reset_index(drop=True, inplace=True)    
     
+    print("hybrid:",hybrid)
+    print("df columns:",df.columns)
     df_integrated = process_dataframe(df, validation, a0, a1, hybrid)
     train, test = train_test_split(df_integrated, test_size=0.2, random_state=42)
 
