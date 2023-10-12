@@ -7,6 +7,8 @@ import time
 from sklearn.metrics import mean_squared_error
 from sklearn.model_selection import train_test_split
 from multiprocessing import Pool
+import gc
+
 
 f = open('params-oct2021-sep2022.yaml')
 parameters = yaml.safe_load(f)
@@ -183,6 +185,8 @@ def process_dataframe(df, validation, a0, a1, hybrid):
     df_integrated = df_integrated.merge(df_filtered, left_on=['Vehicle', 'ServiceDateTime', 'ServiceDateTime_prev'],
                                         right_on=['Vehicle', 'ServiceDateTime_cur', 'ServiceDateTime_prev'])
 
+    del df_filtered
+    
     # Drop rows with NaN values in 'Energy' or 'Qty' columns
     df_integrated.dropna(subset=['Energy_sum', 'Qty'], inplace=True)
     df_integrated['Fuel_economy'] = np.divide(df_integrated['dist_sum'], df_integrated['Energy_sum'], where=df_integrated['Energy_sum'] != 0)
@@ -249,6 +253,9 @@ def calibrate_parameter(df_conventional, df_hybrid, df_validation, start1, stop1
             RMSE_Economy_test_current = math.sqrt(MSE_Economy_test_current)
             MAPE_Economy_test_current = np.mean(np.abs((test['Real_Fuel_economy'] - test['Fuel_economy']) / test['Real_Fuel_economy'])) * 100
 
+            del df, validation, df_integrated, train, test
+            gc.collect()
+
             parameter1_values.append(a0)
             parameter2_values.append(a1)
             RMSE_Energy_train.append(RMSE_Energy_train_current)
@@ -256,8 +263,10 @@ def calibrate_parameter(df_conventional, df_hybrid, df_validation, start1, stop1
             RMSE_Economy_train.append(RMSE_Economy_train_current)
             MAPE_Economy_train.append(MAPE_Economy_train_current)
             RMSE_Energy_test.append(RMSE_Energy_test_current)
+            MAPE_Energy_train.append(MAPE_Energy_test_current)
+            RMSE_Economy_train.append(RMSE_Economy_test_current)
             MAPE_Economy_test.append(MAPE_Economy_test_current)
-
+            
     results_df = pd.DataFrame(list(zip(
     parameter1_values, parameter2_values,
     RMSE_Energy_train, MAPE_Energy_train, RMSE_Economy_train, MAPE_Economy_train,
@@ -295,8 +304,6 @@ def main():
               for s1 in np.linspace(START1_VAL, STOP1_VAL, N_POINTS) 
               for s2 in np.linspace(START2_VAL, STOP2_VAL, N_POINTS)
               for hybrid in [True, False]]
-
-
 
     # Split the parameter grid into chunks for each process
     param_grid_split = np.array_split(param_grid, n_processes)
