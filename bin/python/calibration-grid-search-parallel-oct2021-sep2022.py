@@ -157,7 +157,7 @@ def process_dataframe(df, validation, a0, a1, hybrid):
 
     df_integrated = df_integrated.merge(filtered_data, on=['Vehicle', 'ServiceDateTime'])
 
-    print("df_integrated columns",df_integrated.columns)
+    #print("df_integrated columns",df_integrated.columns)
     # Drop rows with NaN values in 'Energy' or 'Qty' columns
     df_integrated.dropna(subset=['Energy_sum', 'Qty'], inplace=True)
     print("1",df_integrated)
