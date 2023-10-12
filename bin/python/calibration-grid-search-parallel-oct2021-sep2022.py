@@ -55,7 +55,7 @@ def power_d(df_input, hybrid=False):
     else:
        A_f_d=A_f_cdb        
     df = df_input
-    v = df.Speed
+    v = df.speed
     a = df.Acceleration
     gr = df.grade
     m = (df.Vehicle_mass+df.Onboard*179)*0.453592 # converts lb to kg
@@ -187,8 +187,8 @@ def calibrate_parameter(a0, a1, hybrid):
 
     validation.reset_index(drop=True, inplace=True)    
     
-    print("hybrid:",hybrid)
-    print("df columns:",df.columns)
+    #print("hybrid:",hybrid)
+    #print("df columns:",df.columns)
     df_integrated = process_dataframe(df, validation, a0, a1, hybrid)
     train, test = train_test_split(df_integrated, test_size=0.2, random_state=42)
 
