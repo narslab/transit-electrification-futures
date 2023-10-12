@@ -140,9 +140,12 @@ def process_dataframe(df, validation, a0, a1, hybrid):
     df['ServiceDateTime'] = pd.to_datetime(df['ServiceDateTime'])
 
     df_integrated = validation.copy()
-    df_integrated.sort_values(by=['Vehicle', 'ServiceDateTime'], inplace=True)
     df_integrated['ServiceDateTime_prev'] = df_integrated.groupby('Vehicle')['ServiceDateTime'].shift(1)
     df_integrated = df_integrated.dropna(subset=['ServiceDateTime_prev'])
+
+    df.sort_values(by=['Vehicle', 'ServiceDateTime'], inplace=True)
+    df_integrated.sort_values(by=['Vehicle', 'ServiceDateTime'], inplace=True)
+
 
     # Merge operation to replace the mask filtering.
     merged_df = pd.merge_asof(df, df_integrated[['Vehicle', 'ServiceDateTime', 'ServiceDateTime_prev']], 
@@ -156,12 +159,11 @@ def process_dataframe(df, validation, a0, a1, hybrid):
 
     # Sort the dataframe based on the columns ['Vehicle', 'ServiceDateTime']
     df_integrated.sort_values(by=['Vehicle', 'ServiceDateTime'], inplace=True)
-
+    
+    #merge dataframes
     df_integrated = df_integrated.merge(filtered_data, on=['Vehicle', 'ServiceDateTime'])
     
-    df_integrated = df_integrated.merge(filtered_data, on=['Vehicle', 'ServiceDateTime'])
-
-    # The rest remains same as you had...
+    #drop nan values and compute fuel economy
     df_integrated.dropna(subset=['Energy_sum', 'Qty'], inplace=True)
     df_integrated['Fuel_economy'] = np.divide(df_integrated['dist_sum'], df_integrated['Energy_sum'], where=df_integrated['Energy_sum'] != 0)
     df_integrated['Real_Fuel_economy'] = np.divide(df_integrated['dist_sum'], df_integrated['Qty'], where=df_integrated['Qty'] != 0)
