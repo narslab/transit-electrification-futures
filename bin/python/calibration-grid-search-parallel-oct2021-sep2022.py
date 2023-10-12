@@ -290,11 +290,13 @@ def main():
     N_POINTS = 30
 
     # Split the parameter grid equally among the available CPUs
-    param_grid = [(df_conventional[['ServiceDateTime', 'Vehicle', 'Energy']], 
-                   df_validation[['Vehicle', 'ServiceDateTime']], s1, STOP1_VAL, s2, STOP2_VAL, hybrid) 
-                  for s1 in np.linspace(START1_VAL, STOP1_VAL, N_POINTS) 
-                  for s2 in np.linspace(START2_VAL, STOP2_VAL, N_POINTS)
-                  for hybrid in [True, False]]
+    param_grid = [(df_conventional[['ServiceDateTime', 'Vehicle']], 
+               df_validation[['Vehicle', 'ServiceDateTime']], s1, s2, hybrid) 
+              for s1 in np.linspace(START1_VAL, STOP1_VAL, N_POINTS) 
+              for s2 in np.linspace(START2_VAL, STOP2_VAL, N_POINTS)
+              for hybrid in [True, False]]
+
+
 
     # Split the parameter grid into chunks for each process
     param_grid_split = np.array_split(param_grid, n_processes)
