@@ -6,10 +6,6 @@ import math
 import time
 from sklearn.metrics import mean_squared_error
 from sklearn.model_selection import train_test_split
-from joblib import Parallel, delayed
-from dask import compute
-import dask.array as da
-from dask.distributed import Client
 from multiprocessing import Pool
 
 f = open('params-oct2021-sep2022.yaml')
@@ -126,15 +122,14 @@ def energyConsumption_e(df_input):
 # Read trajectories df
 df_trajectories = pd.read_csv(r'../../data/tidy/large/trajectories-mapped-powertrain-weight-grade-oct2021-sep2022.csv', delimiter=',', skiprows=0, low_memory=False)
 df_trajectories.rename(columns={"VehiclWeight(lb)": "Vehicle_mass"}, inplace=True)
-df_trajectories['Date']=pd.to_datetime(df_trajectories['Date'])
-df_trajectories.speed = df_trajectories.speed *1.60934 # takes speed in km/h (Convert from mph to km/h)
+df_trajectories['Date'] = pd.to_datetime(df_trajectories['Date'])
+df_trajectories.speed = df_trajectories.speed *1.60934  # Convert from mph to km/h
 df_trajectories = df_trajectories.fillna(0)
 
-# Subsetting data frame for "Conventional", "hybrid", and "electric" buses
-df_conventional=df_trajectories.loc[df_trajectories['Powertrain'] == 'conventional'].copy()
-df_hybrid=df_trajectories.loc[df_trajectories['Powertrain'] == 'hybrid'].copy()
-
-
+# Subsetting data frame
+df_conventional = df_trajectories.loc[df_trajectories['Powertrain'] == 'conventional']
+df_hybrid = df_trajectories.loc[df_trajectories['Powertrain'] == 'hybrid']
+del df_trajectories
 
 # read validation df
 df_validation = pd.read_csv(r'../../data/tidy/fuel-tickets-oct2021-sep2022.csv', delimiter=',', skiprows=0, low_memory=False)
@@ -154,23 +149,24 @@ mydict = df2.groupby('Type')['Equipment ID'].agg(list).to_dict()
 d = {val:key for key, lst in mydict.items() for val in lst}
 df_validation['Powertrain'] = df_validation['Vehicle'].map(d)
 
+# Delete unnecessary dataframes
+del df2, mydict
+
 def process_dataframe(df, validation, a0, a1, hybrid):
-    df_new = df.copy()
-    validation_new = validation.copy()
 
-    df_new['Energy'] = energyConsumption_d(df, hybrid=hybrid)
-    df_new.sort_values(by=['Vehicle', 'ServiceDateTime'], inplace=True)
-    df_new['ServiceDateTime'] = pd.to_datetime(df_new['ServiceDateTime'])
+    df['Energy'] = energyConsumption_d(df, hybrid=hybrid)
+    df.sort_values(by=['Vehicle', 'ServiceDateTime'], inplace=True)
+    df['ServiceDateTime'] = pd.to_datetime(df['ServiceDateTime'])
 
-    df_integrated = validation_new.copy()
+    df_integrated = validation.copy()
     df_integrated.sort_values(by=['Vehicle', 'ServiceDateTime'], inplace=True)
     df_integrated['ServiceDateTime_prev'] = df_integrated.groupby('Vehicle')['ServiceDateTime'].shift(1)
     df_integrated = df_integrated.dropna(subset=['ServiceDateTime_prev'])
 
-    # Replacing iterrows with apply
+
     def process_row(row):
         vehicle, cur_time, prev_time = row['Vehicle'], row['ServiceDateTime'], row['ServiceDateTime_prev']
-        group = df_new[(df_new['Vehicle'] == vehicle) & (df_new['ServiceDateTime'] > prev_time) & (df_new['ServiceDateTime'] < cur_time)]
+        group = df[(df['Vehicle'] == vehicle) & (df['ServiceDateTime'] > prev_time) & (df['ServiceDateTime'] < cur_time)]
         result = group.agg({
             'dist': 'sum',
             'Energy': 'sum'
@@ -294,10 +290,11 @@ def main():
     N_POINTS = 30
 
     # Split the parameter grid equally among the available CPUs
-    param_grid = [(df_conventional, df_hybrid, df_validation, s1, STOP1_VAL, s2, STOP2_VAL, hybrid) 
-              for s1 in np.linspace(START1_VAL, STOP1_VAL, N_POINTS) 
-              for s2 in np.linspace(START2_VAL, STOP2_VAL, N_POINTS)
-              for hybrid in [True, False]]
+    param_grid = [(df_conventional[['ServiceDateTime', 'Vehicle', 'Energy']], 
+                   df_validation[['Vehicle', 'ServiceDateTime']], s1, STOP1_VAL, s2, STOP2_VAL, hybrid) 
+                  for s1 in np.linspace(START1_VAL, STOP1_VAL, N_POINTS) 
+                  for s2 in np.linspace(START2_VAL, STOP2_VAL, N_POINTS)
+                  for hybrid in [True, False]]
 
     # Split the parameter grid into chunks for each process
     param_grid_split = np.array_split(param_grid, n_processes)
