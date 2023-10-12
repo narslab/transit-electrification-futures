@@ -150,14 +150,14 @@ def process_dataframe(df, validation, a0, a1, hybrid):
            (df['ServiceDateTime'].lt(df_integrated['ServiceDateTime']))
     
     filtered_data = df.loc[mask].groupby(['Vehicle', 'ServiceDateTime']).agg({
-        'dist': 'sum',
-        'Energy': 'sum'
-    }).reset_index()
+    'dist': 'sum',
+    'Energy': 'sum'
+    }).reset_index().rename(columns={'dist': 'dist_sum', 'Energy': 'Energy_sum'})
 
-    df_integrated = df_integrated.merge(filtered_data, left_on=['Vehicle', 'ServiceDateTime', 'ServiceDateTime_prev'],
-                                        right_on=['Vehicle', 'ServiceDateTime', 'ServiceDateTime'])
 
-    print("df_integrated",df_integrated.columns)
+    df_integrated = df_integrated.merge(filtered_data, on=['Vehicle', 'ServiceDateTime'])
+
+    print("df_integrated columns",df_integrated.columns)
     # Drop rows with NaN values in 'Energy' or 'Qty' columns
     df_integrated.dropna(subset=['Energy_sum', 'Qty'], inplace=True)
     df_integrated['Fuel_economy'] = np.divide(df_integrated['dist_sum'], df_integrated['Energy_sum'], where=df_integrated['Energy_sum'] != 0)
