@@ -162,49 +162,41 @@ df_validation['Powertrain'] = df_validation['Vehicle'].map(d)
 
 
 def process_dataframe(df, validation, a0, a1, hybrid):
+    df_new = df.copy()
+    validation_new = validation.copy()
 
-    df['Energy'] = energyConsumption_d(df, hybrid=hybrid)
-    df.sort_values(by=['Vehicle', 'ServiceDateTime'], inplace=True)
-    df['ServiceDateTime'] = pd.to_datetime(df['ServiceDateTime'])
+    df_new['Energy'] = energyConsumption_d(df, hybrid=hybrid)
+    df_new.sort_values(by=['Vehicle', 'ServiceDateTime'], inplace=True)
+    df_new['ServiceDateTime'] = pd.to_datetime(df_new['ServiceDateTime'])
 
-    df_integrated = validation.copy()
+    df_integrated = validation_new.copy()
+    df_integrated.sort_values(by=['Vehicle', 'ServiceDateTime'], inplace=True)
     df_integrated['ServiceDateTime_prev'] = df_integrated.groupby('Vehicle')['ServiceDateTime'].shift(1)
     df_integrated = df_integrated.dropna(subset=['ServiceDateTime_prev'])
 
-    df.sort_values(by=['Vehicle', 'ServiceDateTime'], inplace=True)
-    df_integrated.sort_values(by=['Vehicle', 'ServiceDateTime'], inplace=True)
+    def process_group(group):
+        return pd.Series({'dist_sum': group['dist'].sum(), 'Energy_sum': group['Energy'].sum()})
 
-    # Merge operation to replace the mask filtering.
-    merged_df = pd.merge_asof(df, df_integrated[['Vehicle', 'ServiceDateTime', 'ServiceDateTime_prev']], 
-                              on='ServiceDateTime', by='Vehicle', 
-                              direction='backward')
-    
-    # Ensuring that ServiceDateTime is less than or equal to cur_time
-    merged_df = merged_df[merged_df['ServiceDateTime'] <= merged_df['ServiceDateTime']]
-    
-    filtered_data = merged_df.groupby(['Vehicle', 'ServiceDateTime', 'ServiceDateTime_prev']).agg({
-        'dist': 'sum',
-        'Energy': 'sum'
-    }).reset_index().rename(columns={'dist': 'dist_sum', 'Energy': 'Energy_sum'})
+    df_filtered = pd.DataFrame()
+    for _, row in tqdm(df_integrated.iterrows(), total=len(df_integrated)):
+        vehicle, cur_time, prev_time = row['Vehicle'], row['ServiceDateTime'], row['ServiceDateTime_prev']
+        group = df_new[(df_new['Vehicle'] == vehicle) & (df_new['ServiceDateTime'] > prev_time) & (df_new['ServiceDateTime'] < cur_time)]
+        filtered_group = process_group(group)
+        filtered_group['Vehicle'] = vehicle
+        filtered_group['ServiceDateTime_cur'] = cur_time
+        filtered_group['ServiceDateTime_prev'] = prev_time
+        df_filtered = pd.concat([df_filtered, filtered_group.to_frame().T], ignore_index=True)
+    df_integrated = df_integrated.merge(df_filtered, left_on=['Vehicle', 'ServiceDateTime', 'ServiceDateTime_prev'],
+                                        right_on=['Vehicle', 'ServiceDateTime_cur', 'ServiceDateTime_prev'])
 
-    # Sort the dataframe based on the columns ['Vehicle', 'ServiceDateTime']
-    df_integrated.sort_values(by=['Vehicle', 'ServiceDateTime'], inplace=True)
-    
-    # Merge dataframes
-    df_integrated = df_integrated.merge(filtered_data, on=['Vehicle', 'ServiceDateTime', 'ServiceDateTime_prev'])
-    
     # Drop rows with NaN values in 'Energy' or 'Qty' columns
     df_integrated.dropna(subset=['Energy_sum', 'Qty'], inplace=True)
     df_integrated['Fuel_economy'] = np.divide(df_integrated['dist_sum'], df_integrated['Energy_sum'], where=df_integrated['Energy_sum'] != 0)
-    
-    # Corrected the condition for Real_Fuel_economy
-    df_integrated['Real_Fuel_economy'] = np.divide(df_integrated['dist_sum'], df_integrated['Qty'], where=df_integrated['Qty'] != 0)
-    
+    df_integrated['Real_Fuel_economy'] = np.divide(df_integrated['dist_sum'], df_integrated['Qty'], where=df_integrated['Energy_sum'] != 0)
     df_integrated.dropna(subset=['Fuel_economy'], inplace=True)
     df_integrated.dropna(subset=['Real_Fuel_economy'], inplace=True)
-    
-    return df_integrated
 
+    return df_integrated
 
     
 def calibrate_parameter(args):
