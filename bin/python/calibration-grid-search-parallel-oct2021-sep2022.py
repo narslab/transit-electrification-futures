@@ -154,6 +154,11 @@ def process_dataframe(df, validation, a0, a1, hybrid):
     'Energy': 'sum'
     }).reset_index().rename(columns={'dist': 'dist_sum', 'Energy': 'Energy_sum'})
 
+    # Sort the dataframe based on the columns ['Vehicle', 'ServiceDateTime']
+    df_integrated.sort_values(by=['Vehicle', 'ServiceDateTime'], inplace=True)
+
+    df_integrated = df_integrated.merge(filtered_data, on=['Vehicle', 'ServiceDateTime'])
+    
     df_integrated = df_integrated.merge(filtered_data, on=['Vehicle', 'ServiceDateTime'])
 
     # The rest remains same as you had...
