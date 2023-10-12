@@ -12,9 +12,6 @@ import dask.array as da
 from dask.distributed import Client
 from multiprocessing import Pool
 
-
-
-
 f = open('params-oct2021-sep2022.yaml')
 parameters = yaml.safe_load(f)
 f.close()
@@ -49,12 +46,11 @@ eta_batt = p.battery_efficiency
 eta_m = p.motor_efficiency
 a0_cdb = p.alpha_0_cdb
 a1_cdb = p.alpha_1_cdb
-a2_cdb = p.alpha_2_cdb
+a2 = p.alpha_2
 a0_heb = p.alpha_0_heb
 a1_heb = p.alpha_1_heb
-a2_heb = p.alpha_2_heb
-gamma_heb=p.gamma
 b=p.beta
+gamma_heb=p.gamma
 
 # Define power function for diesel vehicle
 def power_d(df_input, hybrid=False):
@@ -63,53 +59,34 @@ def power_d(df_input, hybrid=False):
     else:
        A_f_d=A_f_cdb        
     df = df_input
-    v = df.speed
-    a = df.acc
+    v = df.Speed
+    a = df.Acceleration
     gr = df.grade
     m = (df.Vehicle_mass+df.Onboard*179)*0.453592 # converts lb to kg
-    P_t = (1/float(3600*eta_d_dis))*((1./25.92)*rho*C_D*C_h*A_f_d*v*v + m*g*C_r*(c1*v + c2)/1000 + 1.2*m*a+m*g*gr)*v
+    P_t = (1/float(3600*eta_d_dis)) * ((1./25.92)*rho*C_D*C_h*A_f_d*v*v + m*g*C_r*(c1*v + c2)/1000 + 1.2*m*a+m*g*gr) * v
     return P_t
+
 
 # Define fuel rate function for diesel vehicle
 def fuelRate_d(df_input, hybrid=False):
-	# Estimates fuel consumed (liters per second) 
-    df = df_input
-# =============================================================================
-#     if hybrid == True:
-#         a0 = a0_heb 
-#         a1 = a1_heb
-#         a2=a2_heb
-#         a = df.acc
-#         rg_factor = eta_batt/(eta_m*eta_d_beb)*np.exp(-(gamma_heb/abs(a)))
-#         P_t = power_d(df_input, hybrid=True)
-#         FC_t = P_t.apply(lambda x: float(a0) + float(a1)*x +float(a2)*x*x if x >= 0 else float(a0) + rg_factor*x)  
-# =============================================================================
+    # Set the coefficients based on the hybrid flag
     if hybrid:
-        a0 = float(a0_heb) 
-        a1 = float(a1_heb)
-        a2 = float(a2_heb)
-        #a = df.Acceleration
-        P_t = power_d(df_input, hybrid=True)
-
-        #rg_factor_const = eta_batt/(eta_m*eta_d_beb)
-        #negative_a_indices = a < 0
-        #rg_factor = np.zeros_like(a)
-        #rg_factor[negative_a_indices] = rg_factor_const * np.exp(-(gamma_heb/abs(a[negative_a_indices])))
-        #rg_factor = rg_factor_const * np.exp(-(gamma_heb/abs(a)))
-        #FC_t = np.where(P_t >= 0, a0 + a1*P_t + a2*P_t*P_t, a0 + rg_factor*P_t)        
-        positive_pt_indices = P_t >= 0
-        rg_factor = np.zeros_like(P_t)
-        rg_factor[positive_pt_indices] = (a0 + eta_batt/(eta_m*eta_d_beb)*np.exp(-(gamma_heb/abs(df_input['acc'][positive_pt_indices])))) * P_t[positive_pt_indices]
-        FC_t = np.where(P_t >= 0, a0 + a1*P_t + a2*P_t*P_t, rg_factor)
-        
-        
+        a0_local = a0_heb
+        a1_local = a1_heb
     else:
-        a0 = float(a0_cdb)
-        a1 = float(a1_cdb)
-        a2 = float(a2_cdb)
-        P_t = power_d(df_input, hybrid=False)
-        #FC_t = P_t.apply(lambda x: float(a0) + float(a1)*x +float(a2)*x*x if x >= 0 else float(a0))  
-        FC_t = np.where(P_t >= 0, a0 + a1*P_t + a2*P_t*P_t, a0)  
+        a0_local = a0_cdb
+        a1_local = a1_cdb
+
+    # Compute power
+    P_t = power_d(df_input, hybrid=hybrid)
+
+    # Vectorized computation of fuel rate based on the condition
+    condition = P_t >= 0
+    FC_t = np.where(condition, a0_local + a1_local*P_t + a2*P_t*P_t, a0_local)
+
+    # Adjust the value if it's a hybrid vehicle
+    if hybrid:
+        FC_t *= b
 
     return FC_t
 
@@ -123,21 +100,19 @@ def energyConsumption_d(df_input, hybrid=False):
         FC_t = fuelRate_d(df_input, hybrid=True)
     else:
         FC_t = fuelRate_d(df_input, hybrid=False)
-    E_t = (FC_t * t)/3.78541
+    E_t = (FC_t * t)/3.78541 #The value 3.78541 represents the number of liters in one US gallon
     return E_t
-
 
 # Define power function for electric vehicle
 def power_e(df_input):
     df = df_input
-    v = df.speed
-    a = df.acc
+    v = df.Speed
+    a = df.Acceleration
     gr = df.grade
     m = df.Vehicle_mass+(df.Onboard*179)*0.453592 # converts lb to kg
-    factor = a.apply(lambda a: 1 if a >= 0 else np.exp(-(0.0411/abs(a))))
-    P_t = factor*(eta_batt/(eta_m*eta_d_beb))*(1/float(3600*eta_d_beb))*((1./25.92)*rho*C_D*C_h*A_f_beb*v*v + m*g*C_r*(c1*v + c2)/1000 + 1.1*m*a+m*g*gr)*v
+    factor = df.Acceleration.apply(lambda a: 1 if a >= 0 else np.exp(-(0.0411/abs(a))))
+    P_t = factor*(eta_batt/eta_m*eta_d_beb)*(1/float(3600*eta_d_beb))*((1./25.92)*rho*C_D*C_h*A_f_beb*v*v + m*g*C_r*(c1*v + c2)/1000 + 1.1*m*a+m*g*gr)*v
     return P_t
-
 
 # Define Energy consumption function for electric vehicle
 def energyConsumption_e(df_input):
@@ -147,7 +122,6 @@ def energyConsumption_e(df_input):
     P_t = power_e(df_input)
     E_t = P_t * t
     return E_t
-
 
 # Read trajectories df
 df_trajectories = pd.read_csv(r'../../data/tidy/large/trajectories-mapped-powertrain-weight-grade-oct2021-sep2022.csv', delimiter=',', skiprows=0, low_memory=False)
@@ -180,7 +154,6 @@ mydict = df2.groupby('Type')['Equipment ID'].agg(list).to_dict()
 d = {val:key for key, lst in mydict.items() for val in lst}
 df_validation['Powertrain'] = df_validation['Vehicle'].map(d)
 
-
 def process_dataframe(df, validation, a0, a1, hybrid):
     df_new = df.copy()
     validation_new = validation.copy()
@@ -194,18 +167,23 @@ def process_dataframe(df, validation, a0, a1, hybrid):
     df_integrated['ServiceDateTime_prev'] = df_integrated.groupby('Vehicle')['ServiceDateTime'].shift(1)
     df_integrated = df_integrated.dropna(subset=['ServiceDateTime_prev'])
 
-    def process_group(group):
-        return pd.Series({'dist_sum': group['dist'].sum(), 'Energy_sum': group['Energy'].sum()})
-
-    df_filtered = pd.DataFrame()
-    for _, row in tqdm(df_integrated.iterrows(), total=len(df_integrated)):
+    # Replacing iterrows with apply
+    def process_row(row):
         vehicle, cur_time, prev_time = row['Vehicle'], row['ServiceDateTime'], row['ServiceDateTime_prev']
         group = df_new[(df_new['Vehicle'] == vehicle) & (df_new['ServiceDateTime'] > prev_time) & (df_new['ServiceDateTime'] < cur_time)]
-        filtered_group = process_group(group)
-        filtered_group['Vehicle'] = vehicle
-        filtered_group['ServiceDateTime_cur'] = cur_time
-        filtered_group['ServiceDateTime_prev'] = prev_time
-        df_filtered = pd.concat([df_filtered, filtered_group.to_frame().T], ignore_index=True)
+        result = group.agg({
+            'dist': 'sum',
+            'Energy': 'sum'
+        })
+        result['Vehicle'] = vehicle
+        result['ServiceDateTime_cur'] = cur_time
+        result['ServiceDateTime_prev'] = prev_time
+        return result
+
+    filtered_data_list = df_integrated.apply(process_row, axis=1).tolist()
+
+    df_filtered = pd.concat(filtered_data_list, ignore_index=True)
+
     df_integrated = df_integrated.merge(df_filtered, left_on=['Vehicle', 'ServiceDateTime', 'ServiceDateTime_prev'],
                                         right_on=['Vehicle', 'ServiceDateTime_cur', 'ServiceDateTime_prev'])
 
@@ -215,113 +193,111 @@ def process_dataframe(df, validation, a0, a1, hybrid):
     df_integrated['Real_Fuel_economy'] = np.divide(df_integrated['dist_sum'], df_integrated['Qty'], where=df_integrated['Energy_sum'] != 0)
     df_integrated.dropna(subset=['Fuel_economy'], inplace=True)
     df_integrated.dropna(subset=['Real_Fuel_economy'], inplace=True)
-
     return df_integrated
 
+# Configuration Section
+START1_VAL = 0.005
+STOP1_VAL = 0.0025
+START2_VAL = 0.005
+STOP2_VAL = 0.0025
+N_POINTS = 50
+
 # Calibrate parameters with Dask + Joblib for parallel processing
-def calibrate_parameter(start1, stop1, start2, stop2, hybrid):
+def calibrate_parameter(df_conventional, df_hybrid, df_validation, start1, stop1, start2, stop2, hybrid):
+    
     start_time = time.time()
+
     parameter1_values = []
     parameter2_values = []
-    RMSE_Energy = []
-    MAPE_Energy = []
-    RMSE_Economy = []
-    MAPE_Economy = []
+    RMSE_Energy_train = []
+    MAPE_Energy_train = []
+    RMSE_Economy_train = []
+    MAPE_Economy_train = []
+    RMSE_Energy_test = []
+    MAPE_Energy_test = []
+    RMSE_Economy_test = []
+    MAPE_Economy_test = []
 
     n_points = 30
+
     if hybrid:
         df = df_hybrid
         validation = df_validation[df_validation.Powertrain == 'hybrid'].copy()
-        a0_global_name, a1_global_name = 'a0_heb', 'a1_heb'
-
     else:
         df = df_conventional
         validation = df_validation[df_validation.Powertrain == 'conventional'].copy()
-        a0_global_name, a1_global_name = 'a0_cdb', 'a1_cdb'
 
-    validation.reset_index(inplace=True)    
-    
-    decimal_places = 6  # Set the desired number of decimal places
+    validation.reset_index(drop=True, inplace=True)    
+
+    decimal_places = 6  
     a0_space = np.around(np.linspace(start1, stop1, n_points), decimals=decimal_places)
     a1_space = np.around(np.linspace(start2, stop2, n_points), decimals=decimal_places)
 
     for a0 in tqdm(a0_space, desc="a0"):
         for a1 in tqdm(a1_space, desc="a1", leave=False):
-            globals()[a0_global_name] = a0
-            globals()[a1_global_name] = a1
-
             df_integrated = process_dataframe(df, validation, a0, a1, hybrid)
-            df_integrated.dropna(subset=['Qty', 'Energy_sum'], inplace=True)
             train, test = train_test_split(df_integrated, test_size=0.2, random_state=42)
 
-            MSE_Energy_current = mean_squared_error(train['Qty'], train['Energy_sum'])
-            RMSE_Energy_current = math.sqrt(MSE_Energy_current)
-            MAPE_Energy_current = np.mean(np.abs((train['Qty'] - train['Energy_sum']) / train['Qty'])) * 100
-            RMSE_Economy_current = mean_squared_error(train['Real_Fuel_economy'], train['Fuel_economy'], squared=False)
-            MAPE_Economy_current = np.mean(np.abs((train['Real_Fuel_economy'] - train['Fuel_economy']) / train['Real_Fuel_economy'])) * 100
+            # Training Data
+            MSE_Energy_train_current = mean_squared_error(train['Qty'], train['Energy_sum'])
+            RMSE_Energy_train_current = math.sqrt(MSE_Energy_train_current)
+            MAPE_Energy_train_current = np.mean(np.abs((train['Qty'] - train['Energy_sum']) / train['Qty'])) * 100
+            RMSE_Economy_train_current = mean_squared_error(train['Real_Fuel_economy'], train['Fuel_economy'], squared=False)
+            MAPE_Economy_train_current = np.mean(np.abs((train['Real_Fuel_economy'] - train['Fuel_economy']) / train['Real_Fuel_economy'])) * 100
+            
+            # Testing Data
+            MSE_Energy_test_current = mean_squared_error(test['Qty'], test['Energy_sum'])
+            RMSE_Energy_test_current = math.sqrt(MSE_Energy_test_current)
+            MAPE_Energy_test_current = np.mean(np.abs((test['Qty'] - test['Energy_sum']) / test['Qty'])) * 100
+            MSE_Economy_test_current = mean_squared_error(test['Real_Fuel_economy'], test['Fuel_economy'], squared=False)
+            RMSE_Economy_test_current = math.sqrt(MSE_Economy_test_current)
+            MAPE_Economy_test_current = np.mean(np.abs((test['Real_Fuel_economy'] - test['Fuel_economy']) / test['Real_Fuel_economy'])) * 100
 
             parameter1_values.append(a0)
             parameter2_values.append(a1)
-            RMSE_Energy.append(RMSE_Energy_current)
-            MAPE_Energy.append(MAPE_Energy_current)
-            RMSE_Economy.append(RMSE_Economy_current)
-            MAPE_Economy.append(MAPE_Economy_current)
+            RMSE_Energy_train.append(RMSE_Energy_train_current)
+            MAPE_Energy_train.append(MAPE_Energy_train_current)
+            RMSE_Economy_train.append(RMSE_Economy_train_current)
+            MAPE_Economy_train.append(MAPE_Economy_train_current)
+            RMSE_Energy_test.append(RMSE_Energy_test_current)
+            MAPE_Economy_test.append(MAPE_Economy_test_current)
 
-    results = pd.DataFrame(list(zip(parameter1_values, parameter2_values, RMSE_Energy, MAPE_Energy, RMSE_Economy, MAPE_Economy)),
-                           columns=['parameter1_values', 'parameter2_values', 'RMSE_Energy', 'MAPE_Energy', 'RMSE_Economy', 'MAPE_Economy'])
-    file_name = f"../../results/calibration-grid-search-oct2021-sep2022-{'heb' if hybrid else 'cdb'}-oct2021-sep2022.csv"
-    results.to_csv(file_name)
-    print("--- %s seconds ---" % (time.time() - start_time))
+    results_df = pd.DataFrame(list(zip(
+    parameter1_values, parameter2_values,
+    RMSE_Energy_train, MAPE_Energy_train, RMSE_Economy_train, MAPE_Economy_train,
+    RMSE_Energy_test, MAPE_Energy_test, RMSE_Economy_test, MAPE_Economy_test)),
+    columns=[
+        'parameter1_values', 'parameter2_values',
+        'RMSE_Energy_train', 'MAPE_Energy_train', 'RMSE_Economy_train', 'MAPE_Economy_train',
+        'RMSE_Energy_test', 'MAPE_Energy_test', 'RMSE_Economy_test', 'MAPE_Economy_test'
+    ])
 
-    n_points = 30 
-    decimal_places = 6  # Set the desired number of decimal places
-    a0_space = np.linspace(start1, stop1, n_points).round(decimal_places)
-    a1_space = np.linspace(start2, stop2, n_points).round(decimal_places)
-
-    # Create Dask arrays for a0_space and a1_space
-    a0_space_da = da.from_array(a0_space, chunks=len(a0_space)//16)
-    a1_space_da = da.from_array(a1_space, chunks=len(a1_space)//16)
-
-    # Iterate over parameters with Dask's map_blocks (similar to a nested loop)
-    #parameters = da.map_blocks(lambda a0, a1: (a0, a1), a0_space_da, a1_space_da, dtype=float)
-    parameters = [(a0, a1) for a0 in a0_space for a1 in a1_space]
-
-    
-    def evaluate_parameters(a0, a1):
-        # Your existing code here, replacing a0 and a1 values and
-        # calculating RMSE_Energy_current, MAPE_Energy_current, etc.
-        # This function will be parallelized
-        return a0, a1, RMSE_Energy_current, MAPE_Energy_current, RMSE_Economy_current, MAPE_Economy_current
-
-    # Use Dask to parallelize the evaluate_parameters function
-    results = [delayed(evaluate_parameters)(a0, a1) for a0, a1 in parameters]
-
-    # Use TQDM to display a progress bar
-    results = tqdm(compute(*results, scheduler='processes'), total=len(results))
-
-    results_df = pd.DataFrame(results, columns=['parameter1_values', 'parameter2_values', 'RMSE_Energy', 'MAPE_Energy', 'RMSE_Economy', 'MAPE_Economy'])
-    file_name = f"../../results/calibration-grid-search-oct2021-sep2022-{'heb' if hybrid else 'cdb'}-oct2021-sep2022.csv"
+    file_name = f"../../results/calibration-grid-search-oct2021-sep2022-{'heb' if hybrid else 'cdb'}-oct2021-sep2022-10112023.csv"
     results_df.to_csv(file_name)
+    
     print("--- %s seconds ---" % (time.time() - start_time))
+
+
+def process_with_error_handling(args):
+    try:
+        return calibrate_parameter(*args)
+    except Exception as e:
+        return f"Error: {e}"
 
 def main():
     # Use all available CPUs
-    n_processes = 16
-    start1_val=0.0001
-    stop1_val=0.005
-    start2_val=0.00001
-    #stop2_val=0.0005
-    stop2_val=0.00001
-    n_points=30
+    n_processes = 32
+    START1_VAL = 0.0001
+    STOP1_VAL = 0.005
+    START2_VAL = 0.00001
+    STOP2_VAL = 0.00001
+    N_POINTS = 30
 
     # Split the parameter grid equally among the available CPUs
-    #param_grid = [(s1, stop1_val, s2, stop2_val, hybrid) for s1 in np.linspace(start1_val, stop1_val, n_points) 
-    #                                                          for s2 in np.linspace(start2_val, stop2_val, n_points)
-    #                                                          for hybrid in [False, True]]
-
-    param_grid = [(s1, stop1_val, s2, stop2_val, hybrid) for s1 in np.linspace(start1_val, stop1_val, n_points) 
-                                                              for s2 in np.linspace(start2_val, stop2_val, n_points)
-                                                              for hybrid in [True]]
+    param_grid = [(s1, STOP1_VAL, s2, STOP2_VAL, hybrid) 
+                  for s1 in np.linspace(START1_VAL, STOP1_VAL, N_POINTS) 
+                  for s2 in np.linspace(START2_VAL, STOP2_VAL, N_POINTS)
+                  for hybrid in [True]]  # Change this line if you want to include [False] as well
 
     # Split the parameter grid into chunks for each process
     param_grid_split = np.array_split(param_grid, n_processes)
@@ -334,10 +310,9 @@ def main():
 
     # Loop over the parameter grid
     for param_chunk in param_grid_split:
-        # Loop over the tuples in the chunk
         for param_tuple in param_chunk:
             # Use apply_async to start a process for each tuple of the parameter grid
-            result = pool.apply_async(calibrate_parameter, args=param_tuple)
+            result = pool.apply_async(process_with_error_handling, args=(param_tuple,))
             results.append(result)
 
     # Close the pool
@@ -349,7 +324,11 @@ def main():
 
     # Wait for all processes to finish
     pool.join()
+    
+    # Handle errors (if any)
+    for res in results:
+        if "Error" in res:
+            print(res)
 
-# Call the main function when this script is run
 if __name__ == '__main__':
     main()
