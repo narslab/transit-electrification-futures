@@ -7,7 +7,6 @@ import time
 from sklearn.metrics import mean_squared_error
 from sklearn.model_selection import train_test_split
 from multiprocessing import Pool
-import gc
 
 
 f = open('params-oct2021-sep2022.yaml')
@@ -101,25 +100,6 @@ def energyConsumption_d(df_input, hybrid=False):
     E_t = (FC_t * t)/3.78541 #The value 3.78541 represents the number of liters in one US gallon
     return E_t
 
-# Define power function for electric vehicle
-def power_e(df_input):
-    df = df_input
-    v = df.Speed
-    a = df.Acceleration
-    gr = df.grade
-    m = df.Vehicle_mass+(df.Onboard*179)*0.453592 # converts lb to kg
-    factor = df.Acceleration.apply(lambda a: 1 if a >= 0 else np.exp(-(0.0411/abs(a))))
-    P_t = factor*(eta_batt/eta_m*eta_d_beb)*(1/float(3600*eta_d_beb))*((1./25.92)*rho*C_D*C_h*A_f_beb*v*v + m*g*C_r*(c1*v + c2)/1000 + 1.1*m*a+m*g*gr)*v
-    return P_t
-
-# Define Energy consumption function for electric vehicle
-def energyConsumption_e(df_input):
-	# Estimates energy consumed (KWh)     
-    df = df_input
-    t = df.time_delta_in_seconds/3600
-    P_t = power_e(df_input)
-    E_t = P_t * t
-    return E_t
 
 # Read trajectories df
 df_trajectories = pd.read_csv(r'../../data/tidy/large/trajectories-mapped-powertrain-weight-grade-oct2021-sep2022.csv', delimiter=',', skiprows=0, low_memory=False)
@@ -165,28 +145,19 @@ def process_dataframe(df, validation, a0, a1, hybrid):
     df_integrated['ServiceDateTime_prev'] = df_integrated.groupby('Vehicle')['ServiceDateTime'].shift(1)
     df_integrated = df_integrated.dropna(subset=['ServiceDateTime_prev'])
 
-
-    def process_row(row):
-        vehicle, cur_time, prev_time = row['Vehicle'], row['ServiceDateTime'], row['ServiceDateTime_prev']
-        group = df[(df['Vehicle'] == vehicle) & (df['ServiceDateTime'] > prev_time) & (df['ServiceDateTime'] < cur_time)]
-        result = group.agg({
-            'dist': 'sum',
-            'Energy': 'sum'
-        })
-        result['Vehicle'] = vehicle
-        result['ServiceDateTime_cur'] = cur_time
-        result['ServiceDateTime_prev'] = prev_time
-        return result
-
-    filtered_data_list = df_integrated.apply(process_row, axis=1).tolist()
-
-    df_filtered = pd.concat(filtered_data_list, ignore_index=True)
-
-    df_integrated = df_integrated.merge(df_filtered, left_on=['Vehicle', 'ServiceDateTime', 'ServiceDateTime_prev'],
-                                        right_on=['Vehicle', 'ServiceDateTime_cur', 'ServiceDateTime_prev'])
-
-    del df_filtered
+    # Vectorized operation: 
+    mask = (df['Vehicle'].isin(df_integrated['Vehicle'])) & \
+           (df['ServiceDateTime'].gt(df_integrated['ServiceDateTime_prev'])) & \
+           (df['ServiceDateTime'].lt(df_integrated['ServiceDateTime']))
     
+    filtered_data = df.loc[mask].groupby(['Vehicle', 'ServiceDateTime']).agg({
+        'dist': 'sum',
+        'Energy': 'sum'
+    }).reset_index()
+
+    df_integrated = df_integrated.merge(filtered_data, left_on=['Vehicle', 'ServiceDateTime', 'ServiceDateTime_prev'],
+                                        right_on=['Vehicle', 'ServiceDateTime', 'ServiceDateTime'])
+
     # Drop rows with NaN values in 'Energy' or 'Qty' columns
     df_integrated.dropna(subset=['Energy_sum', 'Qty'], inplace=True)
     df_integrated['Fuel_economy'] = np.divide(df_integrated['dist_sum'], df_integrated['Energy_sum'], where=df_integrated['Energy_sum'] != 0)
@@ -194,6 +165,7 @@ def process_dataframe(df, validation, a0, a1, hybrid):
     df_integrated.dropna(subset=['Fuel_economy'], inplace=True)
     df_integrated.dropna(subset=['Real_Fuel_economy'], inplace=True)
     return df_integrated
+
 
 # Configuration Section
 START1_VAL = 0.005
@@ -203,82 +175,51 @@ STOP2_VAL = 0.0025
 N_POINTS = 50
 
 # Calibrate parameters with Dask + Joblib for parallel processing
-def calibrate_parameter(df_conventional, df_hybrid, df_validation, start1, stop1, start2, stop2, hybrid):
+def calibrate_parameter(a0, a1, hybrid):
     
     start_time = time.time()
 
-    parameter1_values = []
-    parameter2_values = []
-    RMSE_Energy_train = []
-    MAPE_Energy_train = []
-    RMSE_Economy_train = []
-    MAPE_Economy_train = []
-    RMSE_Energy_test = []
-    MAPE_Energy_test = []
-    RMSE_Economy_test = []
-    MAPE_Economy_test = []
-
-    n_points = 30
-
     if hybrid:
-        df = df_hybrid
+        df = df_hybrid.copy()
         validation = df_validation[df_validation.Powertrain == 'hybrid'].copy()
     else:
-        df = df_conventional
+        df = df_conventional.copy()
         validation = df_validation[df_validation.Powertrain == 'conventional'].copy()
 
     validation.reset_index(drop=True, inplace=True)    
+    
+    df_integrated = process_dataframe(df, validation, a0, a1, hybrid)
+    train, test = train_test_split(df_integrated, test_size=0.2, random_state=42)
 
-    decimal_places = 6  
-    a0_space = np.around(np.linspace(start1, stop1, n_points), decimals=decimal_places)
-    a1_space = np.around(np.linspace(start2, stop2, n_points), decimals=decimal_places)
-
-    for a0 in tqdm(a0_space, desc="a0"):
-        for a1 in tqdm(a1_space, desc="a1", leave=False):
-            df_integrated = process_dataframe(df, validation, a0, a1, hybrid)
-            train, test = train_test_split(df_integrated, test_size=0.2, random_state=42)
-
-            # Training Data
-            MSE_Energy_train_current = mean_squared_error(train['Qty'], train['Energy_sum'])
-            RMSE_Energy_train_current = math.sqrt(MSE_Energy_train_current)
-            MAPE_Energy_train_current = np.mean(np.abs((train['Qty'] - train['Energy_sum']) / train['Qty'])) * 100
-            RMSE_Economy_train_current = mean_squared_error(train['Real_Fuel_economy'], train['Fuel_economy'], squared=False)
-            MAPE_Economy_train_current = np.mean(np.abs((train['Real_Fuel_economy'] - train['Fuel_economy']) / train['Real_Fuel_economy'])) * 100
+    # Training Data
+    MSE_Energy_train = mean_squared_error(train['Qty'], train['Energy_sum'])
+    RMSE_Energy_train = math.sqrt(MSE_Energy_train)
+    MAPE_Energy_train = np.mean(np.abs((train['Qty'] - train['Energy_sum']) / train['Qty'])) * 100
+    RMSE_Economy_train = mean_squared_error(train['Real_Fuel_economy'], train['Fuel_economy'], squared=False)
+    MAPE_Economy_train = np.mean(np.abs((train['Real_Fuel_economy'] - train['Fuel_economy']) / train['Real_Fuel_economy'])) * 100
+    
+    # Testing Data
+    MSE_Energy_test = mean_squared_error(test['Qty'], test['Energy_sum'])
+    RMSE_Energy_test = math.sqrt(MSE_Energy_test)
+    MAPE_Energy_test = np.mean(np.abs((test['Qty'] - test['Energy_sum']) / test['Qty'])) * 100
+    RMSE_Economy_test = mean_squared_error(test['Real_Fuel_economy'], test['Fuel_economy'], squared=False)
+    MAPE_Economy_test = np.mean(np.abs((test['Real_Fuel_economy'] - test['Fuel_economy']) / test['Real_Fuel_economy'])) * 100
             
-            # Testing Data
-            MSE_Energy_test_current = mean_squared_error(test['Qty'], test['Energy_sum'])
-            RMSE_Energy_test_current = math.sqrt(MSE_Energy_test_current)
-            MAPE_Energy_test_current = np.mean(np.abs((test['Qty'] - test['Energy_sum']) / test['Qty'])) * 100
-            MSE_Economy_test_current = mean_squared_error(test['Real_Fuel_economy'], test['Fuel_economy'], squared=False)
-            RMSE_Economy_test_current = math.sqrt(MSE_Economy_test_current)
-            MAPE_Economy_test_current = np.mean(np.abs((test['Real_Fuel_economy'] - test['Fuel_economy']) / test['Real_Fuel_economy'])) * 100
-
-            del df, validation, df_integrated, train, test
-            gc.collect()
-
-            parameter1_values.append(a0)
-            parameter2_values.append(a1)
-            RMSE_Energy_train.append(RMSE_Energy_train_current)
-            MAPE_Energy_train.append(MAPE_Energy_train_current)
-            RMSE_Economy_train.append(RMSE_Economy_train_current)
-            MAPE_Economy_train.append(MAPE_Economy_train_current)
-            RMSE_Energy_test.append(RMSE_Energy_test_current)
-            MAPE_Energy_train.append(MAPE_Energy_test_current)
-            RMSE_Economy_train.append(RMSE_Economy_test_current)
-            MAPE_Economy_test.append(MAPE_Economy_test_current)
-            
-    results_df = pd.DataFrame(list(zip(
-    parameter1_values, parameter2_values,
-    RMSE_Energy_train, MAPE_Energy_train, RMSE_Economy_train, MAPE_Economy_train,
-    RMSE_Energy_test, MAPE_Energy_test, RMSE_Economy_test, MAPE_Economy_test)),
-    columns=[
-        'parameter1_values', 'parameter2_values',
-        'RMSE_Energy_train', 'MAPE_Energy_train', 'RMSE_Economy_train', 'MAPE_Economy_train',
-        'RMSE_Energy_test', 'MAPE_Energy_test', 'RMSE_Economy_test', 'MAPE_Economy_test'
-    ])
+    results_df = pd.DataFrame({
+        'parameter1_values': [a0], 
+        'parameter2_values': [a1],
+        'RMSE_Energy_train': [RMSE_Energy_train], 
+        'MAPE_Energy_train': [MAPE_Energy_train], 
+        'RMSE_Economy_train': [RMSE_Economy_train], 
+        'MAPE_Economy_train': [MAPE_Economy_train],
+        'RMSE_Energy_test': [RMSE_Energy_test], 
+        'MAPE_Energy_test': [MAPE_Energy_test], 
+        'RMSE_Economy_test': [RMSE_Economy_test], 
+        'MAPE_Economy_test': [MAPE_Economy_test]
+    })
 
     file_name = f"../../results/calibration-grid-search-oct2021-sep2022-{'heb' if hybrid else 'cdb'}-oct2021-sep2022-10112023.csv"
-    results_df.to_csv(file_name)
+    results_df.to_csv(file_name, mode='a', header=False)  # Append mode so you don't overwrite for each a0, a1, hybrid combination
     
     print("--- %s seconds ---" % (time.time() - start_time))
 
@@ -296,31 +237,19 @@ def main():
     STOP1_VAL = 0.005
     START2_VAL = 0.00001
     STOP2_VAL = 0.00001
-    N_POINTS = 30
+    N_POINTS = 10
 
     # Split the parameter grid equally among the available CPUs
-    param_grid = [(df_conventional[['ServiceDateTime', 'Vehicle']], 
-               df_validation[['Vehicle', 'ServiceDateTime']], s1, s2, hybrid) 
-              for s1 in np.linspace(START1_VAL, STOP1_VAL, N_POINTS) 
-              for s2 in np.linspace(START2_VAL, STOP2_VAL, N_POINTS)
-              for hybrid in [True, False]]
+    param_grid = [
+        (s1, s2, hybrid) 
+        for s1 in np.linspace(START1_VAL, STOP1_VAL, N_POINTS) 
+        for s2 in np.linspace(START2_VAL, STOP2_VAL, N_POINTS)
+        for hybrid in [True, False]
+    ]
 
-    # Split the parameter grid into chunks for each process
-    param_grid_split = np.array_split(param_grid, n_processes)
-
-    # Create a pool of processes
-    pool = Pool(processes=n_processes)
-
-    # Use a list to keep track of the results
-    results = []
-
-    # Loop over the parameter grid
-    for param_chunk in param_grid_split:
-        for param_tuple in param_chunk:
-            # Use apply_async to start a process for each tuple of the parameter grid
-            result = pool.apply_async(process_with_error_handling, args=(param_tuple,))
-            results.append(result)
-
+    with Pool(processes=n_processes) as pool:
+        results = pool.starmap(calibrate_parameter, param_grid)
+        
     # Close the pool
     pool.close()
 
