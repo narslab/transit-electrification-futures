@@ -296,7 +296,8 @@ def main():
         (s1, s2, hybrid) 
         for s1 in np.linspace(START1_VAL, STOP1_VAL, N_POINTS) 
         for s2 in np.linspace(START2_VAL, STOP2_VAL, N_POINTS)
-        for hybrid in [True, False]
+        #for hybrid in [True, False]
+        for hybrid in [True]
     ]
 
     with Pool(processes=n_processes) as pool:
