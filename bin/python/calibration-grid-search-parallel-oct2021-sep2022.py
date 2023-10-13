@@ -191,6 +191,7 @@ def calibrate_parameter(a0, a1, hybrid):
     #print("hybrid:",hybrid)
     #print("df columns:",df.columns)
     df_integrated = process_dataframe(df, validation, a0, a1, hybrid)
+    df_integrated = df_integrated.loc[df_integrated['Energy_sum']!=0]
     train, test = train_test_split(df_integrated, test_size=0.2, random_state=42)
     
     # Training Data
