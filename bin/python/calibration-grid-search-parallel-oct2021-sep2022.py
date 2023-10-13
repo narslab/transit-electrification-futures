@@ -195,15 +195,15 @@ def calibrate_parameter(a0, a1, hybrid):
     
     # Training Data
     RMSE_Energy_train = np.sqrt(mean_squared_error(train['Qty'], train['Energy_sum']))
-    MAPE_Energy_train = mean_absolute_percentage_error(train['Qty'] - train['Energy_sum'])
+    MAPE_Energy_train = mean_absolute_percentage_error(train['Qty'] , train['Energy_sum'])
     RMSE_Economy_train = np.sqrt(mean_squared_error(train['Real_Fuel_economy'], train['Fuel_economy']))
-    MAPE_Economy_train = mean_absolute_percentage_error(train['Real_Fuel_economy'] - train['Fuel_economy']) 
+    MAPE_Economy_train = mean_absolute_percentage_error(train['Real_Fuel_economy'] , train['Fuel_economy']) 
     
     # Testing Data
     RMSE_Energy_test = np.sqrt(mean_squared_error(test['Qty'], test['Energy_sum']))
-    MAPE_Energy_test = mean_absolute_percentage_error(test['Qty'] - test['Energy_sum'])
+    MAPE_Energy_test = mean_absolute_percentage_error(test['Qty'] , test['Energy_sum'])
     RMSE_Economy_test = np.sqrt(mean_squared_error(test['Real_Fuel_economy'], test['Fuel_economy']))
-    MAPE_Economy_test = mean_absolute_percentage_error(test['Real_Fuel_economy'] - test['Fuel_economy'])
+    MAPE_Economy_test = mean_absolute_percentage_error(test['Real_Fuel_economy'] , test['Fuel_economy'])
             
     results_df = pd.DataFrame({
         'parameter1_values': [a0], 
