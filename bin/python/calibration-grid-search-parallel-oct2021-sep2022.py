@@ -225,7 +225,7 @@ START1_VAL = 0.005
 STOP1_VAL = 0.0025
 START2_VAL = 0.005
 STOP2_VAL = 0.0025
-N_POINTS = 2
+N_POINTS = 70
 
 # Initialize results dataframe to store results of all iterations
 all_results_df = pd.DataFrame()
