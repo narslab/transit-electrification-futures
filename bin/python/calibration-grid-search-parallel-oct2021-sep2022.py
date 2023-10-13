@@ -289,7 +289,7 @@ def main():
     STOP1_VAL = 0.005
     START2_VAL = 0.00001
     STOP2_VAL = 0.00001
-    N_POINTS = 2
+    N_POINTS = 100
 
     # Split the parameter grid equally among the available CPUs
     param_grid = [
@@ -307,10 +307,12 @@ def main():
                 pbar.update()
                 results.append(_)
                 
-    # Handle errors (if any)
-    for res in results:
-        if "Error" in res:
-            print(res)
+# =============================================================================
+#     # Handle errors (if any)
+#     for res in results:
+#         if "Error" in res:
+#             print(res)
+# =============================================================================
 
 if __name__ == '__main__':
     main()
