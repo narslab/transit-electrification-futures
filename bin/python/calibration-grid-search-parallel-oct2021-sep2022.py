@@ -217,12 +217,14 @@ def process_dataframe(df, validation, a0, a1, hybrid):
     return df_integrated
 
 
-# Configuration Section
-START1_VAL = 0.005
-STOP1_VAL = 0.0025
-START2_VAL = 0.005
-STOP2_VAL = 0.0025
-N_POINTS = 50
+# =============================================================================
+# # Configuration Section
+# START1_VAL = 0.005
+# STOP1_VAL = 0.0025
+# START2_VAL = 0.005
+# STOP2_VAL = 0.0025
+# N_POINTS = 50
+# =============================================================================
 
 # Calibrate parameters with Dask + Joblib for parallel processing
 def calibrate_parameter(a0, a1, hybrid):
@@ -276,36 +278,38 @@ def calibrate_parameter(a0, a1, hybrid):
     print("--- %s seconds ---" % (time.time() - start_time))
 
 
-def process_with_error_handling(args):
-    try:
-        return calibrate_parameter(*args)
-    except Exception as e:
-        return f"Error: {e}"
-
-def main():
-    # Use all available CPUs
-    n_processes = 32
-    START1_VAL = 0.0001
-    STOP1_VAL = 0.005
-    START2_VAL = 0.00001
-    STOP2_VAL = 0.00001
-    N_POINTS = 2
-
-    # Split the parameter grid equally among the available CPUs
-    param_grid = [
-        (s1, s2, hybrid) 
-        for s1 in np.linspace(START1_VAL, STOP1_VAL, N_POINTS) 
-        for s2 in np.linspace(START2_VAL, STOP2_VAL, N_POINTS)
-        #for hybrid in [True, False]
-        for hybrid in [True]
-    ]
-
-    with Pool(processes=n_processes) as pool:
-        results = []
-        with tqdm(total=len(param_grid), desc="Processing", unit="task") as pbar:
-            for _ in pool.imap_unordered(process_with_error_handling, param_grid):
-                pbar.update()
-                results.append(_)
+# =============================================================================
+# def process_with_error_handling(args):
+#     try:
+#         return calibrate_parameter(*args)
+#     except Exception as e:
+#         return f"Error: {e}"
+# 
+# def main():
+#     # Use all available CPUs
+#     n_processes = 32
+#     START1_VAL = 0.0001
+#     STOP1_VAL = 0.005
+#     START2_VAL = 0.00001
+#     STOP2_VAL = 0.00001
+#     N_POINTS = 100
+# 
+#     # Split the parameter grid equally among the available CPUs
+#     param_grid = [
+#         (s1, s2, hybrid) 
+#         for s1 in np.linspace(START1_VAL, STOP1_VAL, N_POINTS) 
+#         for s2 in np.linspace(START2_VAL, STOP2_VAL, N_POINTS)
+#         #for hybrid in [True, False]
+#         for hybrid in [True]
+#     ]
+# 
+#     with Pool(processes=n_processes) as pool:
+#         results = []
+#         with tqdm(total=len(param_grid), desc="Processing", unit="task") as pbar:
+#             for _ in pool.imap_unordered(process_with_error_handling, param_grid):
+#                 pbar.update()
+#                 results.append(_)
+# =============================================================================
                 
 # =============================================================================
 #     # Handle errors (if any)
@@ -314,5 +318,27 @@ def main():
 #             print(res)
 # =============================================================================
 
-if __name__ == '__main__':
-    main()
+# =============================================================================
+# if __name__ == '__main__':
+#     main()
+# =============================================================================
+
+# Configuration Section
+START1_VAL = 0.005
+STOP1_VAL = 0.0025
+START2_VAL = 0.005
+STOP2_VAL = 0.0025
+N_POINTS = 50
+
+# Initialize results dataframe to store results of all iterations
+all_results_df = pd.DataFrame()
+
+# The calibration process
+for hybrid_flag in [False, True]:
+    for a0 in np.linspace(START1_VAL, STOP1_VAL, N_POINTS):
+        for a1 in np.linspace(START2_VAL, STOP2_VAL, N_POINTS):
+            current_result_df = calibrate_parameter(a0, a1, hybrid_flag)
+            all_results_df = pd.concat([all_results_df, current_result_df], ignore_index=True)
+
+# Write the CSV at the end of the process
+all_results_df.to_csv('../../results/Calibration_results_oct2021-sep2022.csv', index=False)
