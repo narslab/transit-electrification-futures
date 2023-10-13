@@ -233,8 +233,8 @@ all_results_df = pd.DataFrame()
 # The calibration process
 # for hybrid_flag in [False, True]:
 for hybrid_flag in [True]:
-    for a0 in np.linspace(START1_VAL, STOP1_VAL, N_POINTS):
-        for a1 in np.linspace(START2_VAL, STOP2_VAL, N_POINTS):
+    for a0 in tqdm(np.linspace(START1_VAL, STOP1_VAL, N_POINTS), desc="Calibrating a0"):
+        for a1 in tqdm(np.linspace(START2_VAL, STOP2_VAL, N_POINTS), desc="Calibrating a1", leave=False):
             current_result_df = calibrate_parameter(a0, a1, hybrid_flag)
             all_results_df = pd.concat([all_results_df, current_result_df], ignore_index=True)
 
