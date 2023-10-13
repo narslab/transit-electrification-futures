@@ -7,6 +7,8 @@ import time
 from sklearn.metrics import mean_squared_error
 from sklearn.model_selection import train_test_split
 from multiprocessing import Pool
+import os
+
 
 f = open('params-oct2021-sep2022.yaml')
 parameters = yaml.safe_load(f)
@@ -64,14 +66,14 @@ def power_d(df_input, hybrid=False):
 
 
 # Define fuel rate function for diesel vehicle
-def fuelRate_d(df_input, hybrid=False):
+def fuelRate_d(df_input, a0, a1, hybrid=False):
     # Set the coefficients based on the hybrid flag
     if hybrid:
-        a0_local = a0_heb
-        a1_local = a1_heb
+        a0_local = a0
+        a1_local = a1
     else:
-        a0_local = a0_cdb
-        a1_local = a1_cdb
+        a0_local = a0
+        a1_local = a1
 
     # Compute power
     P_t = power_d(df_input, hybrid=hybrid)
@@ -88,14 +90,14 @@ def fuelRate_d(df_input, hybrid=False):
 
 
 # Define Energy consumption function for diesel vehicle
-def energyConsumption_d(df_input, hybrid=False):
+def energyConsumption_d(df_input,a0, a1, hybrid=False):
 	# Estimates energy consumed (gallons)     
     df = df_input
     t = df.time_delta_in_seconds
     if hybrid == True:
-        FC_t = fuelRate_d(df_input, hybrid=True)
+        FC_t = fuelRate_d(df_input,a0, a1, hybrid=True)
     else:
-        FC_t = fuelRate_d(df_input, hybrid=False)
+        FC_t = fuelRate_d(df_input,a0, a1, hybrid=False)
     E_t = (FC_t * t)/3.78541 #The value 3.78541 represents the number of liters in one US gallon
     return E_t
 
@@ -271,12 +273,18 @@ def calibrate_parameter(a0, a1, hybrid):
         'RMSE_Economy_test': [RMSE_Economy_test], 
         'MAPE_Economy_test': [MAPE_Economy_test]
     })
+    return results_df
 
-    file_name = f"../../results/calibration-grid-search-oct2021-sep2022-{'heb' if hybrid else 'cdb'}-oct2021-sep2022-10122023.csv"
-    results_df.to_csv(file_name, mode='a', header=False)  # Append mode so you don't overwrite for each a0, a1, hybrid combination
-    
-    print("--- %s seconds ---" % (time.time() - start_time))
-
+# =============================================================================
+#     file_name = f"../../results/calibration-grid-search-oct2021-sep2022-{'heb' if hybrid else 'cdb'}-oct2021-sep2022-10122023.csv"
+#     if os.path.exists(file_name):
+#         results_df.to_csv(file_name, mode='a', header=False)  # Append mode
+#     else:
+#         results_df.to_csv(file_name, mode='w')  # Write mode # Append mode so you don't overwrite for each a0, a1, hybrid combination
+#     
+#     print("--- %s seconds ---" % (time.time() - start_time))
+# 
+# =============================================================================
 
 # =============================================================================
 # def process_with_error_handling(args):
@@ -334,12 +342,14 @@ N_POINTS = 2
 all_results_df = pd.DataFrame()
 
 # The calibration process
-#for hybrid_flag in [False, True]:
+# The calibration process
+# for hybrid_flag in [False, True]:
 for hybrid_flag in [True]:
     for a0 in np.linspace(START1_VAL, STOP1_VAL, N_POINTS):
         for a1 in np.linspace(START2_VAL, STOP2_VAL, N_POINTS):
             current_result_df = calibrate_parameter(a0, a1, hybrid_flag)
             all_results_df = pd.concat([all_results_df, current_result_df], ignore_index=True)
+
 
 # Write the CSV at the end of the process
 all_results_df.to_csv('../../results/Calibration_results_oct2021-sep2022.csv', index=False)
