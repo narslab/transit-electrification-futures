@@ -334,7 +334,8 @@ N_POINTS = 2
 all_results_df = pd.DataFrame()
 
 # The calibration process
-for hybrid_flag in [False, True]:
+#for hybrid_flag in [False, True]:
+for hybrid_flag in [True]:
     for a0 in np.linspace(START1_VAL, STOP1_VAL, N_POINTS):
         for a1 in np.linspace(START2_VAL, STOP2_VAL, N_POINTS):
             current_result_df = calibrate_parameter(a0, a1, hybrid_flag)
