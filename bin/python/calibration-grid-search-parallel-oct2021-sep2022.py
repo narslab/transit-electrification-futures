@@ -336,7 +336,7 @@ START1_VAL = 0.005
 STOP1_VAL = 0.0025
 START2_VAL = 0.005
 STOP2_VAL = 0.0025
-N_POINTS = 2
+N_POINTS = 70
 
 # Initialize results dataframe to store results of all iterations
 all_results_df = pd.DataFrame()
@@ -352,4 +352,4 @@ for hybrid_flag in [True]:
 
 
 # Write the CSV at the end of the process
-all_results_df.to_csv('../../results/Calibration_results_oct2021-sep2022.csv', index=False)
+all_results_df.to_csv('../../results/calibration_results_heb_oct2021-sep2022_10122023.csv', index=False)
