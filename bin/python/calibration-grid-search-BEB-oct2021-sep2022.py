@@ -156,7 +156,7 @@ def calibrate_parameter(args):
     decimal_places = 6  # Set the desired number of decimal places
     gamma_values = np.around(np.linspace(start, stop, n_points), decimals=decimal_places)
 
-    for gamma in gamma_values:        
+    for gamma in tqdm(gamma_values, desc="Processing gamma values"):
         df_integrated = process_dataframe(df, validation)
         df_integrated.dropna(subset=['Qty', 'Energy_sum'], inplace=True)
         df_integrated = df_integrated.loc[df_integrated['Energy_sum']!=0]
