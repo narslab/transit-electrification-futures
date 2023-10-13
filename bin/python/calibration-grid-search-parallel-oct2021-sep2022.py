@@ -153,7 +153,7 @@ def process_dataframe(df, validation, a0, a1, hybrid):
         return pd.Series({'dist_sum': group['dist'].sum(), 'Energy_sum': group['Energy'].sum()})
 
     df_filtered = pd.DataFrame()
-    for _, row in tqdm(df_integrated.iterrows(), total=len(df_integrated)):
+    for _, row in df_integrated.iterrows():
         vehicle, cur_time, prev_time = row['Vehicle'], row['ServiceDateTime'], row['ServiceDateTime_prev']
         group = df_new[(df_new['Vehicle'] == vehicle) & (df_new['ServiceDateTime'] > prev_time) & (df_new['ServiceDateTime'] < cur_time)]
         filtered_group = process_group(group)
