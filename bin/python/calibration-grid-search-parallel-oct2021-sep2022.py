@@ -185,7 +185,7 @@ def process_dataframe(df, validation, a0, a1, hybrid):
     df_new = df.copy()
     validation_new = validation.copy()
 
-    df_new['Energy'] = energyConsumption_d(df, hybrid=hybrid)
+    df_new['Energy'] = energyConsumption_d(df,a0, a1, hybrid=hybrid)
     df_new.sort_values(by=['Vehicle', 'ServiceDateTime'], inplace=True)
     df_new['ServiceDateTime'] = pd.to_datetime(df_new['ServiceDateTime'])
 
