@@ -181,46 +181,38 @@ del df2, mydict
 
 def process_dataframe(df, validation, a0, a1, hybrid):
     df_new = df.copy()
+    validation_new = validation.copy()
+
     df_new['Energy'] = energyConsumption_d(df, hybrid=hybrid)
     df_new.sort_values(by=['Vehicle', 'ServiceDateTime'], inplace=True)
     df_new['ServiceDateTime'] = pd.to_datetime(df_new['ServiceDateTime'])
-    
-    validation_new = validation.copy()
-    validation_new.sort_values(by=['Vehicle', 'ServiceDateTime'], inplace=True)
-    validation_new['ServiceDateTime_prev'] = validation_new.groupby('Vehicle')['ServiceDateTime'].shift(1)
-    validation_new = validation_new.dropna(subset=['ServiceDateTime_prev'])
 
-    # Create a multi-indexed DataFrame for efficient filtering.
-    df_new.set_index(['Vehicle', 'ServiceDateTime'], inplace=True)
-    
-    records = []
-    for _, row in validation_new.iterrows():
+    df_integrated = validation_new.copy()
+    df_integrated.sort_values(by=['Vehicle', 'ServiceDateTime'], inplace=True)
+    df_integrated['ServiceDateTime_prev'] = df_integrated.groupby('Vehicle')['ServiceDateTime'].shift(1)
+    df_integrated = df_integrated.dropna(subset=['ServiceDateTime_prev'])
+
+    def process_group(group):
+        return pd.Series({'dist_sum': group['dist'].sum(), 'Energy_sum': group['Energy'].sum()})
+
+    df_filtered = pd.DataFrame()
+    for _, row in tqdm(df_integrated.iterrows(), total=len(df_integrated)):
         vehicle, cur_time, prev_time = row['Vehicle'], row['ServiceDateTime'], row['ServiceDateTime_prev']
-        group = df_new.loc[vehicle].loc[prev_time:cur_time].reset_index()
-        
-        if not group.empty:
-            dist_sum = group['dist'].sum()
-            energy_sum = group['Energy'].sum()
-            records.append({
-                'Vehicle': vehicle, 
-                'ServiceDateTime_cur': cur_time, 
-                'ServiceDateTime_prev': prev_time, 
-                'dist_sum': dist_sum, 
-                'Energy_sum': energy_sum
-            })
-    
-    df_filtered = pd.DataFrame(records)
-    
-    df_integrated = validation_new.merge(
-        df_filtered, 
-        left_on=['Vehicle', 'ServiceDateTime', 'ServiceDateTime_prev'],
-        right_on=['Vehicle', 'ServiceDateTime_cur', 'ServiceDateTime_prev']
-    )
+        group = df_new[(df_new['Vehicle'] == vehicle) & (df_new['ServiceDateTime'] > prev_time) & (df_new['ServiceDateTime'] < cur_time)]
+        filtered_group = process_group(group)
+        filtered_group['Vehicle'] = vehicle
+        filtered_group['ServiceDateTime_cur'] = cur_time
+        filtered_group['ServiceDateTime_prev'] = prev_time
+        df_filtered = pd.concat([df_filtered, filtered_group.to_frame().T], ignore_index=True)
+    df_integrated = df_integrated.merge(df_filtered, left_on=['Vehicle', 'ServiceDateTime', 'ServiceDateTime_prev'],
+                                        right_on=['Vehicle', 'ServiceDateTime_cur', 'ServiceDateTime_prev'])
 
+    # Drop rows with NaN values in 'Energy' or 'Qty' columns
     df_integrated.dropna(subset=['Energy_sum', 'Qty'], inplace=True)
     df_integrated['Fuel_economy'] = np.divide(df_integrated['dist_sum'], df_integrated['Energy_sum'], where=df_integrated['Energy_sum'] != 0)
     df_integrated['Real_Fuel_economy'] = np.divide(df_integrated['dist_sum'], df_integrated['Qty'], where=df_integrated['Energy_sum'] != 0)
-    df_integrated.dropna(subset=['Fuel_economy', 'Real_Fuel_economy'], inplace=True)
+    df_integrated.dropna(subset=['Fuel_economy'], inplace=True)
+    df_integrated.dropna(subset=['Real_Fuel_economy'], inplace=True)
 
     return df_integrated
 
