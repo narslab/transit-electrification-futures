@@ -221,11 +221,13 @@ def calibrate_parameter(a0, a1, hybrid):
     return results_df
 
 # Configuration Section
-START1_VAL = 0.0090
-STOP1_VAL = 0.010
+START1_VAL = 0.00001
+#STOP1_VAL = 0.003
+STEP_SIZE1 = 0.00001
 START2_VAL = 0.00001 
-STOP2_VAL = 0.0009
-N_POINTS = 10
+#STOP2_VAL = 0.0009
+STEP_SIZE2 = 0.0001
+N_POINTS = 70
 
 # Initialize results dataframe to store results of all iterations
 all_results_df = pd.DataFrame()
@@ -233,8 +235,8 @@ all_results_df = pd.DataFrame()
 # The calibration process
 # for hybrid_flag in [False, True]:
 for hybrid_flag in [True]:
-    for a0 in tqdm(np.linspace(START1_VAL, STOP1_VAL, N_POINTS), desc="Calibrating a0"):
-        for a1 in tqdm(np.linspace(START2_VAL, STOP2_VAL, N_POINTS), desc="Calibrating a1", leave=False):
+    for a0 in tqdm(np.linspace(START1_VAL, START1_VAL+(STEP_SIZE1 * (N_POINTS-1)), N_POINTS), desc="Calibrating a0"):
+        for a1 in tqdm(np.linspace(START2_VAL, START2_VAL+(STEP_SIZE2 * (N_POINTS-1)), N_POINTS), desc="Calibrating a1", leave=False):
             current_result_df = calibrate_parameter(a0, a1, hybrid_flag)
             all_results_df = pd.concat([all_results_df, current_result_df], ignore_index=True)
 

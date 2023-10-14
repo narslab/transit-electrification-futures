@@ -95,9 +95,10 @@ print(df_validation.columns)
 df_validation.rename(columns={"Transaction Date": "ServiceDateTime","Equipment ID":"Vehicle"}, inplace=True)
 df_validation["dist"] = np.nan
 df_validation["Energy"] = np.nan
+print("1",df_validation)
 df_validation['ServiceDateTime'] = pd.to_datetime(df_validation['ServiceDateTime'])
 df_validation.sort_values(by=['Vehicle','ServiceDateTime'], inplace=True)
-#print('df_validation',df_validation)
+print("2",df_validation)
 
 
 ### Map powertrain in the validation dataset
