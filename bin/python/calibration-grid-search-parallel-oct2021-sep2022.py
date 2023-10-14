@@ -221,11 +221,11 @@ def calibrate_parameter(a0, a1, hybrid):
     return results_df
 
 # Configuration Section
-START1_VAL = 0.0010
-STOP1_VAL = 0.01
-START2_VAL = 0.0005
-STOP2_VAL = 0.009
-N_POINTS = 5
+START1_VAL = 0.0090
+STOP1_VAL = 0.010
+START2_VAL = 0.00001 
+STOP2_VAL = 0.0009
+N_POINTS = 10
 
 # Initialize results dataframe to store results of all iterations
 all_results_df = pd.DataFrame()

@@ -86,14 +86,18 @@ df_trajectories = df_trajectories.fillna(0)
 
 # Subsetting data frame for "Conventional", "hybrid", and "electric" buses
 df_beb=df_trajectories.loc[df_trajectories['Powertrain'] == 'electric'].copy()
+print('df_beb',df_beb)
+del df_trajectories
 
 # read validation df
 df_validation = pd.read_excel(r'../../data/tidy/Jun2022-Sep2022-BEB-validation.xlsx')
+print(df_validation.columns)
 df_validation.rename(columns={"Transaction Date": "ServiceDateTime","Equipment ID":"Vehicle"}, inplace=True)
 df_validation["dist"] = np.nan
 df_validation["Energy"] = np.nan
 df_validation['ServiceDateTime'] = pd.to_datetime(df_validation['ServiceDateTime'])
 df_validation.sort_values(by=['Vehicle','ServiceDateTime'], inplace=True)
+#print('df_validation',df_validation)
 
 
 ### Map powertrain in the validation dataset
@@ -190,8 +194,8 @@ def calibrate_parameter(args):
 
     results = pd.DataFrame(list(zip(parameter1_values, RMSE_Energy_train, MAPE_Energy_train, RMSE_Energy_test, MAPE_Energy_test)),
                            columns=['parameter1_values', 'RMSE_Energy_train', 'MAPE_Energy_train', 'RMSE_Energy_test', 'MAPE_Energy_test'])
-    results.to_csv((r'../../results/calibration-grid-search-BEB-oct2021-sep2022.csv'))
+    results.to_csv((r'../../results/calibration-grid-search-BEB-oct2021-sep2022_10142023.csv'))
     print("--- %s seconds ---" % (time.time() - start_time))
 
     
-calibrate_parameter((1,5, 1000))
+calibrate_parameter((1,5, 10))
