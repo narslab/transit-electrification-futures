@@ -108,11 +108,11 @@ d = {val:key for key, lst in mydict.items() for val in lst}
 df_validation['Powertrain'] = df_validation['Vehicle'].map(d)
 
 
-def process_dataframe(df, validation):
+def process_dataframe(df, validation, gamma):
     df_new = df.copy()
     validation_new = validation.copy()
 
-    df_new['Energy'] = energyConsumption_e(df)
+    df_new['Energy'] = energyConsumption_e(df, gamma)
     df_new.sort_values(by=['Vehicle', 'ServiceDateTime'], inplace=True)
     df_new['ServiceDateTime'] = pd.to_datetime(df_new['ServiceDateTime'])
 
