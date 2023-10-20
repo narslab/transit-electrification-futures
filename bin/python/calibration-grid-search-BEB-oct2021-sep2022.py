@@ -163,7 +163,7 @@ def calibrate_parameter(args):
     gamma_values = np.around(np.linspace(start, stop, n_points), decimals=decimal_places)
 
     for gamma in tqdm(gamma_values, desc="Processing gamma values"):
-        df_integrated = process_dataframe(df, validation)
+        df_integrated = process_dataframe(df, validation, gamma)
         df_integrated.dropna(subset=['Qty', 'Energy_sum'], inplace=True)
         df_integrated = df_integrated.loc[df_integrated['Energy_sum']!=0]
         df_train, df_test = train_test_split(df_integrated, test_size=0.2, random_state=42)
