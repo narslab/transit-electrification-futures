@@ -57,13 +57,13 @@ b=p.beta
 gamma=0.0411
 
 # Define power function for electric vehicle
-def power_e(df_input):
+def power_e(df_input, gamma):
     df = df_input
     v = df.speed
     a = df.acc
     gr = df.grade
     m = df.Vehicle_mass+(df.Onboard*179)*0.453592 # converts lb to kg
-    factor = df.acc.apply(lambda a: 1 if a >= 0 else np.exp(-(0.0411/abs(a))))
+    factor = df.acc.apply(lambda a: 1 if a >= 0 else np.exp(-(gamma/abs(a))))
     P_t = factor*(eta_batt/eta_m*eta_d_beb)*(1/float(3600*eta_d_beb))*((1./25.92)*rho*C_D*C_h*A_f_beb*v*v + m*g*C_r*(c1*v + c2)/1000 + 1.1*m*a+m*g*gr)*v
     return P_t
 
@@ -137,6 +137,7 @@ def process_dataframe(df, validation):
                                         right_on=['Vehicle', 'ServiceDateTime_cur', 'ServiceDateTime_prev'])
 
     # Drop rows with NaN values in 'Energy' or 'Qty' columns
+    print(df_integrated)
     df_integrated.dropna(subset=['Energy_sum', 'Qty'], inplace=True)
     df_integrated['Fuel_economy'] = np.divide(df_integrated['dist_sum'], df_integrated['Energy_sum'], where=df_integrated['Energy_sum'] != 0)
     df_integrated['Real_Fuel_economy'] = np.divide(df_integrated['dist_sum'], df_integrated['Qty'], where=df_integrated['Energy_sum'] != 0)
@@ -166,21 +167,6 @@ def calibrate_parameter(args):
         df_integrated.dropna(subset=['Qty', 'Energy_sum'], inplace=True)
         df_integrated = df_integrated.loc[df_integrated['Energy_sum']!=0]
         df_train, df_test = train_test_split(df_integrated, test_size=0.2, random_state=42)
-        # Calculate cumulative count of each Vehicle's rows
-        #df_integrated['cumulative_count'] = df_integrated.groupby('Vehicle').cumcount()
-        # Calculate total count of each Vehicle's rows
-        #vehicle_counts = df_integrated['Vehicle'].value_counts().rename('vehicle_counts')
-        # Merge this information back into df_sorted
-        #df_integrated = df_integrated.merge(vehicle_counts, left_on='Vehicle', right_index=True)
-        # Calculate the cumulative percentage for each Vehicle
-        #df_integrated['cumulative_percentage'] = df_integrated['cumulative_count'] / df_integrated['vehicle_counts']
-        # Assign each row to train or test set
-        #df_integrated['dataset'] = np.where(df_integrated['cumulative_percentage'] < 0.8, 'train', 'test')
-        #df_train = df_integrated[df_integrated['dataset'] == 'train']
-        #df_test = df_integrated[df_integrated['dataset'] == 'test']
-        # drop the auxiliary columns 
-        #df_train = df_train.drop(columns=['cumulative_count', 'vehicle_counts', 'cumulative_percentage', 'dataset'])
-        #df_test = df_test.drop(columns=['cumulative_count', 'vehicle_counts', 'cumulative_percentage', 'dataset'])
         df_integrated=df_integrated.reset_index()
         RMSE_Energy_train_current = np.sqrt(mean_squared_error(df_train['Qty'], df_train['Energy_sum']))
         MAPE_Energy_train_current = mean_absolute_percentage_error(df_train['Qty'] , df_train['Energy_sum'])
@@ -195,8 +181,8 @@ def calibrate_parameter(args):
 
     results = pd.DataFrame(list(zip(parameter1_values, RMSE_Energy_train, MAPE_Energy_train, RMSE_Energy_test, MAPE_Energy_test)),
                            columns=['parameter1_values', 'RMSE_Energy_train', 'MAPE_Energy_train', 'RMSE_Energy_test', 'MAPE_Energy_test'])
-    results.to_csv((r'../../results/calibration-grid-search-BEB-oct2021-sep2022_10142023.csv'))
+    results.to_csv((r'../../results/calibration-grid-search-BEB-oct2021-sep2022_10202023.csv'))
     print("--- %s seconds ---" % (time.time() - start_time))
 
     
-calibrate_parameter((1,5, 10))
+calibrate_parameter((1,5, 1000))
