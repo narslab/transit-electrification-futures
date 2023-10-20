@@ -78,7 +78,7 @@ def energyConsumption_e(df_input):
     return E_t
 
 # Read computed fuel rates
-df_trajectories = pd.read_csv(r'../../data/tidy/Large/trajectories-mapped-powertrain-weight-grade-oct2021-sep2022.csv', delimiter=',', skiprows=0, low_memory=False)
+df_trajectories = pd.read_csv(r'../../data/tidy/large/trajectories-mapped-powertrain-weight-grade-oct2021-sep2022.csv', delimiter=',', skiprows=0, low_memory=False)
 df_trajectories.rename(columns={"VehiclWeight(lb)": "Vehicle_mass"}, inplace=True)
 df_trajectories['Date']=pd.to_datetime(df_trajectories['Date'])
 df_trajectories.speed = df_trajectories.speed *1.60934 # takes speed in km/h (Convert from mph to km/h)
