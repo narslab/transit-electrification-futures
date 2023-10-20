@@ -54,7 +54,7 @@ a0_heb = p.alpha_0_heb
 a1_heb = p.alpha_1_heb
 a2_heb = p.alpha_2_heb
 b=p.beta
-gamma=0.0411
+#gamma=0.0411
 
 # Define power function for electric vehicle
 def power_e(df_input, gamma):
@@ -69,11 +69,11 @@ def power_e(df_input, gamma):
 
 
 # Define Energy consumption function for electric vehicle
-def energyConsumption_e(df_input):
+def energyConsumption_e(df_input, gamma):
 	# Estimates energy consumed (KWh)     
     df = df_input
     t = df.time_delta_in_seconds/3600
-    P_t = power_e(df_input)
+    P_t = power_e(df_input, gamma)
     E_t = P_t * t
     return E_t
 

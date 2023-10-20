@@ -170,7 +170,7 @@ def process_dataframe(df, validation, a0, a1, hybrid):
     df_integrated['Real_Fuel_economy'] = np.divide(df_integrated['dist_sum'], df_integrated['Qty'], where=df_integrated['Energy_sum'] != 0)
     #df_integrated.dropna(subset=['Fuel_economy'], inplace=True)
     df_integrated.dropna(subset=['Real_Fuel_economy'], inplace=True)
-    print(df_integrated)
+    #print(df_integrated)
     return df_integrated
 
 
