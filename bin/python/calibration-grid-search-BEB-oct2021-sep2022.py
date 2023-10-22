@@ -142,7 +142,6 @@ def calibrate_parameter(args):
     RMSE_Energy_test = []
     MAPE_Energy_test = []
 
-
     df = df_beb
     validation = df_validation
     validation.reset_index(inplace=True)        
@@ -172,4 +171,4 @@ def calibrate_parameter(args):
     print("--- %s seconds ---" % (time.time() - start_time))
 
     
-calibrate_parameter((1,5, 1000))
+calibrate_parameter((1,5, 10))
