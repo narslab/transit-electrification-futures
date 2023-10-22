@@ -8,9 +8,6 @@ from sklearn.model_selection import train_test_split
 from joblib import Parallel, delayed
 from dask.distributed import Client
 
-# Create a Dask client
-client = Client()  # it will start local workers as processes
-
 f = open('params-oct2021-sep2022.yaml')
 parameters = yaml.safe_load(f)
 f.close()
@@ -177,8 +174,6 @@ def process_dataframe(df, validation, a0, a1, hybrid):
 # Calibrate parameters with Dask + Joblib for parallel processing
 def calibrate_parameter(a0, a1, hybrid):
     
-    start_time = time.time()
-
     if hybrid:
         df = df_hybrid.copy()
         validation = df_validation[df_validation.Powertrain == 'hybrid'].copy()
@@ -245,24 +240,34 @@ all_results_df = pd.DataFrame()
 #all_results_df.to_csv('../../results/calibration_results_heb_oct2021-sep2022_10222023.csv', index=False)
 
 
-# Update the calibration process to utilize parallelism:
-
 def parallel_calibrate(a0, a1, hybrid_flag):
     return calibrate_parameter(a0, a1, hybrid_flag)
 
-all_results = []
+if __name__ == '__main__':
+    # Create a Dask client
+    client = Client()  # it will start local workers as processes
 
-# Using Dask with Joblib:
-with Parallel(n_jobs=-1, backend="dask") as parallel:
-    # for hybrid_flag in [False, True]:
-    for hybrid_flag in [True]:
-        for a0 in np.linspace(START1_VAL, START1_VAL+(STEP_SIZE1 * (N_POINTS-1)), N_POINTS):
-            all_results.extend(
-                parallel(
+    all_results = []
+
+    # Define total tasks for tqdm
+    total_tasks = N_POINTS**2
+    
+    # Capture the start time
+    start_time = time.time()
+
+    with Parallel(n_jobs=-1, backend="dask", verbose=10) as parallel:
+        for hybrid_flag in [True]:
+            for a0 in np.linspace(START1_VAL, START1_VAL+(STEP_SIZE1 * (N_POINTS-1)), N_POINTS):
+                results = parallel(
                     delayed(parallel_calibrate)(a0, a1, hybrid_flag) 
-                    for a1 in np.linspace(START2_VAL, START2_VAL+(STEP_SIZE2 * (N_POINTS-1)), N_POINTS)
+                    for a1 in tqdm(np.linspace(START2_VAL, START2_VAL+(STEP_SIZE2 * (N_POINTS-1)), N_POINTS), total=total_tasks, desc="Processing")
                 )
-            )
+                all_results.extend(results)
 
-all_results_df = pd.concat(all_results, ignore_index=True)
-all_results_df.to_csv('../../results/calibration_results_heb_oct2021-sep2022_10222023.csv', index=False)
+    all_results_df = pd.concat(all_results, ignore_index=True)
+    all_results_df.to_csv('../../results/calibration_results_heb_oct2021-sep2022_10222023.csv', index=False)
+    
+
+    # Calculate and print the elapsed time
+    elapsed_time = time.time() - start_time
+    print(f"Total time taken: {elapsed_time:.2f} seconds")
