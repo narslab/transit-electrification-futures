@@ -142,8 +142,8 @@ def calibrate_parameter(args):
     RMSE_Energy_test = []
     MAPE_Energy_test = []
 
-    df = df_beb
-    validation = df_validation
+    df = df_beb.copy()
+    validation = df_validation.copy()
     validation.reset_index(inplace=True)        
     decimal_places = 6  # Set the desired number of decimal places
     gamma_values = np.around(np.linspace(start, stop, n_points), decimals=decimal_places)
@@ -161,8 +161,8 @@ def calibrate_parameter(args):
         parameter1_values.append(gamma)
         RMSE_Energy_train.append(RMSE_Energy_train_current)
         MAPE_Energy_train.append(MAPE_Energy_train_current)
-        RMSE_Energy_train.append(RMSE_Energy_test_current)
-        MAPE_Energy_train.append(MAPE_Energy_test_current)
+        RMSE_Energy_test.append(RMSE_Energy_test_current)
+        MAPE_Energy_test.append(MAPE_Energy_test_current)
 
 
     results = pd.DataFrame(list(zip(parameter1_values, RMSE_Energy_train, MAPE_Energy_train, RMSE_Energy_test, MAPE_Energy_test)),
