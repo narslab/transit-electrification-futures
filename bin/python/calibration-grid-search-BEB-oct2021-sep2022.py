@@ -124,7 +124,6 @@ def process_dataframe(df, validation, gamma):
                                         right_on=['Vehicle', 'ServiceDateTime_cur', 'ServiceDateTime_prev'])
 
     # Drop rows with NaN values in 'Energy' or 'Qty' columns
-    print('df_integrated',df_integrated)
     df_integrated.dropna(subset=['Energy_sum', 'Qty'], inplace=True)
     df_integrated['Fuel_economy'] = np.divide(df_integrated['dist_sum'], df_integrated['Energy_sum'], where=df_integrated['Energy_sum'] != 0)
     df_integrated['Real_Fuel_economy'] = np.divide(df_integrated['dist_sum'], df_integrated['Qty'], where=df_integrated['Energy_sum'] != 0)
@@ -171,4 +170,4 @@ def calibrate_parameter(args):
     print("--- %s seconds ---" % (time.time() - start_time))
 
     
-calibrate_parameter((0.0001,5, 5000))
+calibrate_parameter((0.0001,5, 1000))
