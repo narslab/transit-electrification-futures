@@ -2,13 +2,14 @@ import yaml
 import pandas as pd
 import numpy as np
 from tqdm import tqdm
-import math
 import time
 from sklearn.metrics import mean_absolute_percentage_error, mean_squared_error
 from sklearn.model_selection import train_test_split
-from multiprocessing import Pool
-import os
+from joblib import Parallel, delayed
+from dask.distributed import Client
 
+# Create a Dask client
+client = Client()  # it will start local workers as processes
 
 f = open('params-oct2021-sep2022.yaml')
 parameters = yaml.safe_load(f)
@@ -219,26 +220,49 @@ def calibrate_parameter(a0, a1, hybrid):
 
 # Configuration Section
 #START1_VAL = 0.000001
-START1_VAL = 0
+START1_VAL = 0.000000000001
 #STOP1_VAL = 0.003
-STEP_SIZE1 = 0.0000000001
+STEP_SIZE1 = 0.000000000001
 
 #START2_VAL = 0.00001 
 START2_VAL = 0
 #STOP2_VAL = 0.0009
 STEP_SIZE2 = 0.000001
-N_POINTS = 10
+N_POINTS = 20
 
 # Initialize results dataframe to store results of all iterations
 all_results_df = pd.DataFrame()
 
 # The calibration process
 # for hybrid_flag in [False, True]:
-for hybrid_flag in [True]:
-    for a0 in tqdm(np.linspace(START1_VAL, START1_VAL+(STEP_SIZE1 * (N_POINTS-1)), N_POINTS), desc="Calibrating a0"):
-        for a1 in tqdm(np.linspace(START2_VAL, START2_VAL+(STEP_SIZE2 * (N_POINTS-1)), N_POINTS), desc="Calibrating a1", leave=False):
-            current_result_df = calibrate_parameter(a0, a1, hybrid_flag)
-            all_results_df = pd.concat([all_results_df, current_result_df], ignore_index=True)
+#for hybrid_flag in [True]:
+#    for a0 in tqdm(np.linspace(START1_VAL, START1_VAL+(STEP_SIZE1 * (N_POINTS-1)), N_POINTS), desc="Calibrating a0"):
+#        for a1 in tqdm(np.linspace(START2_VAL, START2_VAL+(STEP_SIZE2 * (N_POINTS-1)), N_POINTS), desc="Calibrating a1", leave=False):
+#            current_result_df = calibrate_parameter(a0, a1, hybrid_flag)
+#            all_results_df = pd.concat([all_results_df, current_result_df], ignore_index=True)
 
 # Write the CSV at the end of the process
+#all_results_df.to_csv('../../results/calibration_results_heb_oct2021-sep2022_10222023.csv', index=False)
+
+
+# Update the calibration process to utilize parallelism:
+
+def parallel_calibrate(a0, a1, hybrid_flag):
+    return calibrate_parameter(a0, a1, hybrid_flag)
+
+all_results = []
+
+# Using Dask with Joblib:
+with Parallel(n_jobs=-1, backend="dask") as parallel:
+    # for hybrid_flag in [False, True]:
+    for hybrid_flag in [True]:
+        for a0 in np.linspace(START1_VAL, START1_VAL+(STEP_SIZE1 * (N_POINTS-1)), N_POINTS):
+            all_results.extend(
+                parallel(
+                    delayed(parallel_calibrate)(a0, a1, hybrid_flag) 
+                    for a1 in np.linspace(START2_VAL, START2_VAL+(STEP_SIZE2 * (N_POINTS-1)), N_POINTS)
+                )
+            )
+
+all_results_df = pd.concat(all_results, ignore_index=True)
 all_results_df.to_csv('../../results/calibration_results_heb_oct2021-sep2022_10222023.csv', index=False)
