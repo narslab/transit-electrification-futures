@@ -1,19 +1,10 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Tue May 23 19:56:53 2023
-
-@author: Mahsa
-"""
-
 import yaml
 import pandas as pd
 import numpy as np
 from tqdm import tqdm
-import math
 import time
 from sklearn.metrics import mean_absolute_percentage_error, mean_squared_error
 from sklearn.model_selection import train_test_split
-from multiprocessing import Pool
 
 f = open('params-oct2021-sep2022.yaml')
 parameters = yaml.safe_load(f)
@@ -86,19 +77,15 @@ df_trajectories = df_trajectories.fillna(0)
 
 # Subsetting data frame for "Conventional", "hybrid", and "electric" buses
 df_beb=df_trajectories.loc[df_trajectories['Powertrain'] == 'electric'].copy()
-print('df_beb',df_beb)
 del df_trajectories
 
 # read validation df
 df_validation = pd.read_excel(r'../../data/tidy/Jun2022-Sep2022-BEB-validation.xlsx')
-print(df_validation.columns)
 df_validation.rename(columns={"Transaction Date": "ServiceDateTime","Equipment ID":"Vehicle"}, inplace=True)
 df_validation["dist"] = np.nan
 df_validation["Energy"] = np.nan
-print("1",df_validation)
 df_validation['ServiceDateTime'] = pd.to_datetime(df_validation['ServiceDateTime'])
 df_validation.sort_values(by=['Vehicle','ServiceDateTime'], inplace=True)
-print("2",df_validation)
 
 
 ### Map powertrain in the validation dataset
@@ -137,7 +124,7 @@ def process_dataframe(df, validation, gamma):
                                         right_on=['Vehicle', 'ServiceDateTime_cur', 'ServiceDateTime_prev'])
 
     # Drop rows with NaN values in 'Energy' or 'Qty' columns
-    print(df_integrated)
+    print('df_integrated',df_integrated)
     df_integrated.dropna(subset=['Energy_sum', 'Qty'], inplace=True)
     df_integrated['Fuel_economy'] = np.divide(df_integrated['dist_sum'], df_integrated['Energy_sum'], where=df_integrated['Energy_sum'] != 0)
     df_integrated['Real_Fuel_economy'] = np.divide(df_integrated['dist_sum'], df_integrated['Qty'], where=df_integrated['Energy_sum'] != 0)
