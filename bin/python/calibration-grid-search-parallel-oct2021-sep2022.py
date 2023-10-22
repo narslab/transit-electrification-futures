@@ -245,7 +245,8 @@ def parallel_calibrate(a0, a1, hybrid_flag):
 
 if __name__ == '__main__':
     # Create a Dask client
-    client = Client()  # it will start local workers as processes
+    #client = Client()  # it will start local workers as processes
+    client = Client(n_workers=32, threads_per_worker=1)
 
     all_results = []
 
@@ -255,7 +256,7 @@ if __name__ == '__main__':
     # Capture the start time
     start_time = time.time()
 
-    with Parallel(n_jobs=-1, backend="dask", verbose=10) as parallel:
+    with Parallel(n_jobs=32, backend="dask", verbose=10) as parallel:
         for hybrid_flag in [True]:
             for a0 in np.linspace(START1_VAL, START1_VAL+(STEP_SIZE1 * (N_POINTS-1)), N_POINTS):
                 results = parallel(
