@@ -5,9 +5,10 @@ from tqdm import tqdm
 import time
 from sklearn.metrics import mean_absolute_percentage_error, mean_squared_error
 from sklearn.model_selection import train_test_split
-import dask
-from joblib import Parallel, delayed
+from dask import compute, delayed
 from dask.distributed import Client
+import itertools
+
 
 f = open('params-oct2021-sep2022.yaml')
 parameters = yaml.safe_load(f)
@@ -245,30 +246,27 @@ def parallel_calibrate(a0, a1, hybrid_flag):
     return calibrate_parameter(a0, a1, hybrid_flag)
 
 if __name__ == '__main__':
-    # Create a Dask client
-    #client = Client()  # it will start local workers as processes
     client = Client(n_workers=32, threads_per_worker=1)
+    hybrid_flag = True
 
-    all_results = []
+    delayed_tasks = []
+    a0_values = np.linspace(START1_VAL, START1_VAL+(STEP_SIZE1 * (N_POINTS-1)), N_POINTS)
+    a1_values = np.linspace(START2_VAL, START2_VAL+(STEP_SIZE2 * (N_POINTS-1)), N_POINTS)
 
-    # Define total tasks for tqdm
-    total_tasks = N_POINTS**2
-    
-    # Capture the start time
-    start_time = time.time()
+    start_time = time.time()  # Start timer
 
-    with Parallel(n_jobs=32, backend="dask", verbose=10) as parallel:
-        for hybrid_flag in [True]:
-            for a0 in np.linspace(START1_VAL, START1_VAL+(STEP_SIZE1 * (N_POINTS-1)), N_POINTS):
-                results = parallel(
-                    delayed(parallel_calibrate)(a0, a1, hybrid_flag) 
-                    for a1 in tqdm(np.linspace(START2_VAL, START2_VAL+(STEP_SIZE2 * (N_POINTS-1)), N_POINTS), total=total_tasks, desc="Processing")
-                )
-                all_results.extend(results)
+    # Using a single loop to iterate over cartesian product of a0 and a1 values
+    for a0, a1 in tqdm(itertools.product(a0_values, a1_values), total=N_POINTS**2, desc="Processing"):
+        if hybrid_flag:
+            delayed_task = delayed(parallel_calibrate)(a0, a1, True)
+            delayed_tasks.append(delayed_task)
 
-    all_results_df = pd.concat(all_results, ignore_index=True)
+    results = compute(*delayed_tasks)  # compute all results in parallel
+
+    all_results_df = pd.concat(results, ignore_index=True)
+
+    # Save results to a CSV file
     all_results_df.to_csv('../../results/calibration_results_heb_oct2021-sep2022_10222023.csv', index=False)
-    
 
     # Calculate and print the elapsed time
     elapsed_time = time.time() - start_time
