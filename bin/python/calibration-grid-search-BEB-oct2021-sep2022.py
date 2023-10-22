@@ -181,7 +181,7 @@ def calibrate_parameter(args):
 
     results = pd.DataFrame(list(zip(parameter1_values, RMSE_Energy_train, MAPE_Energy_train, RMSE_Energy_test, MAPE_Energy_test)),
                            columns=['parameter1_values', 'RMSE_Energy_train', 'MAPE_Energy_train', 'RMSE_Energy_test', 'MAPE_Energy_test'])
-    results.to_csv((r'../../results/calibration-grid-search-BEB-oct2021-sep2022_10202023.csv'))
+    results.to_csv((r'../../results/calibration-grid-search-BEB-oct2021-sep2022_10222023.csv'))
     print("--- %s seconds ---" % (time.time() - start_time))
 
     

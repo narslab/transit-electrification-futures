@@ -224,13 +224,13 @@ def calibrate_parameter(a0, a1, hybrid):
 #START1_VAL = 0.000001
 START1_VAL = 0
 #STOP1_VAL = 0.003
-STEP_SIZE1 = 0.000001
+STEP_SIZE1 = 0.0000001
 
 #START2_VAL = 0.00001 
 START2_VAL = 0
 #STOP2_VAL = 0.0009
-STEP_SIZE2 = 0.00001
-N_POINTS = 100
+STEP_SIZE2 = 0.000001
+N_POINTS = 10
 
 # Initialize results dataframe to store results of all iterations
 all_results_df = pd.DataFrame()
@@ -244,4 +244,4 @@ for hybrid_flag in [True]:
             all_results_df = pd.concat([all_results_df, current_result_df], ignore_index=True)
 
 # Write the CSV at the end of the process
-all_results_df.to_csv('../../results/calibration_results_heb_oct2021-sep2022_10202023.csv', index=False)
+all_results_df.to_csv('../../results/calibration_results_heb_oct2021-sep2022_10222023.csv', index=False)
