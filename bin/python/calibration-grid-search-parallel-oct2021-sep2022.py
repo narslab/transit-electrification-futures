@@ -5,6 +5,7 @@ from tqdm import tqdm
 import time
 from sklearn.metrics import mean_absolute_percentage_error, mean_squared_error
 from sklearn.model_selection import train_test_split
+import dask
 from joblib import Parallel, delayed
 from dask.distributed import Client
 
