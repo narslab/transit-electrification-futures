@@ -11,7 +11,7 @@ import numpy as np
 
 
 # Read fuel rates
-df = pd.read_csv(r'../../results/computed-fuel-rates-oct2021-sep2022.csv', delimiter=',', skiprows=0, low_memory=False)
+df = pd.read_csv(r'../../results/computed-fuel-rates-oct2021-sep2022-test-10222023.csv', delimiter=',', skiprows=0, low_memory=False)
 
 
 # Subsetting data frame for "Conventional", "hybrid", and "electric" buses
@@ -68,7 +68,7 @@ def validation(hybrid=False):
     df_integrated_clean = df_integrated_clean[df_integrated_clean['Energy'] != 0]
 
     
-    file_name = f"../../results/validation-vs-computed-fuel-rates-clean-{'heb' if hybrid else 'cdb'}-oct2021-sep2022.csv"
+    file_name = f"../../results/validation-vs-computed-fuel-rates-clean-{'heb' if hybrid else 'cdb'}-oct2021-sep2022-test-10222023.csv"
     df_integrated_clean.to_csv(file_name)
 
     return compute_metrics(df_integrated_clean)

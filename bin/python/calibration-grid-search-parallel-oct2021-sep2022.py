@@ -12,7 +12,6 @@ import itertools
 
 f = open('params-oct2021-sep2022.yaml')
 parameters = yaml.safe_load(f)
-f.close()
 
 class vehicleParams():
 	def __init__(self, **entries):
@@ -115,7 +114,7 @@ df_hybrid = df_trajectories.loc[df_trajectories['Powertrain'] == 'hybrid']
 del df_trajectories
 
 # read validation df
-df_validation = pd.read_csv(r'../../data/tidy/fuel-tickets-oct2021-sep2022.csv', delimiter=',', skiprows=0, low_memory=False)
+df_validation = pd.read_csv(r'../../data/tidy/fuel-tickets-clean-oct2021-sep2022.csv', delimiter=',', skiprows=0, low_memory=False)
 df_validation=df_validation.loc[df_validation['Qty']>0]
 df_validation.sort_values(by=['Equipment ID','Transaction Date'], inplace=True)
 df_validation.drop(['Unnamed: 0'], axis=1, inplace=True)
