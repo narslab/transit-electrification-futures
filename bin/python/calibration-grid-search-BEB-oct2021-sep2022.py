@@ -126,7 +126,8 @@ def process_dataframe(df, validation, gamma):
     # Drop rows with NaN values in 'Energy' or 'trip' columns
     df_integrated.dropna(subset=['Energy_sum', 'trip'], inplace=True)
     df_integrated['Fuel_economy'] = np.divide(df_integrated['dist_sum'], df_integrated['Energy_sum'], where=df_integrated['Energy_sum'] != 0)
-    df_integrated['Real_Fuel_economy'] = np.divide(df_integrated['dist_sum'], df_integrated['trip'], where=df_integrated['Energy_sum'] != 0)
+    df_integrated['Real_Fuel_economy'] = np.divide(df_integrated['dist_sum'], df_integrated['trip'], where=df_integrated['trip'] != 0)
+
     df_integrated.dropna(subset=['Fuel_economy'], inplace=True)
     df_integrated.dropna(subset=['Real_Fuel_economy'], inplace=True)
 
