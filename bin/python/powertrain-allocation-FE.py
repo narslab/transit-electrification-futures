@@ -120,12 +120,7 @@ max_number_of_buses = 1000 # 213*4 (current numnumber of fleet*4, assuming buses
 battery_cap=350 #kWh 
 
 # Maximum daily charging capacity in year y
-#battery_values = [15, 23, 23, 27, 38, 42, 52]
-battery_values = [23, 23, 27, 38, 42, 52, 1000, 1000, 1000, 1000, 1000, 1000, 1000]
-#M_cap = {y: battery_values[y]*battery_cap if y < len(battery_values) else float('inf') for y in range(13)}
-M_cap = [23, 23, 27, 38, 42, 52, 1000, 1000, 1000, 1000, 1000, 1000, 1000]
-#M_cap = {y: battery_values[y]*battery_cap if y < len(battery_values) else max_number_of_buses for y in range(14)}
-#M_cap = [15, 23, 23, 27, 38, 42, 52, 1000, 1000, 1000, 1000, 1000, 1000, 1000]
+M_cap = [23, 23, 27, 38, 42, 52, 62, 74, 89, 107, 128, 154, 185]
 
 
 # Set of scenarios
@@ -144,25 +139,12 @@ cost_inv = {
 }
 
 # Max investment per scenario per year
-#C_max = {
-#    'low-cap': 7,  # in million dollars
-#      'mid-cap': 14,  # in million dollars
-#     'high-cap': 21  # in million dollars
-#}
-
 C_max = {
-    'low-cap': 17,  # in million dollars
-#     'mid-cap': 22,  # in million dollars
-#    'high-cap': 27  # in million dollars
+    'low-cap': 10,  # in million dollars
+#     'mid-cap': 20,  # in million dollars
+#    'high-cap': 30  # in million dollars
 }
 
-# The maximum yearly investment
-# =============================================================================
-# M_inv = {
-#     (s, y): 0 if y == 0 else C_max[s]
-#     for y in range(Y) for s in S
-# }
-# =============================================================================
 M_inv = {
     (s, y): C_max[s] for y in range(Y) for s in S
 }
@@ -198,8 +180,6 @@ energy_CDB = df_CDB.groupby(['Date', 'Route', 'TripKey']).agg({
     'Powertrain': 'first'}).reset_index()
 energy_CDB['Diesel'] = (energy_CDB['Powertrain'].isin(['conventional', 'hybrid']) * energy_CDB['Energy'])
 energy_CDB_dict = energy_CDB.set_index(['TripKey']).to_dict('index')
-#print("energy_CDB_dict", energy_CDB_dict)
-#energy_CDB_dict = {f"CDB_{key}": value for key, value in energy_CDB.set_index(['TripKey']).to_dict('index').items()}
 
 
 # For df_HEB
@@ -213,7 +193,6 @@ energy_HEB = df_HEB.groupby(['Date', 'Route', 'TripKey']).agg({
     'Powertrain': 'first'}).reset_index()
 energy_HEB['Diesel'] = (energy_HEB['Powertrain'].isin(['conventional', 'hybrid']) * energy_HEB['Energy'])
 energy_HEB_dict = energy_HEB.set_index(['TripKey']).to_dict('index')
-#energy_HEB_dict = {f"HEB_{key}": value for key, value in energy_HEB.set_index(['TripKey']).to_dict('index').items()}
 
 
 # For df_BEB
@@ -227,35 +206,7 @@ energy_BEB = df_BEB.groupby(['Date', 'Route', 'TripKey']).agg({
     'Powertrain': 'first'}).reset_index()
 energy_BEB['Diesel'] = (energy_BEB['Powertrain'].isin(['conventional', 'hybrid']) * energy_BEB['Energy'])
 energy_BEB_dict = energy_BEB.set_index(['TripKey']).to_dict('index')
-#energy_BEB_dict = {f"BEB_{key}": value for key, value in energy_BEB.set_index(['TripKey']).to_dict('index').items()}
-#print("energy_BEB_dict", energy_BEB_dict)
 
-### Combine three dicts and save all trip information in a csv file
-#combined_dict = {}
-#combined_dict.update(energy_CDB_dict)
-#combined_dict.update(energy_HEB_dict)
-#combined_dict.update(energy_BEB_dict)
-
-# Convert the dictionary to a DataFrame
-#df_combined_dict = pd.DataFrame.from_dict(combined_dict, orient='index')
-#df_combined_CDB = pd.DataFrame.from_dict(energy_CDB_dict, orient='index')
-#df_combined_HEB = pd.DataFrame.from_dict(energy_HEB_dict, orient='index')
-#df_combined_BEB = pd.DataFrame.from_dict(energy_BEB_dict, orient='index')
-
-# Reset the index
-#df_combined_dict = df_combined_dict.reset_index()
-
-# Rename the 'index' column to 'TripKey'
-#df_combined_dict.rename(columns={'index': 'TripKey'}, inplace=True)
-#df_combined_CDB.rename(columns={'index': 'TripKey'}, inplace=True)
-#df_combined_HEB.rename(columns={'index': 'TripKey'}, inplace=True)
-#df_combined_BEB.rename(columns={'index': 'TripKey'}, inplace=True)
-
-# Write the DataFrame to a CSV file
-#df_combined_dict.to_csv(r'../../results/busiest-day-trips-info.csv', index=False)
-#df_combined_CDB.to_csv(r'../../results/busiest-day-trips-info-CDB.csv', index=False)
-#df_combined_HEB.to_csv(r'../../results/busiest-day-trips-info-HEB.csv', index=False)
-#df_combined_BEB.to_csv(r'../../results/busiest-day-trips-info-BEB.csv', index=False)
 
 # Now delete the DataFrame to free up memory
 del df_CDB
@@ -274,10 +225,7 @@ report_usage()
 model.setParam('OutputFlag', 1)
 
 # Set solver parameters
-#model.setParam('MIPFocus', 1)  # This parameter lets control the  In. The options are: 1. Finds feasible solutions quickly. This is useful if the problem is difficult to solve and you're satisfied with any feasible solution. 2: Works to improve the best bound. This is useful when the best objective bound is poor. 3: Tries to prove optimality of the best solution found. This is useful if you're sure a nearly-optimal solution exists and you want the solver to focus on proving its optimality.
-#model.setParam('Heuristics', 0.5)  # Controls the effort put into MIP heuristics (range is 0 to 1). A higher value means more effort is put into finding solutions, but at the cost of slower overall performance. 
 model.setParam('Presolve', 0)  # This parameter controls the presolve level. Presolve is a phase during which the solver tries to simplify the model before the actual optimization takes place. A higher presolve level means the solver puts more effort into simplification, which can often reduce solving time. (-1: automatic (default) - Gurobi will decide based on the problem characteristics whether to use presolve or not.0: no presolve. 1: conservative presolve. 2: aggressive presolve.)
-#model.setParam('MIPGap', 0.01) # This parameter sets the relative gap for the MIP search termination. The solver will stop as soon as the relative gap between the lower and upper objective bound is less than this value. The lower this value, the closer to optimality the solution has to be before the solver stops.  
 model.setParam('Threads', 64)  # Set number of threads to be used for parallel processing.
 
 print("Done setting model parameters")
@@ -286,9 +234,6 @@ report_usage()
 # Additional keys for buses and years
 bus_keys = range(max_number_of_buses)
 year_keys = range(Y)
-#day_keys = range(D)
-#route_keys = range(R)
-#run_keys = range(Rho)
 
 # Decision variables
 keys_CDB = list(energy_CDB_dict.keys())
@@ -377,7 +322,6 @@ report_usage()
 
 
 # Constraint 2: Each trip is assigned to exactly one bus powertrain
-#unique_keys = set(keys_CDB) | set(keys_HEB) | set(keys_BEB)  # Union of all keys
 for s in S:
     for y in year_keys:
         #for key in unique_keys:
@@ -391,32 +335,16 @@ print("Done defining constraint 2")
 report_usage()
 
 # Constraint 3: Maximum daily charging capacity
-# =============================================================================
-# for s in S:
-#     for y in year_keys:
-#         total_energy_BEB = quicksum(energy_BEB_dict[key]['Energy'] * x_BEB[s, y, key] for key in keys_BEB)
-#         model.addConstr(total_energy_BEB <= M_cap[y], name=f"C3: daily charging capacity_{y}_{s}")
-# 
-# =============================================================================
 for s in S:
      for y in year_keys:
          total_BEB = y_BEB[s,y]
          model.addConstr(total_BEB <= M_cap[y], name=f"C3: daily charging capacity_{y}_{s}")
  
-    
-# =============================================================================
-# for s in S:
-#     for y in year_keys:
-#         total_energy_BEB = quicksum(y_BEB[s, y] for key in keys_BEB)
-#         model.addConstr(total_energy_BEB <= M_cap[y], name=f"C3: daily charging capacity_{y}_{s}")
-# 
-# =============================================================================
 
 print("Done defining constraint 3")
 report_usage()
 
 # Constraint 4: Maximum yearly investment
-
 # Initial values for year 0
 initial_fleet_CDB = 189
 initial_fleet_HEB = 9
