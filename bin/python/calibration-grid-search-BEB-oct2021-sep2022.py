@@ -123,10 +123,10 @@ def process_dataframe(df, validation, gamma):
     df_integrated = df_integrated.merge(df_filtered, left_on=['Vehicle', 'ServiceDateTime', 'ServiceDateTime_prev'],
                                         right_on=['Vehicle', 'ServiceDateTime_cur', 'ServiceDateTime_prev'])
 
-    # Drop rows with NaN values in 'Energy' or 'Qty' columns
-    df_integrated.dropna(subset=['Energy_sum', 'Qty'], inplace=True)
+    # Drop rows with NaN values in 'Energy' or 'trip' columns
+    df_integrated.dropna(subset=['Energy_sum', 'trip'], inplace=True)
     df_integrated['Fuel_economy'] = np.divide(df_integrated['dist_sum'], df_integrated['Energy_sum'], where=df_integrated['Energy_sum'] != 0)
-    df_integrated['Real_Fuel_economy'] = np.divide(df_integrated['dist_sum'], df_integrated['Qty'], where=df_integrated['Energy_sum'] != 0)
+    df_integrated['Real_Fuel_economy'] = np.divide(df_integrated['dist_sum'], df_integrated['trip'], where=df_integrated['Energy_sum'] != 0)
     df_integrated.dropna(subset=['Fuel_economy'], inplace=True)
     df_integrated.dropna(subset=['Real_Fuel_economy'], inplace=True)
 
@@ -149,14 +149,14 @@ def calibrate_parameter(args):
 
     for gamma in tqdm(gamma_values, desc="Processing gamma values"):
         df_integrated = process_dataframe(df, validation, gamma)
-        df_integrated.dropna(subset=['Qty', 'Energy_sum'], inplace=True)
+        df_integrated.dropna(subset=['trip', 'Energy_sum'], inplace=True)
         df_integrated = df_integrated.loc[df_integrated['Energy_sum']!=0]
         df_train, df_test = train_test_split(df_integrated, test_size=0.2, random_state=42)
         df_integrated=df_integrated.reset_index()
-        RMSE_Energy_train_current = np.sqrt(mean_squared_error(df_train['Qty'], df_train['Energy_sum']))
-        MAPE_Energy_train_current = mean_absolute_percentage_error(df_train['Qty'] , df_train['Energy_sum'])
-        RMSE_Energy_test_current = np.sqrt(mean_squared_error(df_test['Qty'], df_test['Energy_sum']))
-        MAPE_Energy_test_current = mean_absolute_percentage_error(df_test['Qty'] , df_test['Energy_sum'])
+        RMSE_Energy_train_current = np.sqrt(mean_squared_error(df_train['trip'], df_train['Energy_sum']))
+        MAPE_Energy_train_current = mean_absolute_percentage_error(df_train['trip'] , df_train['Energy_sum'])
+        RMSE_Energy_test_current = np.sqrt(mean_squared_error(df_test['trip'], df_test['Energy_sum']))
+        MAPE_Energy_test_current = mean_absolute_percentage_error(df_test['trip'] , df_test['Energy_sum'])
         parameter1_values.append(gamma)
         RMSE_Energy_train.append(RMSE_Energy_train_current)
         MAPE_Energy_train.append(MAPE_Energy_train_current)
