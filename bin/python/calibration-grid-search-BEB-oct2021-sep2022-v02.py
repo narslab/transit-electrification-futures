@@ -125,7 +125,7 @@ def calibrate_parameter(args):
     df = df_beb.copy()
     validation = df_validation.copy()
     validation.reset_index(inplace=True)        
-    decimal_places = 6  # Set the desired number of decimal places
+    decimal_places = 9  # Set the desired number of decimal places
     gamma_values = np.around(np.linspace(start, stop, n_points), decimals=decimal_places)
 
     for gamma in tqdm(gamma_values, desc="Processing gamma values"):
@@ -149,4 +149,4 @@ def calibrate_parameter(args):
     print("--- %s seconds ---" % (time.time() - start_time))
 
     
-calibrate_parameter((0.00000001,0.1, 1000))
+calibrate_parameter((0.00000001,0.09, 5000))
