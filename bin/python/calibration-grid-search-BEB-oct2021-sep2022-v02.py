@@ -83,6 +83,7 @@ del df_trajectories
 
 # read validation df
 df_validation = pd.read_excel(r'../../data/tidy/BEB-validation.xlsx')
+df_validation.rename(columns={"Transaction Date": "ServiceDateTime","Equipment ID":"Vehicle"}, inplace=True)
 df_validation['ServiceDateTime'] = pd.to_datetime(df_validation['ServiceDateTime'])
 
 
@@ -96,7 +97,7 @@ def process_dataframe(df, validation, gamma):
 
 
     df_integrated =  pd.merge(validation_new, df_new, 
-                     left_on=['Transaction Date', 'Equipment ID'], 
+                     left_on=['ServiceDateTime', 'Equipment ID'], 
                      right_on=['Date', 'Vehicle'], 
                      how='left')
     #df_integrated['residual']=df_integrated['trip']-df_integrated['Energy']
