@@ -83,7 +83,6 @@ del df_trajectories
 
 # read validation df
 df_validation = pd.read_excel(r'../../data/tidy/BEB-validation.xlsx')
-df_validation.rename(columns={"Transaction Date": "ServiceDateTime","Equipment ID":"Vehicle"}, inplace=True)
 df_validation['ServiceDateTime'] = pd.to_datetime(df_validation['ServiceDateTime'])
 
 
@@ -149,4 +148,4 @@ def calibrate_parameter(args):
     print("--- %s seconds ---" % (time.time() - start_time))
 
     
-calibrate_parameter((0.0001,1, 100))
+calibrate_parameter((0.0001,3, 5000))
