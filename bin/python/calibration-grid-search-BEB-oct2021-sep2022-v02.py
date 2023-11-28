@@ -97,7 +97,7 @@ def process_dataframe(df, validation, gamma):
 
 
     df_integrated =  pd.merge(validation_new, df_new, 
-                     left_on=['ServiceDateTime', 'Equipment ID'], 
+                     left_on=['ServiceDateTime', 'Vehicle'], 
                      right_on=['Date', 'Vehicle'], 
                      how='left')
     #df_integrated['residual']=df_integrated['trip']-df_integrated['Energy']
