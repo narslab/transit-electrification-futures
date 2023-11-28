@@ -99,7 +99,7 @@ def process_dataframe(df, validation, gamma):
     df_integrated =  pd.merge(validation_new, df_new, 
                      left_on=['ServiceDateTime', 'Vehicle'], 
                      right_on=['Date', 'Vehicle'], 
-                     how='left')
+                     how='left').copy()
     #df_integrated['residual']=df_integrated['trip']-df_integrated['Energy']
     df_integrated = df_integrated.dropna(subset=['trip', 'Energy'])
 
@@ -149,4 +149,4 @@ def calibrate_parameter(args):
     print("--- %s seconds ---" % (time.time() - start_time))
 
     
-calibrate_parameter((0.0001,3, 5000))
+calibrate_parameter((0.0001,3, 1000))
