@@ -108,7 +108,7 @@ def process_dataframe(df, validation, gamma):
     
     
     df_integrated['Fuel_economy'] = np.divide(df_integrated['dist'], df_integrated['Energy'], where=df_integrated['Energy'] != 0)
-    df_integrated['Real_Fuel_economy'] = np.divide(df_integrated['dist_sum'], df_integrated['trip'], where=df_integrated['trip'] != 0)
+    df_integrated['Real_Fuel_economy'] = np.divide(df_integrated['dist'], df_integrated['trip'], where=df_integrated['trip'] != 0)
 
 
     return df_integrated
