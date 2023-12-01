@@ -5,6 +5,11 @@ from tqdm import tqdm
 import time
 from sklearn.metrics import mean_absolute_percentage_error, mean_squared_error
 from sklearn.model_selection import train_test_split
+import multiprocessing
+from hyperopt import fmin, tpe, hp, Trials, STATUS_OK, space_eval
+from hyperopt.pyll.base import scope
+from hyperopt.pyll.stochastic import sample
+from hyperopt import STATUS_OK
 
 
 f = open('params-oct2021-sep2022-test10222023.yaml')
@@ -107,48 +112,115 @@ def process_dataframe(df, validation,  gamma, driveline_efficiency_d_beb, batter
     df_integrated = df_integrated.query("trip != 0 and `Energy` != 0")
     
     
-    df_integrated.loc[:, 'Fuel_economy'] = np.divide(df_integrated['dist'], df_integrated['Energy'], where=df_integrated['Energy'] != 0)
-    df_integrated.loc[:, 'Real_Fuel_economy'] = np.divide(df_integrated['dist'], df_integrated['trip'], where=df_integrated['trip'] != 0)
+    df_integrated = df_integrated.query("trip != 0 and `Energy` != 0").copy()
+
+    
+    df_integrated.loc[:, 'Fuel_economy'] = np.divide(df_integrated['dist'], df_integrated['Energy'])
+    df_integrated.loc[:, 'Real_Fuel_economy'] = np.divide(df_integrated['dist'], df_integrated['trip'])
 
 
 
     return df_integrated
 
+# Define the worker function
+def worker_function(params):
+    gamma, driveline_efficiency_d_beb, battery_efficiency, motor_efficiency = params
+    df_integrated = process_dataframe(df_beb.copy(), df_validation.copy(), gamma, driveline_efficiency_d_beb, battery_efficiency, motor_efficiency)
+    df_train, df_test = train_test_split(df_integrated, test_size=0.2, random_state=42)
+
+    # Calculate metrics
+    RMSE_Energy_train_current = np.sqrt(mean_squared_error(df_train['trip'], df_train['Energy']))
+    MAPE_Energy_train_current = mean_absolute_percentage_error(df_train['trip'] , df_train['Energy'])
+    RMSE_Energy_test_current = np.sqrt(mean_squared_error(df_test['trip'], df_test['Energy']))
+    MAPE_Energy_test_current = mean_absolute_percentage_error(df_test['trip'] , df_test['Energy'])
+
+    RMSE_economy_train_current = np.sqrt(mean_squared_error(df_train['Real_Fuel_economy'], df_train['Fuel_economy']))
+    MAPE_economy_train_current = mean_absolute_percentage_error(df_train['Real_Fuel_economy'] , df_train['Fuel_economy'])
+    RMSE_economy_test_current = np.sqrt(mean_squared_error(df_test['Real_Fuel_economy'], df_test['Fuel_economy']))
+    MAPE_economy_test_current = mean_absolute_percentage_error(df_test['Real_Fuel_economy'] , df_test['Fuel_economy'])
+
+    return (gamma, driveline_efficiency_d_beb, battery_efficiency, motor_efficiency, RMSE_Energy_train_current, MAPE_Energy_train_current, RMSE_Energy_test_current, MAPE_Energy_test_current, RMSE_economy_train_current, MAPE_economy_train_current, RMSE_economy_test_current, MAPE_economy_test_current)
+
+
 def calibrate_parameters(args):
-    # Unpack the ranges for all four parameters
-    param1_range, param2_range, param3_range, param4_range = args
     start_time = time.time()
 
-    # Initialize lists to store results
-    results_list = []
+    # Unpack the ranges for all four parameters
+    param1_range, param2_range, param3_range, param4_range = args
+    
+    # np.logspace requires the exponent base 10 of the start and end values
+    log_param1_start, log_param1_end, param1_num = np.log10(param1_range[0]), np.log10(param1_range[1]), param1_range[2]
 
-    # Nested loop to iterate over all combinations of the four parameters
-    for gamma in tqdm(np.linspace(*param1_range), desc="Param1 Loop"):
-        for driveline_efficiency_d_beb in np.linspace(*param2_range):
-            for battery_efficiency in np.linspace(*param3_range):
-                for motor_efficiency in np.linspace(*param4_range):
-                    # Process the dataframe with the current set of parameters
-                    df_integrated = process_dataframe(df_beb.copy(), df_validation.copy(), gamma, driveline_efficiency_d_beb, battery_efficiency, motor_efficiency)
-                    df_train, df_test = train_test_split(df_integrated, test_size=0.2, random_state=42)
-                    
-                    # Calculate metrics
-                    RMSE_Energy_train_current = np.sqrt(mean_squared_error(df_train['trip'], df_train['Energy']))
-                    MAPE_Energy_train_current = mean_absolute_percentage_error(df_train['trip'] , df_train['Energy'])
-                    RMSE_Energy_test_current = np.sqrt(mean_squared_error(df_test['trip'], df_test['Energy']))
-                    MAPE_Energy_test_current = mean_absolute_percentage_error(df_test['trip'] , df_test['Energy'])
-                    
-                    RMSE_economy_train_current = np.sqrt(mean_squared_error(df_train['Real_Fuel_economy'], df_train['Fuel_economy']))
-                    MAPE_economy_train_current = mean_absolute_percentage_error(df_train['Real_Fuel_economy'] , df_train['Fuel_economy'])
-                    RMSE_economy_test_current = np.sqrt(mean_squared_error(df_test['Real_Fuel_economy'], df_test['Fuel_economy']))
-                    MAPE_economy_test_current = mean_absolute_percentage_error(df_test['Real_Fuel_economy'] , df_test['Fuel_economy'])
+    # Create all combinations of parameters
+    param_combinations = [(gamma, driveline_efficiency_d_beb, battery_efficiency, motor_efficiency) 
+                          for gamma in np.linspace(*param1_range)
+                          for driveline_efficiency_d_beb in np.linspace(*param2_range)
+                          for battery_efficiency in np.linspace(*param3_range)
+                          for motor_efficiency in np.linspace(*param4_range)]
 
-                    # Store results
-                    results_list.append(( gamma, driveline_efficiency_d_beb, battery_efficiency, motor_efficiency, RMSE_Energy_train_current, MAPE_Energy_train_current, RMSE_Energy_test_current, MAPE_Energy_test_current, RMSE_economy_train_current, MAPE_economy_train_current, RMSE_economy_test_current, MAPE_economy_test_current))
+    # Create a pool of workers
+    with multiprocessing.Pool() as pool:
+        results_list = pool.map(worker_function, param_combinations)
 
     # Convert results to DataFrame
-    results_df = pd.DataFrame(results_list, columns=[ 'gamma', 'driveline_efficiency_d_beb', 'battery_efficiency', 'motor_efficiency', 'RMSE_Energy_train', 'MAPE_Energy_train', 'RMSE_Energy_test', 'MAPE_Energy_test', 'RMSE_economy_train', 'MAPE_economy_train', 'RMSE_economy_test', 'MAPE_economy_test'])
+    results_df = pd.DataFrame(results_list, columns=['gamma', 'driveline_efficiency_d_beb', 'battery_efficiency', 'motor_efficiency', 'RMSE_Energy_train', 'MAPE_Energy_train', 'RMSE_Energy_test', 'MAPE_Energy_test', 'RMSE_economy_train', 'MAPE_economy_train', 'RMSE_economy_test', 'MAPE_economy_test'])
     results_df.to_csv((r'../../results/calibration-grid-search-BEB-oct2021-sep2022_12012023.csv'))
+
     print("--- %s seconds ---" % (time.time() - start_time))
 
-# Example usage
-calibrate_parameters(((0.000000000001,0.0001, 500), (0.7, 0.99, 100), (0.7, 0.99, 100), (0.7, 0.99, 100)))
+# Usage
+#calibrate_parameters(((0.0000000001,0.0001, 500), (0.5, 0.99, 50), (0.7, 0.99, 50), (0.7, 0.99, 50)))
+
+
+# Worker function 
+def hyperband_worker(params):
+    gamma, driveline_efficiency_d_beb, battery_efficiency, motor_efficiency = params
+    df_integrated = process_dataframe(df_beb.copy(), df_validation.copy(), gamma, driveline_efficiency_d_beb, battery_efficiency, motor_efficiency)
+    df_train, df_test = train_test_split(df_integrated, test_size=0.2, random_state=42)
+
+    # Calculate metrics
+    RMSE_Energy_train_current = np.sqrt(mean_squared_error(df_train['trip'], df_train['Energy']))
+    MAPE_Energy_train_current = mean_absolute_percentage_error(df_train['trip'] , df_train['Energy'])
+    RMSE_Energy_test_current = np.sqrt(mean_squared_error(df_test['trip'], df_test['Energy']))
+    MAPE_Energy_test_current = mean_absolute_percentage_error(df_test['trip'] , df_test['Energy'])
+
+    RMSE_economy_train_current = np.sqrt(mean_squared_error(df_train['Real_Fuel_economy'], df_train['Fuel_economy']))
+    MAPE_economy_train_current = mean_absolute_percentage_error(df_train['Real_Fuel_economy'] , df_train['Fuel_economy'])
+    RMSE_economy_test_current = np.sqrt(mean_squared_error(df_test['Real_Fuel_economy'], df_test['Fuel_economy']))
+    MAPE_economy_test_current = mean_absolute_percentage_error(df_test['Real_Fuel_economy'] , df_test['Fuel_economy'])
+    
+    return {
+        'loss': RMSE_Energy_test_current,  
+        'status': STATUS_OK,
+        'params': params,
+        'RMSE_Energy_train': RMSE_Energy_train_current,
+        'RMSE_Energy_test': RMSE_Energy_test_current,
+        'MAPE_Energy_train': MAPE_Energy_train_current,
+        'MAPE_Energy_test': MAPE_Energy_test_current,
+        'RMSE_Economy_train': RMSE_economy_train_current,
+        'RMSE_Economy_test': RMSE_economy_test_current,
+        'MAPE_Economy_train': MAPE_economy_train_current,
+        'MAPE_Economy_test': MAPE_economy_test_current,
+    }
+
+
+# Define the search space
+space = {
+    'gamma': hp.uniform('gamma', 0.0000000001, 0.0001),
+    'driveline_efficiency_d_beb': hp.uniform('driveline_efficiency_d_beb', 0.5, 0.99),
+    'battery_efficiency': hp.uniform('battery_efficiency', 0.7, 0.99),
+    'motor_efficiency': hp.uniform('motor_efficiency', 0.7, 0.99)
+}
+
+
+# Run the hyperband optimizer
+trials = Trials()
+best = fmin(
+    fn=hyperband_worker,
+    space=space,
+    algo=tpe.suggest,
+    max_evals=100,  # Set an appropriate number
+    trials=trials
+)
+
+print("Best parameters found: ", space_eval(space, best))
