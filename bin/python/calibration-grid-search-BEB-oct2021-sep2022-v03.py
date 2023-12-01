@@ -49,7 +49,7 @@ b=p.beta
 #gamma=0.0411
 
 # Define power function for electric vehicle
-def power_e(df_input, gamma):
+def power_e(df_input,  gamma, driveline_efficiency_d_beb, battery_efficiency, motor_efficiency):
     df = df_input
     v = df.speed
     a = df.acc
@@ -61,7 +61,7 @@ def power_e(df_input, gamma):
 
 
 # Define Energy consumption function for electric vehicle
-def energyConsumption_e(df_input, gamma):
+def energyConsumption_e(df_input,  gamma, driveline_efficiency_d_beb, battery_efficiency, motor_efficiency):
 	# Estimates energy consumed (KWh)     
     df = df_input
     t = df.time_delta_in_seconds/3600
@@ -87,11 +87,11 @@ df_validation.rename(columns={"Transaction Date": "ServiceDateTime","Equipment I
 df_validation['ServiceDateTime'] = pd.to_datetime(df_validation['ServiceDateTime'])
 
 
-def process_dataframe(df, validation, gamma):
+def process_dataframe(df, validation,  gamma, driveline_efficiency_d_beb, battery_efficiency, motor_efficiency):
     df_new = df.copy()
     validation_new = validation.copy()
 
-    df_new['Energy'] = energyConsumption_e(df, gamma)
+    df_new['Energy'] = energyConsumption_e(df,  gamma, driveline_efficiency_d_beb, battery_efficiency, motor_efficiency)
     df_new['ServiceDateTime'] = pd.to_datetime(df_new['ServiceDateTime'])
     df_new = df_new.groupby(['Date', 'Vehicle'])[['Energy', 'dist']].sum().reset_index()
 
@@ -107,46 +107,48 @@ def process_dataframe(df, validation, gamma):
     df_integrated = df_integrated.query("trip != 0 and `Energy` != 0")
     
     
-    df_integrated['Fuel_economy'] = np.divide(df_integrated['dist'], df_integrated['Energy'], where=df_integrated['Energy'] != 0)
-    df_integrated['Real_Fuel_economy'] = np.divide(df_integrated['dist'], df_integrated['trip'], where=df_integrated['trip'] != 0)
+    df_integrated.loc[:, 'Fuel_economy'] = np.divide(df_integrated['dist'], df_integrated['Energy'], where=df_integrated['Energy'] != 0)
+    df_integrated.loc[:, 'Real_Fuel_economy'] = np.divide(df_integrated['dist'], df_integrated['trip'], where=df_integrated['trip'] != 0)
+
 
 
     return df_integrated
 
-def calibrate_parameter(args):
-    start, stop, n_points = args
+def calibrate_parameters(args):
+    # Unpack the ranges for all four parameters
+    param1_range, param2_range, param3_range, param4_range = args
     start_time = time.time()
-    parameter1_values = []
-    RMSE_Energy_train = []
-    MAPE_Energy_train = []
-    RMSE_Energy_test  = []
-    MAPE_Energy_test  = []
 
-    df = df_beb.copy()
-    validation = df_validation.copy()
-    validation.reset_index(inplace=True)        
-    decimal_places = 9  # Set the desired number of decimal places
-    gamma_values = np.around(np.linspace(start, stop, n_points), decimals=decimal_places)
+    # Initialize lists to store results
+    results_list = []
 
-    for gamma in tqdm(gamma_values, desc="Processing gamma values"):
-        df_integrated = process_dataframe(df, validation, gamma)
-        df_train, df_test = train_test_split(df_integrated, test_size=0.2, random_state=42)
-        
-        RMSE_Energy_train_current = np.sqrt(mean_squared_error(df_train['trip'], df_train['Energy']))
-        MAPE_Energy_train_current = mean_absolute_percentage_error(df_train['trip'] , df_train['Energy'])
-        RMSE_Energy_test_current = np.sqrt(mean_squared_error(df_test['trip'], df_test['Energy']))
-        MAPE_Energy_test_current = mean_absolute_percentage_error(df_test['trip'] , df_test['Energy'])
-        parameter1_values.append(gamma)
-        RMSE_Energy_train.append(RMSE_Energy_train_current)
-        MAPE_Energy_train.append(MAPE_Energy_train_current)
-        RMSE_Energy_test.append(RMSE_Energy_test_current)
-        MAPE_Energy_test.append(MAPE_Energy_test_current)
+    # Nested loop to iterate over all combinations of the four parameters
+    for gamma in tqdm(np.linspace(*param1_range), desc="Param1 Loop"):
+        for driveline_efficiency_d_beb in np.linspace(*param2_range):
+            for battery_efficiency in np.linspace(*param3_range):
+                for motor_efficiency in np.linspace(*param4_range):
+                    # Process the dataframe with the current set of parameters
+                    df_integrated = process_dataframe(df_beb.copy(), df_validation.copy(), gamma, driveline_efficiency_d_beb, battery_efficiency, motor_efficiency)
+                    df_train, df_test = train_test_split(df_integrated, test_size=0.2, random_state=42)
+                    
+                    # Calculate metrics
+                    RMSE_Energy_train_current = np.sqrt(mean_squared_error(df_train['trip'], df_train['Energy']))
+                    MAPE_Energy_train_current = mean_absolute_percentage_error(df_train['trip'] , df_train['Energy'])
+                    RMSE_Energy_test_current = np.sqrt(mean_squared_error(df_test['trip'], df_test['Energy']))
+                    MAPE_Energy_test_current = mean_absolute_percentage_error(df_test['trip'] , df_test['Energy'])
+                    
+                    RMSE_economy_train_current = np.sqrt(mean_squared_error(df_train['Real_Fuel_economy'], df_train['Fuel_economy']))
+                    MAPE_economy_train_current = mean_absolute_percentage_error(df_train['Real_Fuel_economy'] , df_train['Fuel_economy'])
+                    RMSE_economy_test_current = np.sqrt(mean_squared_error(df_test['Real_Fuel_economy'], df_test['Fuel_economy']))
+                    MAPE_economy_test_current = mean_absolute_percentage_error(df_test['Real_Fuel_economy'] , df_test['Fuel_economy'])
 
+                    # Store results
+                    results_list.append(( gamma, driveline_efficiency_d_beb, battery_efficiency, motor_efficiency, RMSE_Energy_train_current, MAPE_Energy_train_current, RMSE_Energy_test_current, MAPE_Energy_test_current, RMSE_economy_train_current, MAPE_economy_train_current, RMSE_economy_test_current, MAPE_economy_test_current))
 
-    results = pd.DataFrame(list(zip(parameter1_values, RMSE_Energy_train, MAPE_Energy_train, RMSE_Energy_test, MAPE_Energy_test)),
-                           columns=['parameter1_values', 'RMSE_Energy_train', 'MAPE_Energy_train', 'RMSE_Energy_test', 'MAPE_Energy_test'])
-    results.to_csv((r'../../results/calibration-grid-search-BEB-oct2021-sep2022_11282023.csv'))
+    # Convert results to DataFrame
+    results_df = pd.DataFrame(results_list, columns=[ 'gamma', 'driveline_efficiency_d_beb', 'battery_efficiency', 'motor_efficiency', 'RMSE_Energy_train', 'MAPE_Energy_train', 'RMSE_Energy_test', 'MAPE_Energy_test', 'RMSE_economy_train', 'MAPE_economy_train', 'RMSE_economy_test', 'MAPE_economy_test'])
+    results_df.to_csv((r'../../results/calibration-grid-search-BEB-oct2021-sep2022_12012023.csv'))
     print("--- %s seconds ---" % (time.time() - start_time))
 
-    
-calibrate_parameter((0.00000001,0.09, 5000))
+# Example usage
+calibrate_parameters(((0.000000000001,0.0001, 500), (0.7, 0.99, 100), (0.7, 0.99, 100), (0.7, 0.99, 100)))
