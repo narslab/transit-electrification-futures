@@ -6,7 +6,7 @@ import time
 from sklearn.metrics import mean_absolute_percentage_error, mean_squared_error
 from sklearn.model_selection import train_test_split
 
-f = open('params-oct2021-sep2022.yaml')
+f = open('params-oct2021-sep2022-test10222023.yaml')
 parameters = yaml.safe_load(f)
 f.close()
 
