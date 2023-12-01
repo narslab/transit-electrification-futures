@@ -65,7 +65,7 @@ def energyConsumption_e(df_input,  gamma, driveline_efficiency_d_beb, battery_ef
 	# Estimates energy consumed (KWh)     
     df = df_input
     t = df.time_delta_in_seconds/3600
-    P_t = power_e(df_input, gamma)
+    P_t = power_e(df_input, gamma, driveline_efficiency_d_beb, battery_efficiency, motor_efficiency)
     E_t = P_t * t
     return E_t
 
