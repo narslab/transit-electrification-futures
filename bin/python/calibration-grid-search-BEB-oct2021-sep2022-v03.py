@@ -5,11 +5,9 @@ from tqdm import tqdm
 import time
 from sklearn.metrics import mean_absolute_percentage_error, mean_squared_error
 from sklearn.model_selection import train_test_split
-import multiprocessing
 from hyperopt import fmin, tpe, hp, Trials, STATUS_OK, space_eval
-from hyperopt.pyll.base import scope
-from hyperopt.pyll.stochastic import sample
-from hyperopt import STATUS_OK
+
+import multiprocessing
 
 
 f = open('params-oct2021-sep2022-test10222023.yaml')
@@ -164,7 +162,7 @@ def calibrate_parameters(args):
 
     # Convert results to DataFrame
     results_df = pd.DataFrame(results_list, columns=['gamma', 'driveline_efficiency_d_beb', 'battery_efficiency', 'motor_efficiency', 'RMSE_Energy_train', 'MAPE_Energy_train', 'RMSE_Energy_test', 'MAPE_Energy_test', 'RMSE_economy_train', 'MAPE_economy_train', 'RMSE_economy_test', 'MAPE_economy_test'])
-    results_df.to_csv((r'../../results/calibration-grid-search-BEB-oct2021-sep2022_12012023.csv'))
+    results_df.to_csv((r'../../results/calibration-grid-search-BEB-oct2021-sep2022_12032023.csv'))
 
     print("--- %s seconds ---" % (time.time() - start_time))
 
@@ -175,6 +173,7 @@ def calibrate_parameters(args):
 # Worker function 
 def hyperband_worker(params):
     gamma, driveline_efficiency_d_beb, battery_efficiency, motor_efficiency = params
+    print("gamma",gamma)
     df_integrated = process_dataframe(df_beb.copy(), df_validation.copy(), gamma, driveline_efficiency_d_beb, battery_efficiency, motor_efficiency)
     df_train, df_test = train_test_split(df_integrated, test_size=0.2, random_state=42)
 
@@ -204,6 +203,7 @@ def hyperband_worker(params):
     }
 
 
+
 # Define the search space
 space = {
     'gamma': hp.uniform('gamma', 0.0000000001, 0.0001),
@@ -211,6 +211,8 @@ space = {
     'battery_efficiency': hp.uniform('battery_efficiency', 0.7, 0.99),
     'motor_efficiency': hp.uniform('motor_efficiency', 0.7, 0.99)
 }
+
+print(space)
 
 
 # Run the hyperband optimizer
