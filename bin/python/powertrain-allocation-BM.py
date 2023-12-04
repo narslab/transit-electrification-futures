@@ -119,12 +119,13 @@ max_number_of_buses = 1000 # 213*4 (current numnumber of fleet*4, assuming buses
 battery_cap=350 #kWh 
 
 # Maximum daily charging capacity in year y
-M_cap = [23, 23, 27, 38, 42, 52, 62, 74, 89, 107, 128, 154, 185]
+#M_cap = [23, 23, 27, 38, 42, 52, 62, 74, 89, 107, 128, 154, 185]
+M_cap = [23, 23, 27, 38, 42, 52, 73, 102, 143, 200, 280, 392, 548]
 
 
 # Set of scenarios
 #S = {'low-cap', 'mid-cap', 'high-cap'}
-S = {'low-cap'}
+S = {'high-cap'}
 
 # Define R and Rho
 R = df_CDB['Route'].nunique()
@@ -139,9 +140,9 @@ cost_inv = {
 
 # Max investment per scenario per year
 C_max = {
-    'low-cap': 10,  # in million dollars
+#    'low-cap': 10,  # in million dollars
 #   'mid-cap': 20,  # in million dollars
-#   'high-cap': 30  # in million dollars
+   'high-cap': 30  # in million dollars
 }
 
 # The maximum yearly investment
@@ -461,7 +462,7 @@ print("optimal_value:",optimal_value)
 df = pd.DataFrame({"Variable": [v.varName for v in vars], "Value": [v.X for v in vars]})
 
 # Save the DataFrame to a CSV file
-df.to_csv(r'../../results/lowcap-BM-optimized-variables-with-replacement.csv', index=False)
+df.to_csv(r'../../results/highcap-BM-optimized-variables-with-replacement-40percentBEBcharging.csv', index=False)
 #coeff_df.to_csv(r'../../results/optimization-coefficients.csv', index=False)
 
 end = time.time()
