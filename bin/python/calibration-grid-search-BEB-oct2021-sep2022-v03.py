@@ -246,7 +246,7 @@ best = fmin(
     fn=hyperband_worker,
     space=space,
     algo=tpe.suggest,
-    max_evals=100,  
+    max_evals=10000,  
     trials=trials
 )
 
