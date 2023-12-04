@@ -122,12 +122,12 @@ def process_dataframe(df, validation,  gamma, driveline_efficiency_d_beb, batter
 
 # Define the worker function
 def worker_function(params):
-    #gamma, driveline_efficiency_d_beb, battery_efficiency, motor_efficiency = params
-    gamma = params['gamma']
-    driveline_efficiency_d_beb = params['driveline_efficiency_d_beb']
-    battery_efficiency = params['battery_efficiency']
-    motor_efficiency = params['motor_efficiency']
-    print("type(gamma):",type(gamma), type(driveline_efficiency_d_beb), type(battery_efficiency), type(motor_efficiency))
+    gamma, driveline_efficiency_d_beb, battery_efficiency, motor_efficiency = params
+    #gamma = params['gamma']
+    #driveline_efficiency_d_beb = params['driveline_efficiency_d_beb']
+    #battery_efficiency = params['battery_efficiency']
+    #motor_efficiency = params['motor_efficiency']
+    print("*********************************type(gamma):*******************************8",type(gamma), type(driveline_efficiency_d_beb), type(battery_efficiency), type(motor_efficiency))
 
     df_integrated = process_dataframe(df_beb.copy(), df_validation.copy(), gamma, driveline_efficiency_d_beb, battery_efficiency, motor_efficiency)
     df_train, df_test = train_test_split(df_integrated, test_size=0.2, random_state=42)
