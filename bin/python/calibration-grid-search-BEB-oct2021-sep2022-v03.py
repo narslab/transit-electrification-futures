@@ -163,7 +163,7 @@ def calibrate_parameters(args):
 
     # Create a pool of workers
     with multiprocessing.Pool() as pool:
-        results_list = pool.map(worker_function, param_combinations)
+        results_list = pool.map(hyperband_worker, param_combinations)
 
     # Convert results to DataFrame
     results_df = pd.DataFrame(results_list, columns=['gamma', 'driveline_efficiency_d_beb', 'battery_efficiency', 'motor_efficiency', 'RMSE_Energy_train', 'MAPE_Energy_train', 'RMSE_Energy_test', 'MAPE_Energy_test', 'RMSE_economy_train', 'MAPE_economy_train', 'RMSE_economy_test', 'MAPE_economy_test'])
@@ -171,8 +171,6 @@ def calibrate_parameters(args):
 
     print("--- %s seconds ---" % (time.time() - start_time))
 
-# Usage
-#calibrate_parameters(((0.0000000001,0.0001, 500), (0.5, 0.99, 50), (0.7, 0.99, 50), (0.7, 0.99, 50)))
 
 
 # Worker function 
@@ -227,10 +225,10 @@ print(space)
 # Run the hyperband optimizer
 trials = Trials()
 best = fmin(
-    fn=hyperband_worker,
+    fn=calibrate_parameters,
     space=space,
     algo=tpe.suggest,
-    max_evals=100,  # Set an appropriate number
+    max_evals=100,  
     trials=trials
 )
 
