@@ -116,9 +116,8 @@ def process_dataframe(df, validation,  gamma, driveline_efficiency_d_beb, batter
     df_integrated.loc[:, 'Fuel_economy'] = np.divide(df_integrated['dist'], df_integrated['Energy'])
     df_integrated.loc[:, 'Real_Fuel_economy'] = np.divide(df_integrated['dist'], df_integrated['trip'])
 
-
-
     return df_integrated
+
 
 # Define the worker function
 def worker_function(params):
