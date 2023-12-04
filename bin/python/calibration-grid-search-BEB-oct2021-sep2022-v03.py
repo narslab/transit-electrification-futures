@@ -173,6 +173,10 @@ def calibrate_parameters(args):
 
 
 
+# Initialize an empty DataFrame to store results
+results_df = pd.DataFrame(columns=['gamma', 'driveline_efficiency_d_beb', 'battery_efficiency', 'motor_efficiency', 'RMSE_Energy_train', 'MAPE_Energy_train', 'RMSE_Energy_test', 'MAPE_Energy_test', 'RMSE_economy_train', 'MAPE_economy_train', 'RMSE_economy_test', 'MAPE_economy_test'])
+
+
 # Worker function 
 def hyperband_worker(params):
     #gamma, driveline_efficiency_d_beb, battery_efficiency, motor_efficiency = params
@@ -180,7 +184,6 @@ def hyperband_worker(params):
     driveline_efficiency_d_beb = params['driveline_efficiency_d_beb']
     battery_efficiency = params['battery_efficiency']
     motor_efficiency = params['motor_efficiency']
-    print("*********************************type(gamma):*******************************8",type(gamma), type(driveline_efficiency_d_beb), type(battery_efficiency), type(motor_efficiency))
     df_integrated = process_dataframe(df_beb.copy(), df_validation.copy(), gamma, driveline_efficiency_d_beb, battery_efficiency, motor_efficiency)
     df_train, df_test = train_test_split(df_integrated, test_size=0.2, random_state=42)
 
@@ -194,6 +197,24 @@ def hyperband_worker(params):
     MAPE_economy_train_current = mean_absolute_percentage_error(df_train['Real_Fuel_economy'] , df_train['Fuel_economy'])
     RMSE_economy_test_current = np.sqrt(mean_squared_error(df_test['Real_Fuel_economy'], df_test['Fuel_economy']))
     MAPE_economy_test_current = mean_absolute_percentage_error(df_test['Real_Fuel_economy'] , df_test['Fuel_economy'])
+    
+    # Append the results to the global DataFrame
+    global results_df
+    results_row = {
+        'gamma': gamma, 
+        'driveline_efficiency_d_beb': driveline_efficiency_d_beb, 
+        'battery_efficiency': battery_efficiency, 
+        'motor_efficiency': motor_efficiency, 
+        'RMSE_Energy_train': RMSE_Energy_train_current,
+        'MAPE_Energy_train': MAPE_Energy_train_current,
+        'RMSE_Energy_test': RMSE_Energy_test_current,
+        'MAPE_Energy_test': MAPE_Energy_test_current,
+        'RMSE_economy_train': RMSE_economy_train_current,
+        'MAPE_economy_train': MAPE_economy_train_current,
+        'RMSE_economy_test': RMSE_economy_test_current,
+        'MAPE_economy_test': MAPE_economy_test_current,
+    }
+    results_df = results_df.append(results_row, ignore_index=True)
     
     return {
         'loss': RMSE_Energy_test_current,  
@@ -219,17 +240,18 @@ space = {
     'motor_efficiency': hp.uniform('motor_efficiency', 0.7, 0.99)
 }
 
-print(space)
-
 
 # Run the hyperband optimizer
 trials = Trials()
 best = fmin(
-    fn=calibrate_parameters,
+    fn=hyperband_worker,
     space=space,
     algo=tpe.suggest,
     max_evals=100,  
     trials=trials
 )
+
+# Save the results to a CSV file after optimization
+results_df.to_csv(r'../../results/calibration-grid-search-BEB-oct2021-sep2022_12032023.csv', index=False)
 
 print("Best parameters found: ", space_eval(space, best))
