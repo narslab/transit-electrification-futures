@@ -233,8 +233,8 @@ def hyperband_worker(params):
 
 # Define the search space
 space = {
-    'gamma': hp.uniform('gamma', 0.0000000001, 0.0001),
-    'driveline_efficiency_d_beb': hp.uniform('driveline_efficiency_d_beb', 0.5, 0.99),
+    'gamma': hp.uniform('gamma', 0.00000000000001, 0.0001),
+    'driveline_efficiency_d_beb': hp.uniform('driveline_efficiency_d_beb', 0.7, 0.99),
     'battery_efficiency': hp.uniform('battery_efficiency', 0.7, 0.99),
     'motor_efficiency': hp.uniform('motor_efficiency', 0.7, 0.99)
 }
@@ -246,7 +246,7 @@ best = fmin(
     fn=hyperband_worker,
     space=space,
     algo=tpe.suggest,
-    max_evals=10000,  
+    max_evals=100000,  
     trials=trials
 )
 
