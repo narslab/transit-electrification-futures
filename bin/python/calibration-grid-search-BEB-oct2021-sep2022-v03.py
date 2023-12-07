@@ -59,7 +59,7 @@ def power_e(df_input,  gamma, driveline_efficiency_d_beb, battery_efficiency, mo
     gr = df.grade
     m = df.Vehicle_mass+(df.Onboard*179)*0.453592 # converts lb to kg
     factor = df.acc.apply(lambda a: 1 if a >= 0 else np.exp(-(gamma/abs(a))))
-    P_t = factor*(eta_batt/eta_m*eta_d_beb)*(1/float(3600*eta_d_beb))*((1./25.92)*rho*C_D*C_h*A_f_beb*v*v + m*g*C_r*(c1*v + c2)/1000 + 1.1*m*a+m*g*gr)*v
+    P_t = factor*(battery_efficiency/motor_efficiency*driveline_efficiency_d_beb)*(1/float(3600*driveline_efficiency_d_beb))*((1./25.92)*rho*C_D*C_h*A_f_beb*v*v + m*g*C_r*(c1*v + c2)/1000 + 1.1*m*a+m*g*gr)*v
     return P_t
 
 
@@ -246,7 +246,7 @@ best = fmin(
     fn=hyperband_worker,
     space=space,
     algo=tpe.suggest,
-    max_evals=100000,  
+    max_evals=5000,  
     trials=trials
 )
 
