@@ -246,11 +246,11 @@ best = fmin(
     fn=hyperband_worker,
     space=space,
     algo=tpe.suggest,
-    max_evals=5000,  
+    max_evals=100000,  
     trials=trials
 )
 
 # Save the results to a CSV file after optimization
-results_df.to_csv(r'../../results/calibration-grid-search-BEB-oct2021-sep2022_12032023.csv', index=False)
+results_df.to_csv(r'../../results/calibration-grid-search-BEB-oct2021-sep2022_12072023.csv', index=False)
 
 print("Best parameters found: ", space_eval(space, best))
