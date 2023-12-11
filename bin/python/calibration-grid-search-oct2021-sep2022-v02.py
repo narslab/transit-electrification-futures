@@ -233,18 +233,18 @@ space = {
     'a2': hp.uniform('a2', 0.000000008, 0.00000005),
 }
 
+hybrid = True  # Set this to False if working with conventional buses
+
 
 # Run the hyperband optimizer
 trials = Trials()
 best = fmin(
-    fn=lambda params: hyperband_worker(params, hybrid),
+    fn=lambda params: hyperband_worker(params, hybrid=hybrid),
     space=space,
     algo=tpe.suggest,
     max_evals=20,  
     trials=trials
 )
-
-hybrid = True  # Set this to False if working with conventional buses
 
 # Save the results to a CSV file after optimization
 if hybrid:
