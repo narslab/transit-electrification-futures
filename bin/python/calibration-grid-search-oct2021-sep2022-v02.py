@@ -237,15 +237,21 @@ space = {
 # Run the hyperband optimizer
 trials = Trials()
 best = fmin(
-    fn=hyperband_worker,
+    fn=lambda params: hyperband_worker(params, hybrid),
     space=space,
     algo=tpe.suggest,
     max_evals=20,  
     trials=trials
 )
 
+hybrid = True  # Set this to False if working with conventional buses
+
 # Save the results to a CSV file after optimization
-results_df.to_csv(r'../../results/calibration-grid-search-HEB-oct2021-sep2022_12112023.csv', index=False)
+if hybrid:
+    results_df.to_csv(r'../../results/calibration-grid-search-HEB-oct2021-sep2022_12112023.csv', index=False)
+else:
+    results_df.to_csv(r'../../results/calibration-grid-search-CDB-oct2021-sep2022_12112023.csv', index=False)
+
 
 print("Best parameters found: ", space_eval(space, best))
 print("--- %s seconds ---" % (time.time() - start_time))
