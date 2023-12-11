@@ -105,8 +105,8 @@ df_trajectories.speed = df_trajectories.speed *1.60934 # takes speed in km/h (Co
 df_trajectories = df_trajectories.fillna(0)
 
 # Subsetting data frame for "Conventional", "hybrid", and "electric" buses
-df_conventional=df_trajectories.loc[df_trajectories['Powertrain'] == 'conventional'].copy()
-df_hybrid=df_trajectories.loc[df_trajectories['Powertrain'] == 'hybrid'].copy()
+df_conventional=df_trajectories.loc[df_trajectories['Powertrain'] == 'conventional']
+df_hybrid=df_trajectories.loc[df_trajectories['Powertrain'] == 'hybrid']
 
 # read validation df
 df_validation = pd.read_csv(r'../../data/tidy/fuel-tickets-oct2021-sep2022.csv', delimiter=',', skiprows=0, low_memory=False)
@@ -128,14 +128,14 @@ df_validation['Powertrain'] = df_validation['Vehicle'].map(d)
 
 
 def process_dataframe(df, validation, a0, a1, a2, hybrid):
-    df_new = df.copy()
-    validation_new = validation.copy()
+    df_new = df
+    validation_new = validation
 
     df_new['Energy'] = energyConsumption_d(df, a0, a1, a2, hybrid=hybrid)
     df_new.sort_values(by=['Vehicle', 'ServiceDateTime'], inplace=True)
     df_new['ServiceDateTime'] = pd.to_datetime(df_new['ServiceDateTime'])
 
-    df_integrated = validation_new.copy()
+    df_integrated = validation_new
     df_integrated.sort_values(by=['Vehicle', 'ServiceDateTime'], inplace=True)
     df_integrated['ServiceDateTime_prev'] = df_integrated.groupby('Vehicle')['ServiceDateTime'].shift(1)
     df_integrated = df_integrated.dropna(subset=['ServiceDateTime_prev'])
@@ -144,16 +144,18 @@ def process_dataframe(df, validation, a0, a1, a2, hybrid):
         return pd.Series({'dist_sum': group['dist'].sum(), 'Energy_sum': group['Energy'].sum()})
 
     df_filtered = pd.DataFrame()
-    for _, row in tqdm(df_integrated.iterrows(), total=len(df_integrated)):
-        vehicle, cur_time, prev_time = row['Vehicle'], row['ServiceDateTime'], row['ServiceDateTime_prev']
-        group = df_new[(df_new['Vehicle'] == vehicle) & (df_new['ServiceDateTime'] > prev_time) & (df_new['ServiceDateTime'] < cur_time)]
-        filtered_group = process_group(group)
-        filtered_group['Vehicle'] = vehicle
-        filtered_group['ServiceDateTime_cur'] = cur_time
-        filtered_group['ServiceDateTime_prev'] = prev_time
-        df_filtered = pd.concat([df_filtered, filtered_group.to_frame().T], ignore_index=True)
-    df_integrated = df_integrated.merge(df_filtered, left_on=['Vehicle', 'ServiceDateTime', 'ServiceDateTime_prev'],
-                                        right_on=['Vehicle', 'ServiceDateTime_cur', 'ServiceDateTime_prev'])
+    # Adding tqdm progress bar
+    with tqdm(total=len(df_integrated), desc="Processing Integrated Dataframe") as pbar_outer:
+        for _, row in df_integrated.iterrows():
+            pbar_outer.update(1)
+            vehicle, cur_time, prev_time = row['Vehicle'], row['ServiceDateTime'], row['ServiceDateTime_prev']
+            group = df_new[(df_new['Vehicle'] == vehicle) & (df_new['ServiceDateTime'] > prev_time) & (df_new['ServiceDateTime'] <= cur_time)]
+            filtered_group = process_group(group)
+            filtered_group['Vehicle'] = vehicle
+            filtered_group['ServiceDateTime_cur'] = cur_time
+            filtered_group['ServiceDateTime_prev'] = prev_time
+            df_filtered = pd.concat([df_filtered, filtered_group.to_frame().T], ignore_index=True)
+
 
     # Drop rows with NaN values in 'Energy' or 'Qty' columns
     df_integrated.dropna(subset=['Energy_sum', 'Qty'], inplace=True)
@@ -175,9 +177,9 @@ def hyperband_worker(params, hybrid):
     a2 = params['a2']
     
     if hybrid == True:
-        df = df_hybrid.copy()
+        df = df_hybrid
     else:
-        df=df_conventional.copy()
+        df=df_conventional
     
     df_integrated = process_dataframe(df, df_validation.copy(), a0, a1, a2, hybrid)
     df_train, df_test = train_test_split(df_integrated, test_size=0.2, random_state=42)
