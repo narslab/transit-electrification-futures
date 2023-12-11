@@ -179,7 +179,7 @@ def hyperband_worker(params, hybrid):
     else:
         df=df_conventional.copy()
     
-    df_integrated = process_dataframe(df, df_validation.copy(), a0, a1, a2)
+    df_integrated = process_dataframe(df, df_validation.copy(), a0, a1, a2, hybrid)
     df_train, df_test = train_test_split(df_integrated, test_size=0.2, random_state=42)
 
     # Calculate metrics
