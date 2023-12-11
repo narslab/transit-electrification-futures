@@ -2,15 +2,13 @@ import yaml
 import pandas as pd
 import numpy as np
 from tqdm import tqdm
-import math
 import time
 from sklearn.metrics import mean_absolute_percentage_error, mean_squared_error
 from sklearn.model_selection import train_test_split
-from multiprocessing import Pool
 from hyperopt import fmin, tpe, hp, Trials, STATUS_OK, space_eval
 
 
-
+start_time = time.time()
 f = open('params-oct2021-sep2022-test10222023.yaml')
 parameters = yaml.safe_load(f)
 f.close()
@@ -168,90 +166,6 @@ def process_dataframe(df, validation, a0, a1, a2, hybrid):
 
     return df_integrated
 
-# Define the worker function
-def worker_function(params, hybrid):
-    a0, a1, a2 = params
-    #gamma = params['gamma']
-    #driveline_efficiency_d_beb = params['driveline_efficiency_d_beb']
-    #battery_efficiency = params['battery_efficiency']
-    #motor_efficiency = params['motor_efficiency']
-    if hybrid == True:
-        df = df_hybrid.copy()
-    else:
-        df=df_conventional.copy()
-
-    df_integrated = process_dataframe(df, df_validation.copy(), a0, a1, a2)
-    df_train, df_test = train_test_split(df_integrated, test_size=0.2, random_state=42)
-
-    # Calculate metrics
-    RMSE_Energy_train_current = np.sqrt(mean_squared_error(df_train['trip'], df_train['Energy']))
-    MAPE_Energy_train_current = mean_absolute_percentage_error(df_train['trip'] , df_train['Energy'])
-    RMSE_Energy_test_current = np.sqrt(mean_squared_error(df_test['trip'], df_test['Energy']))
-    MAPE_Energy_test_current = mean_absolute_percentage_error(df_test['trip'] , df_test['Energy'])
-
-    RMSE_economy_train_current = np.sqrt(mean_squared_error(df_train['Real_Fuel_economy'], df_train['Fuel_economy']))
-    MAPE_economy_train_current = mean_absolute_percentage_error(df_train['Real_Fuel_economy'] , df_train['Fuel_economy'])
-    RMSE_economy_test_current = np.sqrt(mean_squared_error(df_test['Real_Fuel_economy'], df_test['Fuel_economy']))
-    MAPE_economy_test_current = mean_absolute_percentage_error(df_test['Real_Fuel_economy'] , df_test['Fuel_economy'])
-
-    return (a0, a1, a2, RMSE_Energy_train_current, MAPE_Energy_train_current, RMSE_Energy_test_current, MAPE_Energy_test_current, RMSE_economy_train_current, MAPE_economy_train_current, RMSE_economy_test_current, MAPE_economy_test_current)
-
-    
-def calibrate_parameter(args):
-    start_time = time.time()
-    param1_range, param2_range, param3_range = args
-    parameter1_values = []
-    parameter2_values = []
-    RMSE_Energy = []
-    MAPE_Energy = []
-    RMSE_Economy = []
-    MAPE_Economy = []
-
-    if hybrid:
-        df = df_hybrid
-        validation = df_validation[df_validation.Powertrain == 'hybrid'].copy()
-        a0_global_name, a1_global_name = 'a0_heb', 'a1_heb'
-        n_points = 30
-    else:
-        df = df_conventional
-        validation = df_validation[df_validation.Powertrain == 'conventional'].copy()
-        a0_global_name, a1_global_name = 'a0_cdb', 'a1_cdb'
-        n_points = 10
-
-    validation.reset_index(inplace=True)    
-    
-    decimal_places = 6  # Set the desired number of decimal places
-    a0_space = np.around(np.linspace(start1, stop1, n_points), decimals=decimal_places)
-    a1_space = np.around(np.linspace(start2, stop2, n_points), decimals=decimal_places)
-
-    for a0 in tqdm(a0_space, desc="a0"):
-        for a1 in tqdm(a1_space, desc="a1", leave=False):
-            globals()[a0_global_name] = a0
-            globals()[a1_global_name] = a1
-
-            df_integrated = process_dataframe(df, validation, a0, a1, hybrid)
-            df_integrated.dropna(subset=['Qty', 'Energy_sum'], inplace=True)
-            train, test = train_test_split(df_integrated, test_size=0.2, random_state=42)
-
-            MSE_Energy_current = mean_squared_error(train['Qty'], train['Energy_sum'])
-            RMSE_Energy_current = math.sqrt(MSE_Energy_current)
-            MAPE_Energy_current = np.mean(np.abs((train['Qty'] - train['Energy_sum']) / train['Qty'])) * 100
-            RMSE_Economy_current = mean_squared_error(train['Real_Fuel_economy'], train['Fuel_economy'], squared=False)
-            MAPE_Economy_current = np.mean(np.abs((train['Real_Fuel_economy'] - train['Fuel_economy']) / train['Real_Fuel_economy'])) * 100
-
-            parameter1_values.append(a0)
-            parameter2_values.append(a1)
-            RMSE_Energy.append(RMSE_Energy_current)
-            MAPE_Energy.append(MAPE_Energy_current)
-            RMSE_Economy.append(RMSE_Economy_current)
-            MAPE_Economy.append(MAPE_Economy_current)
-
-    results = pd.DataFrame(list(zip(parameter1_values, parameter2_values, RMSE_Energy, MAPE_Energy, RMSE_Economy, MAPE_Economy)),
-                           columns=['parameter1_values', 'parameter2_values', 'RMSE_Energy', 'MAPE_Energy', 'RMSE_Economy', 'MAPE_Economy'])
-    file_name = f"../../results/calibration-grid-search-oct2021-sep2022-{'heb' if hybrid else 'cdb'}-oct2021-sep2022.csv"
-    results.to_csv(file_name)
-    print("--- %s seconds ---" % (time.time() - start_time))
-
 
 # Worker function 
 def hyperband_worker(params, hybrid):
@@ -314,9 +228,9 @@ def hyperband_worker(params, hybrid):
 
 # Define the search space
 space = {
-    'a0': hp.uniform('a0', 0.0009, 0.003),
+    'a0': hp.uniform('a0', 0.0003, 0.005),
     'a1': hp.uniform('a1', 0.00005, 0.0002),
-    'a2': hp.uniform('a2', 0.0000009, 0.00000003),
+    'a2': hp.uniform('a2', 0.000000008, 0.00000005),
 }
 
 
@@ -334,5 +248,5 @@ best = fmin(
 results_df.to_csv(r'../../results/calibration-grid-search-HEB-oct2021-sep2022_12112023.csv', index=False)
 
 print("Best parameters found: ", space_eval(space, best))
-
+print("--- %s seconds ---" % (time.time() - start_time))
 
