@@ -157,6 +157,9 @@ def process_dataframe(df, validation, a0, a1, a2, hybrid):
     df_filtered = pd.concat(filtered_groups, ignore_index=True)
 
     # Merge and process the integrated dataframe
+    print("df_integrated",df_integrated.columns)
+    print("df_filtered",df_filtered.columns)
+
     df_integrated = df_integrated.merge(df_filtered, on=['Vehicle', 'ServiceDateTime', 'ServiceDateTime_prev'])
     df_integrated.dropna(subset=['Energy_sum', 'Qty'], inplace=True)
     df_integrated = df_integrated.query("Qty != 0 and Energy_sum != 0")
