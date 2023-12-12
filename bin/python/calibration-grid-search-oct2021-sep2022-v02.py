@@ -6,6 +6,9 @@ import time
 from sklearn.metrics import mean_absolute_percentage_error, mean_squared_error
 from sklearn.model_selection import train_test_split
 from hyperopt import fmin, tpe, hp, Trials, STATUS_OK, space_eval
+from joblib import Parallel, delayed
+from hyperopt.pyll.stochastic import sample
+
 
 
 start_time = time.time()
@@ -176,18 +179,17 @@ results_df = pd.DataFrame()
 
 # Worker function 
 def hyperband_worker(params, hybrid):
-    #gamma, driveline_efficiency_d_beb, battery_efficiency, motor_efficiency = params
-    global results_df
     a0 = params['a0']
     a1 = params['a1']
     a2 = params['a2']
     
     if hybrid == True:
-        df = df_hybrid
+        df = df_hybrid.copy()
     else:
-        df=df_conventional
+        df=df_conventional.copy()
+    validation = df_validation.copy()
     
-    df_integrated = process_dataframe(df, df_validation.copy(), a0, a1, a2, hybrid)
+    df_integrated = process_dataframe(df, validation, a0, a1, a2, hybrid)
     df_train, df_test = train_test_split(df_integrated, test_size=0.2, random_state=42)
 
     # Calculate metrics
@@ -202,37 +204,21 @@ def hyperband_worker(params, hybrid):
     MAPE_economy_test_current = mean_absolute_percentage_error(df_test['Real_Fuel_economy'] , df_test['Fuel_economy'])
     
     
-    
-    # Append the results to the global DataFrame
-    results_row = {
-        'a0': a0, 
-        'a1': a1, 
-        'a2': a2, 
-        'RMSE_Energy_train': RMSE_Energy_train_current,
-        'MAPE_Energy_train': MAPE_Energy_train_current,
-        'RMSE_Energy_test': RMSE_Energy_test_current,
-        'MAPE_Energy_test': MAPE_Energy_test_current,
-        'RMSE_economy_train': RMSE_economy_train_current,
-        'MAPE_economy_train': MAPE_economy_train_current,
-        'RMSE_economy_test': RMSE_economy_test_current,
-        'MAPE_economy_test': MAPE_economy_test_current,
-    }
-    results_df = results_df.append(results_row, ignore_index=True)
-    
     return {
-        'loss': RMSE_Energy_test_current,  
-        'status': STATUS_OK,
-        'params': params,
-        'RMSE_Energy_train': RMSE_Energy_train_current,
-        'RMSE_Energy_test': RMSE_Energy_test_current,
-        'MAPE_Energy_train': MAPE_Energy_train_current,
-        'MAPE_Energy_test': MAPE_Energy_test_current,
-        'RMSE_Economy_train': RMSE_economy_train_current,
-        'RMSE_Economy_test': RMSE_economy_test_current,
-        'MAPE_Economy_train': MAPE_economy_train_current,
-        'MAPE_Economy_test': MAPE_economy_test_current,
+    'a0': a0, 
+    'a1': a1, 
+    'a2': a2, 
+    'RMSE_Energy_train': RMSE_Energy_train_current,
+    'MAPE_Energy_train': MAPE_Energy_train_current,
+    'RMSE_Energy_test': RMSE_Energy_test_current,
+    'MAPE_Energy_test': MAPE_Energy_test_current,
+    'RMSE_economy_train': RMSE_economy_train_current,
+    'MAPE_economy_train': MAPE_economy_train_current,
+    'RMSE_economy_test': RMSE_economy_test_current,
+    'MAPE_economy_test': MAPE_economy_test_current,
+    'loss': RMSE_Energy_test_current,
+    'params': params,
     }
-
 
 
 # Define the search space
@@ -246,22 +232,36 @@ hybrid = True  # Set this to False if working with conventional buses
 
 
 # Run the hyperband optimizer
-trials = Trials()
-best = fmin(
-    fn=lambda params: hyperband_worker(params, hybrid=hybrid),
-    space=space,
-    algo=tpe.suggest,
-    max_evals=20,  
-    trials=trials
-)
+#trials = Trials()
+#best = fmin(
+#    fn=lambda params: hyperband_worker(params, hybrid=hybrid),
+#    space=space,
+#    algo=tpe.suggest,
+#    max_evals=20,  
+#    trials=trials
+#)
 
-# Save the results to a CSV file after optimization
-if hybrid:
-    results_df.to_csv(r'../../results/calibration-grid-search-HEB-oct2021-sep2022_12112023.csv', index=False)
-else:
-    results_df.to_csv(r'../../results/calibration-grid-search-CDB-oct2021-sep2022_12112023.csv', index=False)
+# Sample parameter sets from the space
+num_evals = 20
+param_sets = [sample(space) for _ in range(num_evals)]
 
+# Start timer
+start_time = time.time()
 
-print("Best parameters found: ", space_eval(space, best))
+# Parallel execution of evaluations
+parallel_results = Parallel(n_jobs=32)(delayed(hyperband_worker)(params, hybrid) for params in param_sets)
+
+# Find the best parameters based on the lowest loss
+best_result = min(parallel_results, key=lambda x: x['loss'])
+best_params = best_result['params']
+
+# Aggregate results into a DataFrame
+results_df = pd.DataFrame(parallel_results)
+
+# Save the results to a CSV file
+filename = f'../../results/calibration-grid-search-{"HEB" if hybrid else "CDB"}-oct2021-sep2022_12112023.csv'
+results_df.to_csv(filename, index=False)
+
+# Print best parameters and elapsed time
+print("Best parameters found: ", best_params)
 print("--- %s seconds ---" % (time.time() - start_time))
-

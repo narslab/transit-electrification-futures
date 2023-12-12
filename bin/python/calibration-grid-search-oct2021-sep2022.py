@@ -190,11 +190,17 @@ def process_dataframe(df, validation, a0, a1, hybrid):
                                         right_on=['Vehicle', 'ServiceDateTime_cur', 'ServiceDateTime_prev'])
 
     # Drop rows with NaN values in 'Energy' or 'Qty' columns
+    #df_integrated.dropna(subset=['Energy_sum', 'Qty'], inplace=True)
+    #df_integrated['Fuel_economy'] = np.divide(df_integrated['dist_sum'], df_integrated['Energy_sum'], where=df_integrated['Energy_sum'] != 0)
+    #df_integrated['Real_Fuel_economy'] = np.divide(df_integrated['dist_sum'], df_integrated['Qty'], where=df_integrated['Energy_sum'] != 0)
+    #df_integrated.dropna(subset=['Fuel_economy'], inplace=True)
+    #df_integrated.dropna(subset=['Real_Fuel_economy'], inplace=True)
+    
     df_integrated.dropna(subset=['Energy_sum', 'Qty'], inplace=True)
-    df_integrated['Fuel_economy'] = np.divide(df_integrated['dist_sum'], df_integrated['Energy_sum'], where=df_integrated['Energy_sum'] != 0)
-    df_integrated['Real_Fuel_economy'] = np.divide(df_integrated['dist_sum'], df_integrated['Qty'], where=df_integrated['Energy_sum'] != 0)
-    df_integrated.dropna(subset=['Fuel_economy'], inplace=True)
-    df_integrated.dropna(subset=['Real_Fuel_economy'], inplace=True)
+    df_integrated = df_integrated.query("Qty != 0 and Energy_sum != 0")
+
+    df_integrated['Fuel_economy'] = df_integrated['dist_sum'] / df_integrated['Energy_sum']
+    df_integrated['Real_Fuel_economy'] = df_integrated['dist_sum'] / df_integrated['Qty']
 
     return df_integrated
 
@@ -213,7 +219,7 @@ def calibrate_parameter(args):
         df = df_hybrid
         validation = df_validation[df_validation.Powertrain == 'hybrid'].copy()
         a0_global_name, a1_global_name = 'a0_heb', 'a1_heb'
-        n_points = 30
+        n_points = 10
     else:
         df = df_conventional
         validation = df_validation[df_validation.Powertrain == 'conventional'].copy()
@@ -250,19 +256,19 @@ def calibrate_parameter(args):
 
     results = pd.DataFrame(list(zip(parameter1_values, parameter2_values, RMSE_Energy, MAPE_Energy, RMSE_Economy, MAPE_Economy)),
                            columns=['parameter1_values', 'parameter2_values', 'RMSE_Energy', 'MAPE_Energy', 'RMSE_Economy', 'MAPE_Economy'])
-    file_name = f"../../results/calibration-grid-search-oct2021-sep2022-{'heb' if hybrid else 'cdb'}-oct2021-sep2022.csv"
+    file_name = f"../../results/calibration-grid-search-oct2021-sep2022-{'heb' if hybrid else 'cdb'}-oct2021-sep2022_12122023.csv"
     results.to_csv(file_name)
     print("--- %s seconds ---" % (time.time() - start_time))
 
 
 # Create a list of arguments
 #args_list = [(0.0001, 0.005, 0.00001, 0.0005, True), (0.0001, 0.01, 0.000001, 0.0001, False)]
-#args_list = [(0.0001, 0.005, 0.00001, 0.0005, True)]
-args_list = [(0.0001, 0.0004, 0.00001, 0.00004, False)]
+args_list = [(0.00001, 0.003, 0.000001, 0.0002, True)]
+#args_list = [(0.0001, 0.0004, 0.00001, 0.00004, False)]
 
 
 # Create a multiprocessing Pool
-pool = Pool(8)
+pool = Pool(32)
 
 # Map the function to the arguments
 pool.map(calibrate_parameter, args_list)
