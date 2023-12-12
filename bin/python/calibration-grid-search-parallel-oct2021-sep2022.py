@@ -164,11 +164,17 @@ def process_dataframe(df, validation, a0, a1, hybrid):
                                         right_on=['Vehicle', 'ServiceDateTime_cur', 'ServiceDateTime_prev'])
 
     # Drop rows with NaN values in 'Energy' or 'Qty' columns
+    #df_integrated.dropna(subset=['Energy_sum', 'Qty'], inplace=True)
+    #df_integrated['Fuel_economy'] = np.divide(df_integrated['dist_sum'], df_integrated['Energy_sum'], where=df_integrated['Energy_sum'] != 0)
+    #df_integrated['Real_Fuel_economy'] = np.divide(df_integrated['dist_sum'], df_integrated['Qty'], where=df_integrated['Energy_sum'] != 0)
+    ##df_integrated.dropna(subset=['Fuel_economy'], inplace=True)
+    #df_integrated.dropna(subset=['Real_Fuel_economy'], inplace=True)
+    
     df_integrated.dropna(subset=['Energy_sum', 'Qty'], inplace=True)
-    df_integrated['Fuel_economy'] = np.divide(df_integrated['dist_sum'], df_integrated['Energy_sum'], where=df_integrated['Energy_sum'] != 0)
-    df_integrated['Real_Fuel_economy'] = np.divide(df_integrated['dist_sum'], df_integrated['Qty'], where=df_integrated['Energy_sum'] != 0)
-    #df_integrated.dropna(subset=['Fuel_economy'], inplace=True)
-    df_integrated.dropna(subset=['Real_Fuel_economy'], inplace=True)
+    df_integrated = df_integrated.query("Qty != 0 and Energy_sum != 0")
+
+    df_integrated['Fuel_economy'] = df_integrated['dist_sum'] / df_integrated['Energy_sum']
+    df_integrated['Real_Fuel_economy'] = df_integrated['dist_sum'] / df_integrated['Qty']
     return df_integrated
 
 
@@ -216,14 +222,14 @@ def calibrate_parameter(a0, a1, hybrid):
 
 # Configuration Section
 #START1_VAL = 0.000001
-START1_VAL = 0.000000000001
+START1_VAL = 0.0003
 #STOP1_VAL = 0.003
-STEP_SIZE1 = 0.000000000001
+STEP_SIZE1 = 0.0001
 
 #START2_VAL = 0.00001 
-START2_VAL = 0
+START2_VAL = 0.000079
 #STOP2_VAL = 0.0009
-STEP_SIZE2 = 0.000001
+STEP_SIZE2 = 0.000009
 N_POINTS = 20
 
 # Initialize results dataframe to store results of all iterations
