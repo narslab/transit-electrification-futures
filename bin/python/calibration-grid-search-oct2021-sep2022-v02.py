@@ -187,15 +187,17 @@ def hyperband_worker(params, hybrid):
     df_train, df_test = train_test_split(df_integrated, test_size=0.2, random_state=42)
 
     # Calculate metrics
-    RMSE_Energy_train_current = np.sqrt(mean_squared_error(df_train['trip'], df_train['Energy']))
-    MAPE_Energy_train_current = mean_absolute_percentage_error(df_train['trip'] , df_train['Energy'])
-    RMSE_Energy_test_current = np.sqrt(mean_squared_error(df_test['trip'], df_test['Energy']))
-    MAPE_Energy_test_current = mean_absolute_percentage_error(df_test['trip'] , df_test['Energy'])
+    RMSE_Energy_train_current = np.sqrt(mean_squared_error(df_train['Qty'], df_train['Energy_sum']))
+    MAPE_Energy_train_current = mean_absolute_percentage_error(df_train['Qty'] , df_train['Energy_sum'])
+    RMSE_Energy_test_current = np.sqrt(mean_squared_error(df_test['Qty'], df_test['Energy_sum']))
+    MAPE_Energy_test_current = mean_absolute_percentage_error(df_test['Qty'] , df_test['Energy_sum'])
 
     RMSE_economy_train_current = np.sqrt(mean_squared_error(df_train['Real_Fuel_economy'], df_train['Fuel_economy']))
     MAPE_economy_train_current = mean_absolute_percentage_error(df_train['Real_Fuel_economy'] , df_train['Fuel_economy'])
     RMSE_economy_test_current = np.sqrt(mean_squared_error(df_test['Real_Fuel_economy'], df_test['Fuel_economy']))
     MAPE_economy_test_current = mean_absolute_percentage_error(df_test['Real_Fuel_economy'] , df_test['Fuel_economy'])
+    
+    
     
     # Append the results to the global DataFrame
     global results_df
