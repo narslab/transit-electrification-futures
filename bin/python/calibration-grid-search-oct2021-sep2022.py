@@ -268,7 +268,7 @@ args_list = [(0.00001, 0.003, 0.000001, 0.0002, True)]
 
 
 # Create a multiprocessing Pool
-pool = Pool(32)
+pool = Pool(8)
 
 # Map the function to the arguments
 pool.map(calibrate_parameter, args_list)

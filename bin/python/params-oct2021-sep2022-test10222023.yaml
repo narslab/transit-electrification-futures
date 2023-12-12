@@ -44,18 +44,18 @@ frontal_area_heb:            6.99        # m^2
 
 #Parameters specific to BEB
 #driveline_efficiency_d_beb: 0.92        # unitless
-driveline_efficiency_d_beb: 0.828970684076324        # unitless
+driveline_efficiency_d_beb: 0.715518911839256        # unitless
 
 #battery_efficiency:         0.95        # unitless
-battery_efficiency:         0.842697611193753        # unitless
+battery_efficiency:         0.951323454729931       # unitless
 
 #motor_efficiency:           0.91        # unitless
-motor_efficiency:           0.764134317885639        # unitless
+motor_efficiency:           0.82811255679296        # unitless
 
 
 frontal_area_beb:           6.99        # m^2
 #gamma:                      0.00001      # unitless # 0.015115
 #gamma:                      1.03527546456379E-10      # unitless 
-gamma:                      3.22892376707579E-08       # unitless 
+gamma:                      1.08880835946348E-10       # unitless 
 
 
