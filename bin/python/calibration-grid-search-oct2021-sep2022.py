@@ -190,17 +190,17 @@ def process_dataframe(df, validation, a0, a1, hybrid):
                                         right_on=['Vehicle', 'ServiceDateTime_cur', 'ServiceDateTime_prev'])
 
     # Drop rows with NaN values in 'Energy' or 'Qty' columns
-    #df_integrated.dropna(subset=['Energy_sum', 'Qty'], inplace=True)
-    #df_integrated['Fuel_economy'] = np.divide(df_integrated['dist_sum'], df_integrated['Energy_sum'], where=df_integrated['Energy_sum'] != 0)
-    #df_integrated['Real_Fuel_economy'] = np.divide(df_integrated['dist_sum'], df_integrated['Qty'], where=df_integrated['Energy_sum'] != 0)
-    #df_integrated.dropna(subset=['Fuel_economy'], inplace=True)
-    #df_integrated.dropna(subset=['Real_Fuel_economy'], inplace=True)
-    
     df_integrated.dropna(subset=['Energy_sum', 'Qty'], inplace=True)
-    df_integrated = df_integrated.query("Qty != 0 and Energy_sum != 0")
+    df_integrated['Fuel_economy'] = np.divide(df_integrated['dist_sum'], df_integrated['Energy_sum'], where=df_integrated['Energy_sum'] != 0)
+    df_integrated['Real_Fuel_economy'] = np.divide(df_integrated['dist_sum'], df_integrated['Qty'], where=df_integrated['Qty'] != 0)
+    df_integrated.dropna(subset=['Fuel_economy'], inplace=True)
+    df_integrated.dropna(subset=['Real_Fuel_economy'], inplace=True)
+    
+    #df_integrated.dropna(subset=['Energy_sum', 'Qty'], inplace=True)
+    #df_integrated = df_integrated.query("Qty != 0 and Energy_sum != 0")
 
-    df_integrated['Fuel_economy'] = df_integrated['dist_sum'] / df_integrated['Energy_sum']
-    df_integrated['Real_Fuel_economy'] = df_integrated['dist_sum'] / df_integrated['Qty']
+    #df_integrated['Fuel_economy'] = df_integrated['dist_sum'] / df_integrated['Energy_sum']
+    #df_integrated['Real_Fuel_economy'] = df_integrated['dist_sum'] / df_integrated['Qty']
 
     return df_integrated
 
@@ -219,7 +219,7 @@ def calibrate_parameter(args):
         df = df_hybrid
         validation = df_validation[df_validation.Powertrain == 'hybrid'].copy()
         a0_global_name, a1_global_name = 'a0_heb', 'a1_heb'
-        n_points = 10
+        n_points = 30
     else:
         df = df_conventional
         validation = df_validation[df_validation.Powertrain == 'conventional'].copy()
