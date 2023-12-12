@@ -160,7 +160,9 @@ def process_dataframe(df, validation, a0, a1, a2, hybrid):
     print("df_integrated",df_integrated.columns)
     print("df_filtered",df_filtered.columns)
 
-    df_integrated = df_integrated.merge(df_filtered, on=['Vehicle', 'ServiceDateTime', 'ServiceDateTime_prev'])
+    #df_integrated = df_integrated.merge(df_filtered, on=['Vehicle', 'ServiceDateTime', 'ServiceDateTime_prev'])
+    df_integrated = df_integrated.merge(df_filtered, left_on=['Vehicle', 'ServiceDateTime', 'ServiceDateTime_prev'], right_on=['Vehicle', 'ServiceDateTime_cur', 'ServiceDateTime_prev'])
+
     df_integrated.dropna(subset=['Energy_sum', 'Qty'], inplace=True)
     df_integrated = df_integrated.query("Qty != 0 and Energy_sum != 0")
 
