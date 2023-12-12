@@ -171,9 +171,13 @@ def process_dataframe(df, validation, a0, a1, a2, hybrid):
 
     return df_integrated
 
+# Initialize results_df as an empty DataFrame before the function definitions
+results_df = pd.DataFrame()
+
 # Worker function 
 def hyperband_worker(params, hybrid):
     #gamma, driveline_efficiency_d_beb, battery_efficiency, motor_efficiency = params
+    global results_df
     a0 = params['a0']
     a1 = params['a1']
     a2 = params['a2']
@@ -200,7 +204,6 @@ def hyperband_worker(params, hybrid):
     
     
     # Append the results to the global DataFrame
-    global results_df
     results_row = {
         'a0': a0, 
         'a1': a1, 
