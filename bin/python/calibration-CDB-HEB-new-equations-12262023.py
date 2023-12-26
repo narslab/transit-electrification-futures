@@ -260,7 +260,7 @@ def parallel_calibrate(a0, a1, a2, hybrid_flag):
     return calibrate_parameter(a0, a1, a2, hybrid_flag)
 
 if __name__ == '__main__':
-    hybrid_flag = True
+    hybrid_flag = False
 
     # Configuration Section
     a0_values = np.linspace(START1_VAL, START1_VAL+(STEP_SIZE1 * (N_POINTS-1)), N_POINTS)
@@ -278,7 +278,7 @@ if __name__ == '__main__':
     all_results_df = pd.concat(results, ignore_index=True)
 
     # Save results to a CSV file
-    all_results_df.to_csv('../../results/calibration_results_heb_oct2021-sep2022_12272023.csv', index=False)
+    all_results_df.to_csv('../../results/calibration_results_cdb_oct2021-sep2022_12272023.csv', index=False)
 
     # Calculate and print the elapsed time
     elapsed_time = time.time() - start_time
