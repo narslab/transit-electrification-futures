@@ -5,8 +5,7 @@ from tqdm import tqdm
 import time
 from sklearn.metrics import mean_absolute_percentage_error, mean_squared_error
 from sklearn.model_selection import train_test_split
-from dask import compute, delayed
-from dask.distributed import Client
+from multiprocessing import Pool
 import itertools
 
 
@@ -249,7 +248,6 @@ def calibrate_parameter(a0, a1, hybrid):
     })
     return results_df
 
-hybrid_flag = True
 # Configuration Section
 START1_VAL = 0.0007
 STEP_SIZE1 = 0.006
@@ -269,23 +267,20 @@ def parallel_calibrate(a0, a1, a2, hybrid_flag):
     return calibrate_parameter(a0, a1, hybrid_flag)
 
 if __name__ == '__main__':
-    client = Client(n_workers=9, threads_per_worker=1)
     hybrid_flag = True
 
-    delayed_tasks = []
+    # Configuration Section
     a0_values = np.linspace(START1_VAL, START1_VAL+(STEP_SIZE1 * (N_POINTS-1)), N_POINTS)
     a1_values = np.linspace(START2_VAL, START2_VAL+(STEP_SIZE2 * (N_POINTS-1)), N_POINTS)
     a2_values = np.linspace(START3_VAL, START3_VAL+(STEP_SIZE3 * (N_POINTS-1)), N_POINTS)
+    argument_list = list(itertools.product(a0_values, a1_values, a2_values, [hybrid_flag]))
 
     start_time = time.time()  # Start timer
 
-    # Using a single loop to iterate over cartesian product of a0 and a1 values
-    for a0, a1, a2 in tqdm(itertools.product(a0_values, a1_values, a2_values), total=N_POINTS**3, desc="Processing"):
-        if hybrid_flag:
-            delayed_task = delayed(parallel_calibrate)(a0, a1, a2, True)
-            delayed_tasks.append(delayed_task)
-
-    results = compute(*delayed_tasks)  # compute all results in parallel
+    # Set up multiprocessing pool
+    with Pool() as pool:
+        # Use starmap for functions with multiple arguments
+        results = pool.starmap(parallel_calibrate, argument_list)
 
     all_results_df = pd.concat(results, ignore_index=True)
 
