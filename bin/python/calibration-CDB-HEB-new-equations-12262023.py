@@ -235,21 +235,22 @@ def calibrate_parameter(a0, a1, a2, hybrid):
     results_df = pd.DataFrame({
         'parameter1_values': [a0], 
         'parameter2_values': [a1],
+        'parameter3_values': [a2],
         'RMSE_Energy_train': [RMSE_Energy_train], 
         'MAPE_Energy_train': [MAPE_Energy_train]
     })
     return results_df
 
 # Configuration Section
-START1_VAL = 0.0007
-STEP_SIZE1 = 0.006
+START1_VAL = 0.00001
+STEP_SIZE1 = 0.00001
 
-START2_VAL = 0.000059
-STEP_SIZE2 = 0.00001
+START2_VAL = 0.000001
+STEP_SIZE2 = 0.000001
 
 START3_VAL = 0.00000001
 STEP_SIZE3 = 0.000000005
-N_POINTS = 10
+N_POINTS = 100
 
 # Initialize results dataframe to store results of all iterations
 all_results_df = pd.DataFrame()
@@ -277,7 +278,7 @@ if __name__ == '__main__':
     all_results_df = pd.concat(results, ignore_index=True)
 
     # Save results to a CSV file
-    all_results_df.to_csv('../../results/calibration_results_heb_oct2021-sep2022_12262023.csv', index=False)
+    all_results_df.to_csv('../../results/calibration_results_heb_oct2021-sep2022_12272023.csv', index=False)
 
     # Calculate and print the elapsed time
     elapsed_time = time.time() - start_time
