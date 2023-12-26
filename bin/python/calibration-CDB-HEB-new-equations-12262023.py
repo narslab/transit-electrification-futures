@@ -280,7 +280,7 @@ if __name__ == '__main__':
     # Set up multiprocessing pool
     with Pool() as pool:
         # Use starmap for functions with multiple arguments
-        results = pool.starmap(parallel_calibrate, argument_list, hybrid_flag)
+        results = pool.starmap(parallel_calibrate, argument_list, hybrid=hybrid_flag)
 
     all_results_df = pd.concat(results, ignore_index=True)
 
