@@ -220,8 +220,8 @@ def calibrate_parameter(a0, a1, a2, hybrid):
     
     df_integrated = process_dataframe(df, validation, a0, a1, a2, hybrid)
     df_integrated = df_integrated.loc[df_integrated['Energy_sum']!=0]
-    percentile_5 = df_integrated['Real_Fuel_economy'].quantile(0.05)
-    percentile_95 = df_integrated['Real_Fuel_economy'].quantile(0.95)
+    percentile_5 = df_integrated['pred_mpg'].quantile(0.05)
+    percentile_95 = df_integrated['actual_mpg'].quantile(0.95)
     df_integrated = df_integrated[(df_integrated['pred_mpg'] >= percentile_5) & (df_integrated['pred_mpg'] <= percentile_95)]
     df_integrated = df_integrated[(df_integrated['actual_mpg'] >= percentile_5) & (df_integrated['actual_mpg'] <= percentile_95)]
     train, test = train_test_split(df_integrated, test_size=0.8, random_state=42)
