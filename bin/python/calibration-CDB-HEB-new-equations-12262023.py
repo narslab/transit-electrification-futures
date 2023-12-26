@@ -264,7 +264,7 @@ all_results_df = pd.DataFrame()
 
 
 def parallel_calibrate(a0, a1, a2, hybrid_flag):
-    return calibrate_parameter(a0, a1, hybrid_flag)
+    return calibrate_parameter(a0, a1, a2, hybrid_flag)
 
 if __name__ == '__main__':
     hybrid_flag = True
