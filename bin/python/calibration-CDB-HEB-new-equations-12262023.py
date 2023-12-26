@@ -215,7 +215,7 @@ def process_dataframe(df, validation, a0, a1, a2, hybrid):
 
 
 # Calibrate parameters with Dask + Joblib for parallel processing
-def calibrate_parameter(a0, a1, hybrid):
+def calibrate_parameter(a0, a1, a2, hybrid):
     
     if hybrid:
         df = df_hybrid.copy()
@@ -226,7 +226,7 @@ def calibrate_parameter(a0, a1, hybrid):
 
     validation.reset_index(drop=True, inplace=True)    
     
-    df_integrated = process_dataframe(df, validation, a0, a1, hybrid)
+    df_integrated = process_dataframe(df, validation, a0, a1, a2, hybrid)
     df_integrated = df_integrated.loc[df_integrated['Energy_sum']!=0]
     percentile_5 = df_integrated['Real_Fuel_economy'].quantile(0.05)
     percentile_95 = df_integrated['Real_Fuel_economy'].quantile(0.95)
