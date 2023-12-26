@@ -53,8 +53,8 @@ def power(df_input, hybrid=False, electric=False):
        eta_d = eta_d_cdb
        
     df = df_input
-    v = df.Speed
-    a = df.Acceleration
+    v = df.speed
+    a = df.acc
     G = df.grade
     m = (df.Vehicle_mass+df.Onboard*179)*0.453592 # converts lb to kg
     H = df.elevation/1000 # df.elevation is in meters and we need to convert it to km 
@@ -94,7 +94,7 @@ df_trajectories = df_trajectories.fillna(0)
 
 # Remove accelerations other than -5 to 3 m/s^2
 total_rows = len(df_trajectories)
-df_trajectories = df_trajectories[(df_trajectories['Acceleration'] >= -5) & (df_trajectories['Acceleration'] <= 3)]
+df_trajectories = df_trajectories[(df_trajectories['acc'] >= -5) & (df_trajectories['acc'] <= 3)]
 remaining_rows = len(df_trajectories)
 removed_rows = total_rows - remaining_rows
 removed_percentage = (removed_rows / total_rows) * 100
@@ -127,40 +127,92 @@ df_validation['Powertrain'] = df_validation['Vehicle'].map(d)
 del df2, mydict
 
 
+# def process_dataframe(df, validation, a0, a1, a2, hybrid):
+#     df_new = df.copy()
+#     validation_new = validation.copy()
+
+#     df_new['Energy'] = energyConsumption_d(df_new,a0, a1, a2, hybrid=hybrid)
+#     df_new.sort_values(by=['Vehicle', 'ServiceDateTime'], inplace=True)
+#     df_new['ServiceDateTime'] = pd.to_datetime(df_new['ServiceDateTime'])
+
+#     df_integrated = validation_new.copy()
+#     df_integrated.sort_values(by=['Vehicle', 'ServiceDateTime'], inplace=True)
+#     df_integrated['ServiceDateTime_prev'] = df_integrated.groupby('Vehicle')['ServiceDateTime'].shift(1)
+#     df_integrated = df_integrated.dropna(subset=['ServiceDateTime_prev'])
+
+#     def process_group(group):
+#         return pd.Series({'dist_sum': group['dist'].sum(), 'Energy_sum': group['Energy'].sum()})
+
+#     df_filtered = pd.DataFrame()
+#     for _, row in df_integrated.iterrows():
+#         vehicle, cur_time, prev_time = row['Vehicle'], row['ServiceDateTime'], row['ServiceDateTime_prev']
+#         group = df_new[(df_new['Vehicle'] == vehicle) & (df_new['ServiceDateTime'] > prev_time) & (df_new['ServiceDateTime'] < cur_time)]
+#         filtered_group = process_group(group)
+#         filtered_group['Vehicle'] = vehicle
+#         filtered_group['ServiceDateTime_cur'] = cur_time
+#         filtered_group['ServiceDateTime_prev'] = prev_time
+#         df_filtered = pd.concat([df_filtered, filtered_group.to_frame().T], ignore_index=True)
+#     df_integrated = df_integrated.merge(df_filtered, left_on=['Vehicle', 'ServiceDateTime', 'ServiceDateTime_prev'],
+#                                         right_on=['Vehicle', 'ServiceDateTime_cur', 'ServiceDateTime_prev'])
+    
+#     df_integrated.dropna(subset=['Energy_sum', 'Qty'], inplace=True)
+#     df_integrated = df_integrated.query("Qty != 0 and Energy_sum != 0")
+
+#     df_integrated['actual_mpg'] = df_integrated['dist_sum'] / df_integrated['Qty']
+#     df_integrated['pred_mpg'] = df_integrated['dist_sum'] / df_integrated['Energy_sum']
+#     return df_integrated
+
+# vectorized version of process dataframe
 def process_dataframe(df, validation, a0, a1, a2, hybrid):
+    # Copying dataframes as in the original function
     df_new = df.copy()
     validation_new = validation.copy()
 
-    df_new['Energy'] = energyConsumption_d(df_new,a0, a1, a2, hybrid=hybrid)
+    # Assuming energyConsumption_d() handles the data correctly
+    df_new['Energy'] = energyConsumption_d(df_new, a0, a1, a2, hybrid=hybrid)
     df_new.sort_values(by=['Vehicle', 'ServiceDateTime'], inplace=True)
     df_new['ServiceDateTime'] = pd.to_datetime(df_new['ServiceDateTime'])
 
+    # Preparing the validation dataframe
     df_integrated = validation_new.copy()
     df_integrated.sort_values(by=['Vehicle', 'ServiceDateTime'], inplace=True)
     df_integrated['ServiceDateTime_prev'] = df_integrated.groupby('Vehicle')['ServiceDateTime'].shift(1)
     df_integrated = df_integrated.dropna(subset=['ServiceDateTime_prev'])
 
-    def process_group(group):
-        return pd.Series({'dist_sum': group['dist'].sum(), 'Energy_sum': group['Energy'].sum()})
+    # Set multi-level index for merging and filtering
+    df_new.set_index(['Vehicle', 'ServiceDateTime'], inplace=True)
+    df_integrated.set_index(['Vehicle', 'ServiceDateTime'], inplace=True)
 
-    df_filtered = pd.DataFrame()
-    for _, row in df_integrated.iterrows():
-        vehicle, cur_time, prev_time = row['Vehicle'], row['ServiceDateTime'], row['ServiceDateTime_prev']
-        group = df_new[(df_new['Vehicle'] == vehicle) & (df_new['ServiceDateTime'] > prev_time) & (df_new['ServiceDateTime'] < cur_time)]
-        filtered_group = process_group(group)
-        filtered_group['Vehicle'] = vehicle
-        filtered_group['ServiceDateTime_cur'] = cur_time
-        filtered_group['ServiceDateTime_prev'] = prev_time
-        df_filtered = pd.concat([df_filtered, filtered_group.to_frame().T], ignore_index=True)
-    df_integrated = df_integrated.merge(df_filtered, left_on=['Vehicle', 'ServiceDateTime', 'ServiceDateTime_prev'],
-                                        right_on=['Vehicle', 'ServiceDateTime_cur', 'ServiceDateTime_prev'])
-    
-    df_integrated.dropna(subset=['Energy_sum', 'Qty'], inplace=True)
-    df_integrated = df_integrated.query("Qty != 0 and Energy_sum != 0")
+    # Merging dataframes
+    df_integrated['join_key'] = df_integrated.index
+    merged_df = df_integrated.join(df_new, on='join_key', rsuffix='_new')
 
-    df_integrated['actual_mpg'] = df_integrated['dist_sum'] / df_integrated['Qty']
-    df_integrated['pred_mpg'] = df_integrated['dist_sum'] / df_integrated['Energy_sum']
-    return df_integrated
+    # Apply the conditions as filters to the merged DataFrame
+    filtered_df = merged_df[
+        (merged_df['ServiceDateTime_new'] > merged_df['ServiceDateTime_prev']) &
+        (merged_df['ServiceDateTime_new'] < merged_df.index.get_level_values('ServiceDateTime'))
+    ]
+
+    # Grouping and summarizing
+    grouped = filtered_df.groupby(['Vehicle', 'ServiceDateTime', 'ServiceDateTime_prev'])
+    summary_df = grouped.agg({'dist':'sum', 'Energy':'sum'}).rename(columns={'dist':'dist_sum', 'Energy':'Energy_sum'})
+
+    # Preparing for merge
+    summary_df.reset_index(inplace=True)
+    df_integrated.reset_index(inplace=True)
+
+    # Merging summary back to df_integrated
+    final_df = df_integrated.merge(summary_df, left_on=['Vehicle', 'ServiceDateTime', 'ServiceDateTime_prev'], right_on=['Vehicle', 'ServiceDateTime', 'ServiceDateTime_prev'])
+
+    # Final Calculations
+    final_df['actual_mpg'] = final_df['dist_sum'] / final_df['Qty']
+    final_df['pred_mpg'] = final_df['dist_sum'] / final_df['Energy_sum']
+
+    # Drop na and filter out rows where Qty and Energy_sum are 0
+    final_df.dropna(subset=['Energy_sum', 'Qty'], inplace=True)
+    final_df = final_df.query("Qty != 0 and Energy_sum != 0")
+
+    return final_df
 
 
 # Calibrate parameters with Dask + Joblib for parallel processing
@@ -197,6 +249,7 @@ def calibrate_parameter(a0, a1, hybrid):
     })
     return results_df
 
+hybrid_flag = True
 # Configuration Section
 START1_VAL = 0.0007
 STEP_SIZE1 = 0.006
@@ -227,7 +280,7 @@ if __name__ == '__main__':
     start_time = time.time()  # Start timer
 
     # Using a single loop to iterate over cartesian product of a0 and a1 values
-    for a0, a1, a2 in tqdm(itertools.product(a0_values, a1_values, a2_values), total=N_POINTS**2, desc="Processing"):
+    for a0, a1, a2 in tqdm(itertools.product(a0_values, a1_values, a2_values), total=N_POINTS**3, desc="Processing"):
         if hybrid_flag:
             delayed_task = delayed(parallel_calibrate)(a0, a1, a2, True)
             delayed_tasks.append(delayed_task)
