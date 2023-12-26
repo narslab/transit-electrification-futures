@@ -178,9 +178,11 @@ def process_dataframe(df, validation, a0, a1, a2, hybrid):
     df_integrated['ServiceDateTime_prev'] = df_integrated.groupby('Vehicle')['ServiceDateTime'].shift(1)
     df_integrated = df_integrated.dropna(subset=['ServiceDateTime_prev'])
 
-    # Set multi-level index for merging and filtering
-    df_new.set_index(['Vehicle', 'ServiceDateTime'], inplace=True)
+    # Set or reset index as necessary for both dataframes
     df_integrated.set_index(['Vehicle', 'ServiceDateTime'], inplace=True)
+    
+    # Resetting index for df_new before the join
+    df_new.reset_index(inplace=True)
 
     # Merging dataframes
     df_integrated['join_key'] = df_integrated.index
