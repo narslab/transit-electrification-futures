@@ -66,9 +66,9 @@ def power(df_input, hybrid=False, electric=False):
 # Define fuel rate function for diesel vehicle
 def fuelRate_d(df_input, a0, a1, a2, hybrid=False):
 	# Estimates fuel consumed (liters per second) 
-    a0 = a0_heb 
-    a1 = a1_heb 
-    a2 = a2_heb 
+    a0 = a0 
+    a1 = a1 
+    a2 = a2 
     P_t = power(df_input, hybrid)
     FC_t = P_t.apply(lambda x: a0 + a1*x +a2*x*x if x >= 0 else a0)  
     return FC_t
