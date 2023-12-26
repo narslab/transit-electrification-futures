@@ -269,7 +269,7 @@ def parallel_calibrate(a0, a1, a2, hybrid_flag):
     return calibrate_parameter(a0, a1, hybrid_flag)
 
 if __name__ == '__main__':
-    client = Client(n_workers=32, threads_per_worker=1)
+    client = Client(n_workers=9, threads_per_worker=1)
     hybrid_flag = True
 
     delayed_tasks = []
