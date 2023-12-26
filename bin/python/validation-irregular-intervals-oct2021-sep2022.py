@@ -1,17 +1,11 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Tue Jul 19 10:39:25 2022
-
-@author: Mahsa
-"""
-
 import pandas as pd
 from sklearn.metrics import mean_absolute_percentage_error, mean_squared_error
 import numpy as np
 
 
 # Read fuel rates
-df = pd.read_csv(r'../../results/computed-fuel-rates-oct2021-sep2022-test-10222023.csv', delimiter=',', skiprows=0, low_memory=False)
+#df = pd.read_csv(r'../../results/computed-fuel-rates-oct2021-sep2022-test-10222023.csv', delimiter=',', skiprows=0, low_memory=False)
+df = pd.read_csv(r'../../results/computed-fuel-rates-oct2021-sep2022-12212023.csv', delimiter=',', skiprows=0, low_memory=False)
 
 
 # Subsetting data frame for "Conventional", "hybrid", and "electric" buses
@@ -28,7 +22,6 @@ df_validation.rename(columns={"Transaction Date": "ServiceDateTime","Equipment I
 df_validation.sort_values(by=['Vehicle','ServiceDateTime'], inplace=True)
 df_validation['ServiceDateTime'] = pd.to_datetime(df_validation['ServiceDateTime'])
 df_validation=df_validation.reset_index()
-print(df_validation.columns)
 
 ### Map powertrain in the validation dataset
 df2 = pd.read_csv(r'../../data/tidy/vehicles-summary.csv', delimiter=',', skiprows=0, low_memory=False)
@@ -68,7 +61,9 @@ def validation(hybrid=False):
     df_integrated_clean = df_integrated_clean[df_integrated_clean['Energy'] != 0]
 
     
-    file_name = f"../../results/validation-vs-computed-fuel-rates-clean-{'heb' if hybrid else 'cdb'}-oct2021-sep2022-test-10222023.csv"
+    #file_name = f"../../results/validation-vs-computed-fuel-rates-clean-{'heb' if hybrid else 'cdb'}-oct2021-sep2022-test-10222023.csv"
+    file_name = f"../../results/validation-vs-computed-fuel-rates-clean-{'heb' if hybrid else 'cdb'}-oct2021-sep2022-12212023.csv"
+
     df_integrated_clean.to_csv(file_name)
 
     return compute_metrics(df_integrated_clean)
