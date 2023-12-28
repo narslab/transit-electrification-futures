@@ -203,9 +203,11 @@ def process_dataframe(df, validation, a0, a1, a2, hybrid):
 
     # Continue processing on the merged data
     # Grouping and calculating the sum of 'dist' and 'Energy' for each group
+    print("df_integrated column names", df_integrated.columns)
     grouped = df_integrated.groupby(['Vehicle', 'ServiceDateTime', 'ServiceDateTime_prev'])
-    print("grouped columns names", grouped.columns)
+    print("grouped ", grouped)
     result = grouped.agg({'dist': 'sum', 'Energy': 'sum'}).rename(columns={'dist': 'dist_sum', 'Energy': 'Energy_sum'})
+    print("result column names", result.columns)
 
     # Merge back the summed results and clean up
     df_integrated = df_integrated.merge(result, on=['Vehicle', 'ServiceDateTime', 'ServiceDateTime_prev'])
