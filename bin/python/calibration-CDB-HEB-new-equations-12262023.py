@@ -165,7 +165,7 @@ del df2, mydict
 #      return df_integrated
 
 # vectorized version of process dataframe
-def process_dataframe_optimized(df, validation, a0, a1, a2, hybrid):
+def process_dataframe(df, validation, a0, a1, a2, hybrid):
     # Conversion and sorting
     df['ServiceDateTime'] = pd.to_datetime(df['ServiceDateTime'])
     validation['ServiceDateTime'] = pd.to_datetime(validation['ServiceDateTime'])
