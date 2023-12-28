@@ -165,49 +165,41 @@ del df2, mydict
 #      return df_integrated
 
 # vectorized version of process dataframe
-def process_dataframe(df, validation, a0, a1, a2, hybrid):
-    # Add 'Energy' column and sort values
-    df['Energy'] = energyConsumption_d(df, a0, a1, a2, hybrid=hybrid)
+def process_dataframe_optimized(df, validation, a0, a1, a2, hybrid):
+    # Conversion and sorting
     df['ServiceDateTime'] = pd.to_datetime(df['ServiceDateTime'])
+    validation['ServiceDateTime'] = pd.to_datetime(validation['ServiceDateTime'])
+
     df.sort_values(by=['Vehicle', 'ServiceDateTime'], inplace=True)
-    
     validation.sort_values(by=['Vehicle', 'ServiceDateTime'], inplace=True)
-    validation['ServiceDateTime_prev'] = validation.groupby('Vehicle')['ServiceDateTime'].shift(-1)  # shift(1) for previous, shift(-1) for next
+
+    # Vectorized energy consumption calculation
+    df['Energy'] = energyConsumption_d(df, a0, a1, a2, hybrid=hybrid)
+
+    # Prepare the integrated DataFrame
+    validation['ServiceDateTime_prev'] = validation.groupby('Vehicle')['ServiceDateTime'].shift(1)
     validation.dropna(subset=['ServiceDateTime_prev'], inplace=True)
-    validation['ServiceDateTime_prev'] = pd.to_datetime(validation['ServiceDateTime_prev'])  # Ensure this is datetime
 
-    # Make sure ServiceDateTime_prev exists in df and is of the correct type
-    # Typically, ServiceDateTime_prev is derived from the 'validation' DataFrame
-    # If it's intended to be used in 'df', there should be logic here to ensure it's present and correct.
-    # Since it's unclear how ServiceDateTime_prev relates to 'df', ensure the logic is correct for your specific use case.
-    
-    # Perform the asof merge, ensure the keys are sorted
-    df = df.sort_values('ServiceDateTime')
-    validation = validation.sort_values('ServiceDateTime')
-    
-    # Ensure that 'ServiceDateTime_prev' is a column in 'df' if it's supposed to be there. If not, adjust accordingly.
-    df_integrated = pd.merge_asof(validation, df,
-                                  by='Vehicle',
-                                  left_on='ServiceDateTime',
-                                  right_on='ServiceDateTime',  # Ensure this is the correct key in 'df' to merge on
-                                  direction='backward')
+    # Calculate the difference in 'ServiceDateTime' in a vectorized manner
+    merged = pd.merge_asof(validation, df.rename(columns={'ServiceDateTime': 'ServiceDateTime_cur'}),
+                           by='Vehicle', left_on='ServiceDateTime_prev', right_on='ServiceDateTime_cur',
+                           direction='forward').dropna()
 
-    # Drop NA values in columns of interest
-    df_integrated.dropna(subset=['Energy', 'Qty'], inplace=True)
-    df_integrated = df_integrated.query("Qty != 0 and Energy != 0")
+    # Grouping and calculating the sum of 'dist' and 'Energy' for each group
+    grouped = merged.groupby(['Vehicle', 'ServiceDateTime', 'ServiceDateTime_prev'])
+    result = grouped.agg({'dist': 'sum', 'Energy': 'sum'}).rename(columns={'dist': 'dist_sum', 'Energy': 'Energy_sum'})
 
-    # Group by 'Vehicle', 'ServiceDateTime', and 'ServiceDateTime_prev'
-    grouped = df_integrated.groupby(['Vehicle', 'ServiceDateTime', 'ServiceDateTime_prev'])
-    sum_df = grouped.agg(dist_sum=('dist', 'sum'), Energy_sum=('Energy', 'sum')).reset_index()
+    # Merge back the summed results and clean up
+    df_integrated = validation.merge(result, on=['Vehicle', 'ServiceDateTime', 'ServiceDateTime_prev'])
+    df_integrated.dropna(subset=['Energy_sum', 'Qty'], inplace=True)
+    df_integrated = df_integrated.query("Qty != 0 and Energy_sum != 0")
 
-    # Merge back with df_integrated to include all necessary columns
-    df_integrated = df_integrated.merge(sum_df, on=['Vehicle', 'ServiceDateTime', 'ServiceDateTime_prev'])
-
-    # Calculate actual and predicted mpg
+    # Vectorized calculations for mpg
     df_integrated['actual_mpg'] = df_integrated['dist_sum'] / df_integrated['Qty']
     df_integrated['pred_mpg'] = df_integrated['dist_sum'] / df_integrated['Energy_sum']
 
     return df_integrated
+
 
 
 # Calibrate parameters with Dask + Joblib for parallel processing
