@@ -170,14 +170,20 @@ def process_dataframe(df, validation, a0, a1, a2, hybrid):
     df['Energy'] = energyConsumption_d(df, a0, a1, a2, hybrid=hybrid)
     df.sort_values(by=['Vehicle', 'ServiceDateTime'], inplace=True)
     df['ServiceDateTime'] = pd.to_datetime(df['ServiceDateTime'])
-    
+
     validation.sort_values(by=['Vehicle', 'ServiceDateTime'], inplace=True)
     validation['ServiceDateTime_prev'] = validation.groupby('Vehicle')['ServiceDateTime'].shift(1)
     validation.dropna(subset=['ServiceDateTime_prev'], inplace=True)
-    
-    # Merge the two DataFrames on Vehicle while ensuring the correct date ranges
-    df_integrated = pd.merge_asof(validation.sort_values('ServiceDateTime'), df.sort_values('ServiceDateTime'), 
-                                  by='Vehicle', left_on='ServiceDateTime', right_on='ServiceDateTime_prev', 
+
+    # Ensure both DataFrames are sorted by the 'ServiceDateTime' before merge_asof
+    df = df.sort_values('ServiceDateTime')
+    validation = validation.sort_values('ServiceDateTime')
+
+    # Perform the asof merge
+    df_integrated = pd.merge_asof(validation, df,
+                                  by='Vehicle', 
+                                  left_on='ServiceDateTime', 
+                                  right_on='ServiceDateTime_prev',
                                   direction='backward')
 
     # Ensure non-null and non-zero entries for calculations
@@ -192,12 +198,11 @@ def process_dataframe(df, validation, a0, a1, a2, hybrid):
     df_integrated = df_integrated.merge(sum_df, on=['Vehicle', 'ServiceDateTime', 'ServiceDateTime_prev'])
 
     # Calculate actual and predicted mpg
-    #df_integrated['actual_mpg'] = df_integrated['dist_sum'] / df_integrated['Qty']
-    #df_integrated['pred_mpg'] = df_integrated['dist_sum'] / df_integrated['Energy_sum']
     df_integrated.loc[:, 'actual_mpg'] = df_integrated['dist_sum'] / df_integrated['Qty']
     df_integrated.loc[:, 'pred_mpg'] = df_integrated['dist_sum'] / df_integrated['Energy_sum']
 
     return df_integrated
+
 
 
 
