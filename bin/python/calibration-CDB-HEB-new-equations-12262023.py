@@ -170,32 +170,35 @@ def process_dataframe(df, validation, a0, a1, a2, hybrid):
     df['ServiceDateTime'] = pd.to_datetime(df['ServiceDateTime'])
     validation['ServiceDateTime'] = pd.to_datetime(validation['ServiceDateTime'])
 
-    # Vectorized energy consumption calculation
-    df['Energy'] = energyConsumption_d(df, a0, a1, a2, hybrid=hybrid)  # Assuming energyConsumption_d is defined elsewhere
+    # Assuming energyConsumption_d is defined elsewhere
+    df['Energy'] = energyConsumption_d(df, a0, a1, a2, hybrid=hybrid)
 
     # Prepare for merging by creating a previous ServiceDateTime column
     validation['ServiceDateTime_prev'] = validation.groupby('Vehicle')['ServiceDateTime'].shift(1)
-    validation.dropna(subset=['ServiceDateTime_prev'], inplace=True)
+    validation.dropna(subset=['ServiceDateTime_prev'], inplace=True)  # Drops rows where 'ServiceDateTime_prev' is NaN
 
     # Initialize an empty DataFrame for the results
     df_integrated = pd.DataFrame()
 
-    # Process each vehicle's data individually
     for vehicle, group in validation.groupby('Vehicle'):
         
-        # Select corresponding data from 'df' for the current vehicle
         df_vehicle = df[df['Vehicle'] == vehicle].copy()
 
-        # Sort the data within each group
-        group.sort_values(by='ServiceDateTime', inplace=True)
+        # Ensure group is sorted by 'ServiceDateTime_prev'
+        group.sort_values(by='ServiceDateTime_prev', inplace=True)
+
+        # Ensure df_vehicle is sorted by 'ServiceDateTime'
         df_vehicle.sort_values(by='ServiceDateTime', inplace=True)
 
-        # Perform the merge_asof operation for the current vehicle's data
+        # Confirm that both dataframes are sorted properly
+        if not group['ServiceDateTime_prev'].is_monotonic_increasing or not df_vehicle['ServiceDateTime'].is_monotonic_increasing:
+            print(f"Sorting issue with vehicle: {vehicle}")
+            continue  # Skip this vehicle if the data isn't sorted correctly
+
         merged = pd.merge_asof(group, df_vehicle.rename(columns={'ServiceDateTime': 'ServiceDateTime_cur'}),
                                by='Vehicle', left_on='ServiceDateTime_prev', right_on='ServiceDateTime_cur',
-                               direction='forward')
+                               direction='forward').dropna()
 
-        # Append the results to the integrated DataFrame
         df_integrated = pd.concat([df_integrated, merged], ignore_index=True)
 
     # Continue processing on the merged data
@@ -213,8 +216,6 @@ def process_dataframe(df, validation, a0, a1, a2, hybrid):
     df_integrated['pred_mpg'] = df_integrated['dist_sum'] / df_integrated['Energy_sum']
 
     return df_integrated
-
-
 
 
 # Calibrate parameters with Dask + Joblib for parallel processing
