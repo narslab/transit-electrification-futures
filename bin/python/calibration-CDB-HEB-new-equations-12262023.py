@@ -157,8 +157,11 @@ def process_dataframe(df, validation, a0, a1, a2, hybrid):
      df_integrated.dropna(subset=['Energy_sum', 'Qty'], inplace=True)
      df_integrated = df_integrated.query("Qty != 0 and Energy_sum != 0")
 
-     df_integrated['actual_mpg'] = df_integrated['dist_sum'] / df_integrated['Qty']
-     df_integrated['pred_mpg'] = df_integrated['dist_sum'] / df_integrated['Energy_sum']
+     #df_integrated['actual_mpg'] = df_integrated['dist_sum'] / df_integrated['Qty']
+     #df_integrated['pred_mpg'] = df_integrated['dist_sum'] / df_integrated['Energy_sum']
+     df_integrated.loc[:, 'actual_mpg'] = df_integrated['dist_sum'] / df_integrated['Qty']
+     df_integrated.loc[:, 'pred_mpg'] = df_integrated['dist_sum'] / df_integrated['Energy_sum']
+
      return df_integrated
 
 # vectorized version of process dataframe
