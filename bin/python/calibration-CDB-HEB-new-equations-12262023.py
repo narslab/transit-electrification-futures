@@ -268,7 +268,8 @@ if __name__ == '__main__':
     # Set up multiprocessing pool
     with Pool() as pool:
         # Use starmap for functions with multiple arguments
-        results = pool.starmap(parallel_calibrate, argument_list)
+        results = list(tqdm(pool.starmap(parallel_calibrate, argument_list), total=len(argument_list)))
+
 
     all_results_df = pd.concat(results, ignore_index=True)
 
