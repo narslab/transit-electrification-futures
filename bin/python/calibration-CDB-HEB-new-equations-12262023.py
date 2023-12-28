@@ -168,24 +168,28 @@ del df2, mydict
 def process_dataframe(df, validation, a0, a1, a2, hybrid):
     # Add 'Energy' column and sort values
     df['Energy'] = energyConsumption_d(df, a0, a1, a2, hybrid=hybrid)
-    df.sort_values(by=['Vehicle', 'ServiceDateTime'], inplace=True)
     df['ServiceDateTime'] = pd.to_datetime(df['ServiceDateTime'])
-
+    df.sort_values(by=['Vehicle', 'ServiceDateTime'], inplace=True)
+    
     validation.sort_values(by=['Vehicle', 'ServiceDateTime'], inplace=True)
-    validation['ServiceDateTime_prev'] = validation.groupby('Vehicle')['ServiceDateTime'].shift(1)
+    validation['ServiceDateTime_prev'] = validation.groupby('Vehicle')['ServiceDateTime'].shift(-1)  # shift(1) for previous, shift(-1) for next
     validation.dropna(subset=['ServiceDateTime_prev'], inplace=True)
+    validation['ServiceDateTime_prev'] = pd.to_datetime(validation['ServiceDateTime_prev'])  # Ensure this is datetime
 
-    # Convert 'ServiceDateTime_prev' in validation to datetime if not already
-    validation['ServiceDateTime_prev'] = pd.to_datetime(validation['ServiceDateTime_prev'])
-
+    # Make sure ServiceDateTime_prev exists in df and is of the correct type
+    # Typically, ServiceDateTime_prev is derived from the 'validation' DataFrame
+    # If it's intended to be used in 'df', there should be logic here to ensure it's present and correct.
+    # Since it's unclear how ServiceDateTime_prev relates to 'df', ensure the logic is correct for your specific use case.
+    
     # Perform the asof merge, ensure the keys are sorted
     df = df.sort_values('ServiceDateTime')
     validation = validation.sort_values('ServiceDateTime')
-
+    
+    # Ensure that 'ServiceDateTime_prev' is a column in 'df' if it's supposed to be there. If not, adjust accordingly.
     df_integrated = pd.merge_asof(validation, df,
                                   by='Vehicle',
                                   left_on='ServiceDateTime',
-                                  right_on='ServiceDateTime_prev',
+                                  right_on='ServiceDateTime',  # Ensure this is the correct key in 'df' to merge on
                                   direction='backward')
 
     # Drop NA values in columns of interest
@@ -204,7 +208,6 @@ def process_dataframe(df, validation, a0, a1, a2, hybrid):
     df_integrated['pred_mpg'] = df_integrated['dist_sum'] / df_integrated['Energy_sum']
 
     return df_integrated
-
 
 
 # Calibrate parameters with Dask + Joblib for parallel processing
