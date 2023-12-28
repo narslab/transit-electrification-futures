@@ -166,31 +166,45 @@ del df2, mydict
 
 # vectorized version of process dataframe
 def process_dataframe(df, validation, a0, a1, a2, hybrid):
-    # Conversion and sorting
+    # Conversion and sorting on the whole DataFrame
     df['ServiceDateTime'] = pd.to_datetime(df['ServiceDateTime'])
     validation['ServiceDateTime'] = pd.to_datetime(validation['ServiceDateTime'])
 
-    df.sort_values(by=['Vehicle', 'ServiceDateTime'], inplace=True)
-    validation.sort_values(by=['Vehicle', 'ServiceDateTime'], inplace=True)
-
     # Vectorized energy consumption calculation
-    df['Energy'] = energyConsumption_d(df, a0, a1, a2, hybrid=hybrid)
+    df['Energy'] = energyConsumption_d(df, a0, a1, a2, hybrid=hybrid)  # Assuming energyConsumption_d is defined elsewhere
 
-    # Prepare the integrated DataFrame
+    # Prepare for merging by creating a previous ServiceDateTime column
     validation['ServiceDateTime_prev'] = validation.groupby('Vehicle')['ServiceDateTime'].shift(1)
     validation.dropna(subset=['ServiceDateTime_prev'], inplace=True)
 
-    # Calculate the difference in 'ServiceDateTime' in a vectorized manner
-    merged = pd.merge_asof(validation, df.rename(columns={'ServiceDateTime': 'ServiceDateTime_cur'}),
-                           by='Vehicle', left_on='ServiceDateTime_prev', right_on='ServiceDateTime_cur',
-                           direction='forward').dropna()
+    # Initialize an empty DataFrame for the results
+    df_integrated = pd.DataFrame()
 
+    # Process each vehicle's data individually
+    for vehicle, group in validation.groupby('Vehicle'):
+        
+        # Select corresponding data from 'df' for the current vehicle
+        df_vehicle = df[df['Vehicle'] == vehicle].copy()
+
+        # Sort the data within each group
+        group.sort_values(by='ServiceDateTime', inplace=True)
+        df_vehicle.sort_values(by='ServiceDateTime', inplace=True)
+
+        # Perform the merge_asof operation for the current vehicle's data
+        merged = pd.merge_asof(group, df_vehicle.rename(columns={'ServiceDateTime': 'ServiceDateTime_cur'}),
+                               by='Vehicle', left_on='ServiceDateTime_prev', right_on='ServiceDateTime_cur',
+                               direction='forward')
+
+        # Append the results to the integrated DataFrame
+        df_integrated = pd.concat([df_integrated, merged], ignore_index=True)
+
+    # Continue processing on the merged data
     # Grouping and calculating the sum of 'dist' and 'Energy' for each group
-    grouped = merged.groupby(['Vehicle', 'ServiceDateTime', 'ServiceDateTime_prev'])
+    grouped = df_integrated.groupby(['Vehicle', 'ServiceDateTime', 'ServiceDateTime_prev'])
     result = grouped.agg({'dist': 'sum', 'Energy': 'sum'}).rename(columns={'dist': 'dist_sum', 'Energy': 'Energy_sum'})
 
     # Merge back the summed results and clean up
-    df_integrated = validation.merge(result, on=['Vehicle', 'ServiceDateTime', 'ServiceDateTime_prev'])
+    df_integrated = df_integrated.merge(result, on=['Vehicle', 'ServiceDateTime', 'ServiceDateTime_prev'])
     df_integrated.dropna(subset=['Energy_sum', 'Qty'], inplace=True)
     df_integrated = df_integrated.query("Qty != 0 and Energy_sum != 0")
 
@@ -199,6 +213,7 @@ def process_dataframe(df, validation, a0, a1, a2, hybrid):
     df_integrated['pred_mpg'] = df_integrated['dist_sum'] / df_integrated['Energy_sum']
 
     return df_integrated
+
 
 
 
