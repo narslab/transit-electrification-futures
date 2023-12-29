@@ -165,60 +165,60 @@ del df2, mydict
 #      return df_integrated
 
 # vectorized version of process dataframe
+import pandas as pd
+
 def process_dataframe(df, validation, a0, a1, a2, hybrid):
-    # Conversion and sorting on the whole DataFrame
+    # Convert ServiceDateTime to datetime and create Energy column
     df['ServiceDateTime'] = pd.to_datetime(df['ServiceDateTime'])
     validation['ServiceDateTime'] = pd.to_datetime(validation['ServiceDateTime'])
+    df['Energy'] = energyConsumption_d(df, a0, a1, a2, hybrid=hybrid)  # Make sure this function is defined
 
-    # Assuming energyConsumption_d is defined elsewhere
-    df['Energy'] = energyConsumption_d(df, a0, a1, a2, hybrid=hybrid)
+    # Assuming 'dist' column is part of the 'validation' DataFrame already, if not, you need to create it
 
-    # Prepare for merging by creating a previous ServiceDateTime column
+    # Create a previous ServiceDateTime column in validation for asof merge
     validation['ServiceDateTime_prev'] = validation.groupby('Vehicle')['ServiceDateTime'].shift(1)
-    validation.dropna(subset=['ServiceDateTime_prev'], inplace=True)  # Drops rows where 'ServiceDateTime_prev' is NaN
+    validation.dropna(subset=['ServiceDateTime_prev'], inplace=True)
 
-    # Initialize an empty DataFrame for the results
+    # Initialize an empty DataFrame to collect processed data
     df_integrated = pd.DataFrame()
 
     for vehicle, group in validation.groupby('Vehicle'):
-        
         df_vehicle = df[df['Vehicle'] == vehicle].copy()
 
-        # Ensure group is sorted by 'ServiceDateTime_prev'
+        # Ensure both dataframes are sorted by the relevant ServiceDateTime
         group.sort_values(by='ServiceDateTime_prev', inplace=True)
-
-        # Ensure df_vehicle is sorted by 'ServiceDateTime'
         df_vehicle.sort_values(by='ServiceDateTime', inplace=True)
 
-        # Confirm that both dataframes are sorted properly
-        if not group['ServiceDateTime_prev'].is_monotonic_increasing or not df_vehicle['ServiceDateTime'].is_monotonic_increasing:
-            print(f"Sorting issue with vehicle: {vehicle}")
-            continue  # Skip this vehicle if the data isn't sorted correctly
-
+        # Perform asof merge and ensure it's not empty
         merged = pd.merge_asof(group, df_vehicle.rename(columns={'ServiceDateTime': 'ServiceDateTime_cur'}),
                                by='Vehicle', left_on='ServiceDateTime_prev', right_on='ServiceDateTime_cur',
-                               direction='forward').dropna()
+                               direction='forward')
+        if merged.empty:
+            continue  # Skip if the merge result is empty
 
-        df_integrated = pd.concat([df_integrated, merged], ignore_index=True)
+        df_integrated = pd.concat([df_integrated, merged])
 
-    # Continue processing on the merged data
-    # Grouping and calculating the sum of 'dist' and 'Energy' for each group
-    print("df_integrated column names", df_integrated.columns)
+    # Check if 'Energy' and 'dist' columns exist in the merged dataframe
+    if 'Energy' not in df_integrated.columns or 'dist' not in df_integrated.columns:
+        raise ValueError("Necessary columns 'Energy' or 'dist' are missing after merge operation!")
+
+    # Assuming 'Qty' column exists in df_integrated, if not, you need to ensure it's being created or merged correctly
+
+    # Group by necessary columns and aggregate
     grouped = df_integrated.groupby(['Vehicle', 'ServiceDateTime', 'ServiceDateTime_prev'])
-    print("grouped ", grouped)
     result = grouped.agg({'dist': 'sum', 'Energy': 'sum'}).rename(columns={'dist': 'dist_sum', 'Energy': 'Energy_sum'})
-    print("result column names", result.columns)
 
-    # Merge back the summed results and clean up
+    # Merge back the summed results and perform further calculations
     df_integrated = df_integrated.merge(result, on=['Vehicle', 'ServiceDateTime', 'ServiceDateTime_prev'])
     df_integrated.dropna(subset=['Energy_sum', 'Qty'], inplace=True)
-    df_integrated = df_integrated.query("Qty != 0 and Energy_sum != 0")
+    df_integrated.query("Qty != 0 and Energy_sum != 0", inplace=True)
 
-    # Vectorized calculations for mpg
+    # Calculate mpg
     df_integrated['actual_mpg'] = df_integrated['dist_sum'] / df_integrated['Qty']
     df_integrated['pred_mpg'] = df_integrated['dist_sum'] / df_integrated['Energy_sum']
 
     return df_integrated
+
 
 
 # Calibrate parameters with Dask + Joblib for parallel processing
