@@ -165,8 +165,6 @@ del df2, mydict
 #      return df_integrated
 
 # vectorized version of process dataframe
-import pandas as pd
-
 def process_dataframe(df, validation, a0, a1, a2, hybrid):
     # Convert ServiceDateTime to datetime and create Energy column
     df['ServiceDateTime'] = pd.to_datetime(df['ServiceDateTime'])
@@ -189,20 +187,16 @@ def process_dataframe(df, validation, a0, a1, a2, hybrid):
         group.sort_values(by='ServiceDateTime_prev', inplace=True)
         df_vehicle.sort_values(by='ServiceDateTime', inplace=True)
 
-        # Perform asof merge and ensure it's not empty
+        # Perform asof merge and ensure it's not empty, with defined suffixes
         merged = pd.merge_asof(group, df_vehicle.rename(columns={'ServiceDateTime': 'ServiceDateTime_cur'}),
                                by='Vehicle', left_on='ServiceDateTime_prev', right_on='ServiceDateTime_cur',
-                               direction='forward')
+                               direction='forward', suffixes=('', '_y'))
+        # Rename the columns immediately after merge
+        merged.rename(columns={'dist_y': 'dist', 'Energy_y': 'Energy'}, inplace=True)
+
         print("Columns after merge:", merged.columns)
 
-        if merged.empty:
-            continue  # Skip if the merge result is empty
-
         df_integrated = pd.concat([df_integrated, merged])
-
-    # Check if 'Energy' and 'dist' columns exist in the merged dataframe
-    if 'Energy' not in df_integrated.columns or 'dist' not in df_integrated.columns:
-        raise ValueError("Necessary columns 'Energy' or 'dist' are missing after merge operation!")
 
     # Assuming 'Qty' column exists in df_integrated, if not, you need to ensure it's being created or merged correctly
 
