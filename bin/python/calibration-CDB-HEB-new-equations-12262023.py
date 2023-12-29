@@ -189,6 +189,8 @@ def process_dataframe(df, validation, a0, a1, a2, hybrid):
                                right_on='ServiceDateTime_cur',
                                by='Vehicle',
                                direction='forward')
+        # Rename the columns immediately after merge
+        merged.rename(columns={'dist_y': 'dist', 'Energy_y': 'Energy'}, inplace=True)
         all_data.append(merged)
 
     # Concatenate all data into a single DataFrame after the loop
