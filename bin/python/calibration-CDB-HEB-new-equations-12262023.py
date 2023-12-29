@@ -187,9 +187,13 @@ def process_dataframe(df, validation, a0, a1, a2, hybrid):
         df_vehicle = df_vehicle.sort_values(by='ServiceDateTime')
 
         # Perform asof merge and ensure it's not empty, with defined suffixes
-        merged = pd.merge_asof(group, df_vehicle.rename(columns={'ServiceDateTime': 'ServiceDateTime_cur'}),
-                               on='Vehicle', left_on='ServiceDateTime_prev', right_on='ServiceDateTime_cur',
-                               direction='forward', suffixes=('', '_y'))
+        merged = pd.merge_asof(group,
+                       df_vehicle.rename(columns={'ServiceDateTime': 'ServiceDateTime_cur'}),
+                       left_on='ServiceDateTime_prev',
+                       right_on='ServiceDateTime_cur',
+                       by='Vehicle',
+                       direction='forward')
+        
         # Rename the columns immediately after merge
         merged.rename(columns={'dist_y': 'dist', 'Energy_y': 'Energy'}, inplace=True)
 
