@@ -205,13 +205,13 @@ def process_dataframe(df, validation, a0, a1, a2, hybrid):
     result = grouped.agg({'dist': 'sum', 'Energy': 'sum'}).rename(columns={'dist': 'dist_sum', 'Energy': 'Energy_sum'})
 
     # Merge back the summed results and perform further calculations
-    df_integrated = df_integrated.merge(result, on=['Vehicle', 'ServiceDateTime', 'ServiceDateTime_prev'])
+    df_integrated = df_integrated.merge(result, on=['Vehicle', 'ServiceDateTime', 'ServiceDateTime_prev']).copy()
     df_integrated.dropna(subset=['Energy_sum', 'Qty'], inplace=True)
-    df_integrated = df_integrated.query("Qty != 0 and Energy_sum != 0")
+    df_integrated = df_integrated.query("Qty != 0 and Energy_sum != 0").copy()
 
     # Calculate mpg
-    df_integrated.loc[:, 'actual_mpg'] = df_integrated['dist_sum'] / df_integrated['Qty']
-    df_integrated.loc[:, 'pred_mpg'] = df_integrated['dist_sum'] / df_integrated['Energy_sum']
+    df_integrated['actual_mpg'] = df_integrated['dist_sum'] / df_integrated['Qty']
+    df_integrated['pred_mpg'] = df_integrated['dist_sum'] / df_integrated['Energy_sum']
 
     return df_integrated
 
@@ -261,7 +261,7 @@ STEP_SIZE2 = 0.000001
 
 START3_VAL = 0.000000001
 STEP_SIZE3 = 0.000000005
-N_POINTS = 100
+N_POINTS = 1000
 
 # Initialize results dataframe to store results of all iterations
 all_results_df = pd.DataFrame()
@@ -287,10 +287,10 @@ if __name__ == '__main__':
         results = list(tqdm(pool.starmap(parallel_calibrate, argument_list), total=len(argument_list)))
 
 
-    all_results_df = pd.concat(results, ignore_index=True)
+    all_results_df = pd.concat(results, ignore_index=True).copy()
 
     # Save results to a CSV file
-    all_results_df.to_csv('../../results/calibration_results_cdb_oct2021-sep2022_12282023.csv', index=False)
+    all_results_df.to_csv('../../results/calibration_results_heb_oct2021-sep2022_12282023.csv', index=False)
 
     # Calculate and print the elapsed time
     elapsed_time = time.time() - start_time
