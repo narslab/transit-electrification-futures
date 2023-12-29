@@ -217,81 +217,86 @@ def process_dataframe(df, validation, a0, a1, a2, hybrid):
 
 
 
-# Calibrate parameters with Dask + Joblib for parallel processing
-def calibrate_parameter(a0, a1, a2, hybrid):
+# # Calibrate parameters with Dask + Joblib for parallel processing
+# def calibrate_parameter(a0, a1, a2, hybrid):
     
-    if hybrid:
-        df = df_hybrid.copy()
-        validation = df_validation[df_validation.Powertrain == 'hybrid'].copy()
-    else:
-        df = df_conventional.copy()
-        validation = df_validation[df_validation.Powertrain == 'conventional'].copy()
+#     if hybrid:
+#         df = df_hybrid.copy()
+#         validation = df_validation[df_validation.Powertrain == 'hybrid'].copy()
+#     else:
+#         df = df_conventional.copy()
+#         validation = df_validation[df_validation.Powertrain == 'conventional'].copy()
 
-    validation.reset_index(drop=True, inplace=True)    
+#     validation.reset_index(drop=True, inplace=True)    
     
-    df_integrated = process_dataframe(df, validation, a0, a1, a2, hybrid)
-    df_integrated = df_integrated.loc[df_integrated['Energy_sum']!=0]
-    percentile_5 = df_integrated['pred_mpg'].quantile(0.05)
-    percentile_95 = df_integrated['actual_mpg'].quantile(0.95)
-    df_integrated = df_integrated[(df_integrated['pred_mpg'] >= percentile_5) & (df_integrated['pred_mpg'] <= percentile_95)]
-    df_integrated = df_integrated[(df_integrated['actual_mpg'] >= percentile_5) & (df_integrated['actual_mpg'] <= percentile_95)]
-    train, test = train_test_split(df_integrated, test_size=0.8, random_state=42)
+#     df_integrated = process_dataframe(df, validation, a0, a1, a2, hybrid)
+#     df_integrated = df_integrated.loc[df_integrated['Energy_sum']!=0]
+#     percentile_5 = df_integrated['pred_mpg'].quantile(0.05)
+#     percentile_95 = df_integrated['actual_mpg'].quantile(0.95)
+#     df_integrated = df_integrated[(df_integrated['pred_mpg'] >= percentile_5) & (df_integrated['pred_mpg'] <= percentile_95)]
+#     df_integrated = df_integrated[(df_integrated['actual_mpg'] >= percentile_5) & (df_integrated['actual_mpg'] <= percentile_95)]
+#     train, test = train_test_split(df_integrated, test_size=0.8, random_state=42)
     
-    # Training Data
-    RMSE_Energy_train = np.sqrt(mean_squared_error(train['Qty'], train['Energy_sum']))
-    MAPE_Energy_train = mean_absolute_percentage_error(train['Qty'] , train['Energy_sum'])
+#     # Training Data
+#     RMSE_Energy_train = np.sqrt(mean_squared_error(train['Qty'], train['Energy_sum']))
+#     MAPE_Energy_train = mean_absolute_percentage_error(train['Qty'] , train['Energy_sum'])
 
 
             
-    results_df = pd.DataFrame({
-        'parameter1_values': [a0], 
-        'parameter2_values': [a1],
-        'parameter3_values': [a2],
-        'RMSE_Energy_train': [RMSE_Energy_train], 
-        'MAPE_Energy_train': [MAPE_Energy_train]
-    })
-    return results_df
+#     results_df = pd.DataFrame({
+#         'parameter1_values': [a0], 
+#         'parameter2_values': [a1],
+#         'parameter3_values': [a2],
+#         'RMSE_Energy_train': [RMSE_Energy_train], 
+#         'MAPE_Energy_train': [MAPE_Energy_train]
+#     })
+#     return results_df
 
-# Configuration Section
-START1_VAL = 0.00001
-STEP_SIZE1 = 0.00001
+# # Configuration Section
+# START1_VAL = 0.00001
+# STEP_SIZE1 = 0.00001
 
-START2_VAL = 0.000001
-STEP_SIZE2 = 0.000001
+# START2_VAL = 0.000001
+# STEP_SIZE2 = 0.000001
 
-START3_VAL = 0.00000001
-STEP_SIZE3 = 0.000000005
-N_POINTS = 10
+# START3_VAL = 0.00000001
+# STEP_SIZE3 = 0.000000005
+# N_POINTS = 10
 
-# Initialize results dataframe to store results of all iterations
-all_results_df = pd.DataFrame()
-
-
-def parallel_calibrate(a0, a1, a2, hybrid_flag):
-    return calibrate_parameter(a0, a1, a2, hybrid_flag)
-
-if __name__ == '__main__':
-    hybrid_flag = True
-
-    # Configuration Section
-    a0_values = np.linspace(START1_VAL, START1_VAL+(STEP_SIZE1 * (N_POINTS-1)), N_POINTS)
-    a1_values = np.linspace(START2_VAL, START2_VAL+(STEP_SIZE2 * (N_POINTS-1)), N_POINTS)
-    a2_values = np.linspace(START3_VAL, START3_VAL+(STEP_SIZE3 * (N_POINTS-1)), N_POINTS)
-    argument_list = list(itertools.product(a0_values, a1_values, a2_values, [hybrid_flag]))
-
-    start_time = time.time()  # Start timer
-
-    # Set up multiprocessing pool
-    with Pool() as pool:
-        # Use starmap for functions with multiple arguments
-        results = list(tqdm(pool.starmap(parallel_calibrate, argument_list), total=len(argument_list)))
+# # Initialize results dataframe to store results of all iterations
+# all_results_df = pd.DataFrame()
 
 
-    all_results_df = pd.concat(results, ignore_index=True)
+# def parallel_calibrate(a0, a1, a2, hybrid_flag):
+#     return calibrate_parameter(a0, a1, a2, hybrid_flag)
 
-    # Save results to a CSV file
-    all_results_df.to_csv('../../results/calibration_results_heb_oct2021-sep2022_12272023.csv', index=False)
+# if __name__ == '__main__':
+#     hybrid_flag = True
 
-    # Calculate and print the elapsed time
-    elapsed_time = time.time() - start_time
-    print(f"Total time taken: {elapsed_time:.2f} seconds")
+#     # Configuration Section
+#     a0_values = np.linspace(START1_VAL, START1_VAL+(STEP_SIZE1 * (N_POINTS-1)), N_POINTS)
+#     a1_values = np.linspace(START2_VAL, START2_VAL+(STEP_SIZE2 * (N_POINTS-1)), N_POINTS)
+#     a2_values = np.linspace(START3_VAL, START3_VAL+(STEP_SIZE3 * (N_POINTS-1)), N_POINTS)
+#     argument_list = list(itertools.product(a0_values, a1_values, a2_values, [hybrid_flag]))
+
+#     start_time = time.time()  # Start timer
+
+#     # Set up multiprocessing pool
+#     with Pool() as pool:
+#         # Use starmap for functions with multiple arguments
+#         results = list(tqdm(pool.starmap(parallel_calibrate, argument_list), total=len(argument_list)))
+
+
+#     all_results_df = pd.concat(results, ignore_index=True)
+
+#     # Save results to a CSV file
+#     all_results_df.to_csv('../../results/calibration_results_heb_oct2021-sep2022_12272023.csv', index=False)
+
+#     # Calculate and print the elapsed time
+#     elapsed_time = time.time() - start_time
+#     print(f"Total time taken: {elapsed_time:.2f} seconds")
+    
+df = df_hybrid.copy()
+validation = df_validation[df_validation.Powertrain == 'hybrid'].copy()
+hybrid_flag = True
+process_dataframe(df_hybrid, validation, 0.00001, 0.000001, 0.00000001, hybrid_flag)
