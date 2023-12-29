@@ -193,6 +193,8 @@ def process_dataframe(df, validation, a0, a1, a2, hybrid):
         merged = pd.merge_asof(group, df_vehicle.rename(columns={'ServiceDateTime': 'ServiceDateTime_cur'}),
                                by='Vehicle', left_on='ServiceDateTime_prev', right_on='ServiceDateTime_cur',
                                direction='forward')
+        print("Columns after merge:", merged.columns)
+
         if merged.empty:
             continue  # Skip if the merge result is empty
 
