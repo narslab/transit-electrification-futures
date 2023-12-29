@@ -174,30 +174,25 @@ def process_dataframe(df, validation, a0, a1, a2, hybrid):
 
     # Create a previous ServiceDateTime column in validation for asof merge
     validation['ServiceDateTime_prev'] = validation.groupby('Vehicle')['ServiceDateTime'].shift(1)
-    validation = validation.dropna(subset=['ServiceDateTime_prev'])
+    validation.dropna(subset=['ServiceDateTime_prev'], inplace=True)
 
-    # Initialize an empty DataFrame to collect processed data
-    df_integrated = pd.DataFrame()
-
+    # Initialize an empty list to collect data
+    all_data = []
     for vehicle, group in validation.groupby('Vehicle'):
         df_vehicle = df[df['Vehicle'] == vehicle].copy()
-
-        # Ensure both dataframes are sorted by the relevant ServiceDateTime
         group = group.sort_values(by='ServiceDateTime_prev')
         df_vehicle = df_vehicle.sort_values(by='ServiceDateTime')
 
-        # Perform asof merge and ensure it's not empty, with defined suffixes
         merged = pd.merge_asof(group,
-                       df_vehicle.rename(columns={'ServiceDateTime': 'ServiceDateTime_cur'}),
-                       left_on='ServiceDateTime_prev',
-                       right_on='ServiceDateTime_cur',
-                       by='Vehicle',
-                       direction='forward')
-        
-        # Rename the columns immediately after merge
-        merged.rename(columns={'dist_y': 'dist', 'Energy_y': 'Energy'}, inplace=True)
+                               df_vehicle.rename(columns={'ServiceDateTime': 'ServiceDateTime_cur'}),
+                               left_on='ServiceDateTime_prev',
+                               right_on='ServiceDateTime_cur',
+                               by='Vehicle',
+                               direction='forward')
+        all_data.append(merged)
 
-        df_integrated = pd.concat([df_integrated, merged])
+    # Concatenate all data into a single DataFrame after the loop
+    df_integrated = pd.concat(all_data, ignore_index=True)
 
     # Ensure 'Qty' column exists in df_integrated
     if 'Qty' not in df_integrated.columns:
@@ -209,15 +204,12 @@ def process_dataframe(df, validation, a0, a1, a2, hybrid):
 
     # Merge back the summed results and perform further calculations
     df_integrated = df_integrated.merge(result, on=['Vehicle', 'ServiceDateTime', 'ServiceDateTime_prev'])
-    df_integrated = df_integrated.dropna(subset=['Energy_sum', 'Qty'])
+    df_integrated.dropna(subset=['Energy_sum', 'Qty'], inplace=True)
     df_integrated = df_integrated.query("Qty != 0 and Energy_sum != 0")
 
     # Calculate mpg
-    #df_integrated['actual_mpg'] = df_integrated['dist_sum'] / df_integrated['Qty']
-    #df_integrated['pred_mpg'] = df_integrated['dist_sum'] / df_integrated['Energy_sum']
     df_integrated.loc[:, 'actual_mpg'] = df_integrated['dist_sum'] / df_integrated['Qty']
     df_integrated.loc[:, 'pred_mpg'] = df_integrated['dist_sum'] / df_integrated['Energy_sum']
-
 
     return df_integrated
 
