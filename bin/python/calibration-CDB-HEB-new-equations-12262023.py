@@ -166,16 +166,15 @@ del df2, mydict
 
 # vectorized version of process dataframe
 def process_dataframe(df, validation, a0, a1, a2, hybrid):
+    # Ensure the energyConsumption_d function is defined elsewhere in your code
     # Convert ServiceDateTime to datetime and create Energy column
     df['ServiceDateTime'] = pd.to_datetime(df['ServiceDateTime'])
     validation['ServiceDateTime'] = pd.to_datetime(validation['ServiceDateTime'])
-    df['Energy'] = energyConsumption_d(df, a0, a1, a2, hybrid=hybrid)  # Make sure this function is defined
-
-    # Assuming 'dist' column is part of the 'validation' DataFrame already, if not, you need to create it
+    df['Energy'] = energyConsumption_d(df, a0, a1, a2, hybrid=hybrid)
 
     # Create a previous ServiceDateTime column in validation for asof merge
     validation['ServiceDateTime_prev'] = validation.groupby('Vehicle')['ServiceDateTime'].shift(1)
-    validation.dropna(subset=['ServiceDateTime_prev'], inplace=True)
+    validation = validation.dropna(subset=['ServiceDateTime_prev'])
 
     # Initialize an empty DataFrame to collect processed data
     df_integrated = pd.DataFrame()
@@ -184,34 +183,30 @@ def process_dataframe(df, validation, a0, a1, a2, hybrid):
         df_vehicle = df[df['Vehicle'] == vehicle].copy()
 
         # Ensure both dataframes are sorted by the relevant ServiceDateTime
-        group.sort_values(by='ServiceDateTime_prev', inplace=True)
-        df_vehicle.sort_values(by='ServiceDateTime', inplace=True)
+        group = group.sort_values(by='ServiceDateTime_prev')
+        df_vehicle = df_vehicle.sort_values(by='ServiceDateTime')
 
         # Perform asof merge and ensure it's not empty, with defined suffixes
         merged = pd.merge_asof(group, df_vehicle.rename(columns={'ServiceDateTime': 'ServiceDateTime_cur'}),
-                               by='Vehicle', left_on='ServiceDateTime_prev', right_on='ServiceDateTime_cur',
+                               on='Vehicle', left_on='ServiceDateTime_prev', right_on='ServiceDateTime_cur',
                                direction='forward', suffixes=('', '_y'))
         # Rename the columns immediately after merge
         merged.rename(columns={'dist_y': 'dist', 'Energy_y': 'Energy'}, inplace=True)
 
-        print("Columns after merge:", merged.columns)
-
         df_integrated = pd.concat([df_integrated, merged])
 
-    # Assuming 'Qty' column exists in df_integrated, if not, you need to ensure it's being created or merged correctly
+    # Ensure 'Qty' column exists in df_integrated
+    if 'Qty' not in df_integrated.columns:
+        raise ValueError("Column 'Qty' does not exist in the integrated DataFrame.")
 
     # Group by necessary columns and aggregate
     grouped = df_integrated.groupby(['Vehicle', 'ServiceDateTime', 'ServiceDateTime_prev'])
-    print(type(grouped))
-    print("grouped.head",grouped.head())
     result = grouped.agg({'dist': 'sum', 'Energy': 'sum'}).rename(columns={'dist': 'dist_sum', 'Energy': 'Energy_sum'})
-    print("result.head",result.head())
-
 
     # Merge back the summed results and perform further calculations
     df_integrated = df_integrated.merge(result, on=['Vehicle', 'ServiceDateTime', 'ServiceDateTime_prev'])
-    df_integrated.dropna(subset=['Energy_sum', 'Qty'], inplace=True)
-    df_integrated.query("Qty != 0 and Energy_sum != 0", inplace=True)
+    df_integrated = df_integrated.dropna(subset=['Energy_sum', 'Qty'])
+    df_integrated = df_integrated.query("Qty != 0 and Energy_sum != 0")
 
     # Calculate mpg
     df_integrated['actual_mpg'] = df_integrated['dist_sum'] / df_integrated['Qty']
