@@ -98,7 +98,7 @@ df_trajectories.rename(columns={"VehiclWeight(lb)": "Vehicle_mass"}, inplace=Tru
 df_trajectories['Date']=pd.to_datetime(df_trajectories['Date'])
 df_trajectories.speed = df_trajectories.speed *0.44704 # Convert from mph to m/s
 df_trajectories = df_trajectories.fillna(0)
-df_trajectories = df_trajectories[(df_trajectories['Acceleration'] >= -5) & (df_trajectories['Acceleration'] <= 3)]
+df_trajectories = df_trajectories[(df_trajectories['acc'] >= -5) & (df_trajectories['acc'] <= 3)]
 
 # Subsetting data frame for "Conventional", "hybrid", and "electric" buses
 df_beb=df_trajectories.loc[df_trajectories['Powertrain'] == 'electric'].copy()
