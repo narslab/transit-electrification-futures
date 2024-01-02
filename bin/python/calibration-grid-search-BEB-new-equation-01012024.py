@@ -88,7 +88,7 @@ def energyConsumption_e(df_input, gamma_beb, eta_m, electric=True):
     df = df_input
     t = df.time_delta_in_seconds
     P_t = power(df_input, electric)
-    eta_rb = df.Acceleration.apply(lambda a: 1 if a >= 0 else np.exp(-(gamma_beb/abs(a))))
+    eta_rb = df.acc.apply(lambda a: 1 if a >= 0 else np.exp(-(gamma_beb/abs(a))))
     E_t = t * P_t * eta_rb * eta_batt /(eta_m*3600)
     return E_t
 
@@ -159,14 +159,10 @@ def calibrate_parameter(args):
         
             RMSE_Energy_train_current = np.sqrt(mean_squared_error(df_train['trip'], df_train['Energy']))
             MAPE_Energy_train_current = mean_absolute_percentage_error(df_train['trip'] , df_train['Energy'])
-            #RMSE_Energy_test_current = np.sqrt(mean_squared_error(df_test['trip'], df_test['Energy']))
-            #MAPE_Energy_test_current = mean_absolute_percentage_error(df_test['trip'] , df_test['Energy'])
             parameter1_values.append(gamma)
             parameter2_values.append(eta_m)
             RMSE_Energy_train.append(RMSE_Energy_train_current)
             MAPE_Energy_train.append(MAPE_Energy_train_current)
-            #RMSE_Energy_test.append(RMSE_Energy_test_current)
-            #MAPE_Energy_test.append(MAPE_Energy_test_current)
 
 
     results = pd.DataFrame(list(zip(parameter1_values,parameter2_values, RMSE_Energy_train, MAPE_Energy_train)),
