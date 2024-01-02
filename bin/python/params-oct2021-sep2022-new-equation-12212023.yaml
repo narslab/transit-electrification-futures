@@ -34,6 +34,9 @@ battery_efficiency:         0.95        # unitless
 motor_efficiency:           0.91        # unitless
 frontal_area_beb:           7.44        # m^2
 #gamma:                     0.00001      # unitless # 0.015115
-gamma:                     0.015115      # unitless 
-
+#gamma:                     0.015115      # unitless 
+#gamma:                     0.045      # unitless 
+#gamma:                     0.0045      # unitless 
+#gamma:                     0.00001      # unitless 
+gamma:                      0.000001      # unitless 
 

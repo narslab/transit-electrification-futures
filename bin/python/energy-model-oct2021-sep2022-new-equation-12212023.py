@@ -114,6 +114,7 @@ def energyConsumption_e(df_input, electric=True):
     t = df.time_delta_in_seconds
     P_t = power(df_input, electric)
     #a = df.Acceleration
+    print("gamma_beb", gamma_beb)
     eta_rb = df.Acceleration.apply(lambda a: 1 if a >= 0 else np.exp(-(gamma_beb/abs(a))))
     #eta_rb = df.Acceleration.apply(lambda a: 0 if a >= 0 else np.exp(-(gamma_beb/abs(a))))
     #eta_rb = [0 if p >= 0 else np.exp(-(gamma_beb/abs(a_val))) for p, a_val in zip(P_t, a)]
@@ -121,6 +122,7 @@ def energyConsumption_e(df_input, electric=True):
     #print("acceleratin", a)
     E_t = t * P_t * eta_rb * eta_batt /(eta_m*3600)
     return E_t
+
 
 # Compute energy consumption for "Conventional", "hybrid" and "electric" buses
 df_conventional['power']=power(df_conventional, hybrid=False, electric=False)
