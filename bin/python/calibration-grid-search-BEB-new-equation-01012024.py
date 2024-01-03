@@ -5,7 +5,7 @@ from tqdm import tqdm
 import time
 from sklearn.metrics import mean_absolute_percentage_error, mean_squared_error
 from sklearn.model_selection import train_test_split
-import multiprocessing
+from multiprocessing import Pool
 
 
 f = open('params-oct2021-sep2022.yaml')
@@ -27,7 +27,7 @@ C_r1 = p.rolling_resistance_coef1
 C_r2 = p.rolling_resistance_coef2
 eta_d_cdb = p.driveline_efficiency_d_dis
 eta_d_heb = p.driveline_efficiency_d_dis
-eta_d_beb = p.driveline_efficiency_d_beb
+#eta_d_beb = p.driveline_efficiency_d_beb
 eta_batt = p.battery_efficiency
 #eta_m = p.motor_efficiency
 a0_cdb = p.alpha_0_cdb
@@ -39,7 +39,7 @@ a2_heb = p.alpha_2_heb
 #gamma_beb=p.gamma
 
 # Define power function for diesel vehicle
-def power(df_input, hybrid=False, electric=False):
+def power(df_input, eta_d_beb, hybrid=False, electric=False):
     if hybrid == True:
        A=A_f_heb
        eta_d = eta_d_heb
@@ -62,32 +62,13 @@ def power(df_input, hybrid=False, electric=False):
 
     return P_t
 
-# Define fuel rate function for diesel vehicle
-def fuelRate_d(df_input, a0, a1, a2, hybrid=False):
-	# Estimates fuel consumed (liters per second) 
-    a0 = a0 
-    a1 = a1 
-    a2 = a2 
-    P_t = power(df_input, hybrid)
-    FC_t = P_t.apply(lambda x: a0 + a1*x +a2*x*x if x >= 0 else a0)  
-    return FC_t
-
-
-# Define Energy consumption function for diesel vehicle
-def energyConsumption_d(df_input, a0, a1, a2, hybrid=False):
-	# Estimates energy consumed (gallons)     
-    df = df_input
-    t = df.time_delta_in_seconds
-    FC_t = fuelRate_d(df_input, a0, a1, a2, hybrid)
-    E_t = (FC_t * t)/3.78541 # to convert liters to gals
-    return E_t
 
 # Define Energy consumption function for electric vehicle
-def energyConsumption_e(df_input, gamma_beb, eta_m, electric=True):
+def energyConsumption_e(df_input, gamma_beb, eta_m, eta_d_beb, electric=True):
 	# Estimates energy consumed (KWh)     
     df = df_input
     t = df.time_delta_in_seconds
-    P_t = power(df_input, electric)
+    P_t = power(df_input, eta_m, electric)
     eta_rb = df.acc.apply(lambda a: 1 if a >= 0 else np.exp(-(gamma_beb/abs(a))))
     E_t = t * P_t * eta_rb * eta_batt /(eta_m*3600)
     return E_t
@@ -131,44 +112,92 @@ def process_dataframe(df, validation, gamma_beb, eta_m):
     df_integrated = df_integrated.query("trip != 0 and `Energy` != 0")
     
     
-    df_integrated['Fuel_economy'] = np.divide(df_integrated['dist'], df_integrated['Energy'], where=df_integrated['Energy'] != 0)
-    df_integrated['Real_Fuel_economy'] = np.divide(df_integrated['dist'], df_integrated['trip'], where=df_integrated['trip'] != 0)
+    #df_integrated['Fuel_economy'] = np.divide(df_integrated['dist'], df_integrated['Energy'], where=df_integrated['Energy'] != 0)
+    #df_integrated['Real_Fuel_economy'] = np.divide(df_integrated['dist'], df_integrated['trip'], where=df_integrated['trip'] != 0)
 
 
     return df_integrated
 
-def calibrate_parameter(args):
-    start_gamma, stop_gamma, n_points_gamma, start_eta_m, stop_eta_m, n_points_eta_m = args
-    start_time = time.time()
-    parameter1_values = []
-    parameter2_values = []
-    RMSE_Energy_train = []
-    MAPE_Energy_train = []
+# ## No parallel version
+# def calibrate_parameter(args):
+#     start_gamma, stop_gamma, n_points_gamma, start_eta_m, stop_eta_m, n_points_eta_m, start_eta_d_beb, stop_eta_d_beb, n_points_eta_d_beb = args
+#     start_time = time.time()
+#     parameter1_values = []
+#     parameter2_values = []
+#     RMSE_Energy_train = []
+#     MAPE_Energy_train = []
 
-    df = df_beb.copy()
-    validation = df_validation.copy()
-    validation.reset_index(inplace=True)        
-    decimal_places = 9  # Set the desired number of decimal places
-    gamma_values = np.around(np.linspace(start_gamma, stop_gamma, n_points_gamma), decimals=decimal_places)
-    eta_m_values = np.around(np.linspace(start_eta_m, stop_eta_m, n_points_eta_m), decimals=decimal_places)
+#     df = df_beb.copy()
+#     validation = df_validation.copy()
+#     validation.reset_index(inplace=True)        
+#     decimal_places = 5  # Set the desired number of decimal places
+#     gamma_values = np.around(np.linspace(start_gamma, stop_gamma, n_points_gamma), decimals=decimal_places)
+#     eta_m_values = np.around(np.linspace(start_eta_m, stop_eta_m, n_points_eta_m), decimals=decimal_places)
+#     eta_d_beb_values = np.around(np.linspace(start_eta_d_beb, stop_eta_d_beb, n_points_eta_d_beb), decimals=decimal_places)
 
-    for gamma in tqdm(gamma_values, desc="Processing gamma values"):
-        for eta_m in tqdm(eta_m_values, desc="Processing eta_m values"):
-            df_integrated = process_dataframe(df, validation, gamma, eta_m)
-            df_train, df_test = train_test_split(df_integrated, test_size=0.2, random_state=42)
-        
-            RMSE_Energy_train_current = np.sqrt(mean_squared_error(df_train['trip'], df_train['Energy']))
-            MAPE_Energy_train_current = mean_absolute_percentage_error(df_train['trip'] , df_train['Energy'])
-            parameter1_values.append(gamma)
-            parameter2_values.append(eta_m)
-            RMSE_Energy_train.append(RMSE_Energy_train_current)
-            MAPE_Energy_train.append(MAPE_Energy_train_current)
+#     for gamma in tqdm(gamma_values, desc="Processing gamma values"):
+#         for eta_m in tqdm(eta_m_values, desc="Processing eta_m values"):
+#             for eta_d_beb in tqdm(eta_d_beb_values, desc="Processing eta_d_beb values"):
+#                 df_integrated = process_dataframe(df, validation, gamma, eta_m, eta_d_beb)
+#                 df_train, df_test = train_test_split(df_integrated, test_size=0.2, random_state=42)
+                
+#                 RMSE_Energy_train_current = np.sqrt(mean_squared_error(df_train['trip'], df_train['Energy']))
+#                 MAPE_Energy_train_current = mean_absolute_percentage_error(df_train['trip'] , df_train['Energy'])
+#                 parameter1_values.append(gamma)
+#                 parameter2_values.append(eta_m)
+#                 RMSE_Energy_train.append(RMSE_Energy_train_current)
+#                 MAPE_Energy_train.append(MAPE_Energy_train_current)
 
 
-    results = pd.DataFrame(list(zip(parameter1_values,parameter2_values, RMSE_Energy_train, MAPE_Energy_train)),
-                           columns=['parameter1_values','parameter2_values', 'RMSE_Energy_train', 'MAPE_Energy_train'])
-    results.to_csv((r'../../results/calibration-grid-search-BEB-oct2021-sep2022_01022024.csv'))
-    print("--- %s seconds ---" % (time.time() - start_time))
+#     results = pd.DataFrame(list(zip(parameter1_values,parameter2_values, RMSE_Energy_train, MAPE_Energy_train)),
+#                            columns=['parameter1_values','parameter2_values', 'RMSE_Energy_train', 'MAPE_Energy_train'])
+#     results.to_csv((r'../../results/calibration-grid-search-BEB-oct2021-sep2022_01022024.csv'))
+#     print("--- %s seconds ---" % (time.time() - start_time))
 
     
-calibrate_parameter((0.00001,0.9, 1000, 0.9,0.99, 10))
+# calibrate_parameter((0.00001,3, 5000, 0.9,0.99, 10, 0.9,0.99, 10))
+
+
+# Dummy functions for mean_absolute_percentage_error and process_dataframe,
+def mean_absolute_percentage_error(y_true, y_pred):
+    return np.mean(np.abs((y_true - y_pred) / y_true)) * 100
+
+
+def worker_function(args):
+    gamma, eta_m, eta_d_beb, df, validation = args
+    df_integrated = process_dataframe(df, validation, gamma, eta_m, eta_d_beb)
+    df_train, df_test = train_test_split(df_integrated, test_size=0.2, random_state=42)
+
+    RMSE_Energy_train_current = np.sqrt(mean_squared_error(df_train['trip'], df_train['Energy']))
+    MAPE_Energy_train_current = mean_absolute_percentage_error(df_train['trip'] , df_train['Energy'])
+    
+    return gamma, eta_m, RMSE_Energy_train_current, MAPE_Energy_train_current
+
+def calibrate_parameter(args):
+    start_gamma, stop_gamma, n_points_gamma, start_eta_m, stop_eta_m, n_points_eta_m, start_eta_d_beb, stop_eta_d_beb, n_points_eta_d_beb = args
+    start_time = time.time()
+
+    df_beb = pd.DataFrame()  # Replace with your actual dataframe
+    df_validation = pd.DataFrame()  # Replace with your actual validation dataframe
+
+    decimal_places = 5
+    gamma_values = np.around(np.linspace(start_gamma, stop_gamma, n_points_gamma), decimals=decimal_places)
+    eta_m_values = np.around(np.linspace(start_eta_m, stop_eta_m, n_points_eta_m), decimals=decimal_places)
+    eta_d_beb_values = np.around(np.linspace(start_eta_d_beb, stop_eta_d_beb, n_points_eta_d_beb), decimals=decimal_places)
+
+    all_args = []
+    for gamma in gamma_values:
+        for eta_m in eta_m_values:
+            for eta_d_beb in eta_d_beb_values:
+                all_args.append((gamma, eta_m, eta_d_beb, df_beb.copy(), df_validation.copy()))
+
+    with Pool(processes=32) as pool:  # Adjust based on your server's cores
+        results = list(tqdm(pool.imap(worker_function, all_args), total=len(all_args)))
+
+    # Unpack results and prepare the dataframe
+    results_df = pd.DataFrame(results, columns=['parameter1_values', 'parameter2_values', 'RMSE_Energy_train', 'MAPE_Energy_train'])
+    results_df.to_csv((r'../../results/calibration-grid-search-BEB-oct2021-sep2022_01022024.csv'))
+    print("--- %s seconds ---" % (time.time() - start_time))
+
+if __name__ == "__main__":
+    calibrate_parameter((0.00001,3, 5000, 0.9,0.99, 10, 0.9,0.99, 10))
