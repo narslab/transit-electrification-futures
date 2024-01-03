@@ -156,7 +156,7 @@ def calibrate_parameter(args):
       print("--- %s seconds ---" % (time.time() - start_time))
 
     
-calibrate_parameter((0.001,5, 1000, 0.9,0.99, 5, 0.9,0.99, 5))
+calibrate_parameter((0.001,5, 500, 0.9,0.99, 5, 0.9,0.99, 5))
 
 # Parallel version
 # def mean_absolute_percentage_error(y_true, y_pred):
