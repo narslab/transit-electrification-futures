@@ -181,6 +181,7 @@ def calibrate_parameter_parallel(args):
     
     def process_combination(combination):
         gamma, eta_m, eta_d_beb = combination
+        print(combination)
         df_integrated = process_dataframe(df, validation, gamma, eta_m, eta_d_beb)
         df_train, df_test = train_test_split(df_integrated, test_size=0.2, random_state=42)
         RMSE_Energy_train_current = np.sqrt(mean_squared_error(df_train['trip'], df_train['Energy']))
