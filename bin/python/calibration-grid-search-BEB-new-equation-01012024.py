@@ -92,11 +92,11 @@ df_validation.rename(columns={"Transaction Date": "ServiceDateTime","Equipment I
 df_validation['ServiceDateTime'] = pd.to_datetime(df_validation['ServiceDateTime'])
 
 
-def process_dataframe(df, validation, gamma_beb, eta_m):
+def process_dataframe(df, validation, gamma_beb, eta_m, eta_d_beb):
     df_new = df.copy()
     validation_new = validation.copy()
 
-    df_new['Energy'] = energyConsumption_e(df, gamma_beb, eta_m)
+    df_new['Energy'] = energyConsumption_e(df, gamma_beb, eta_m, eta_d_beb)
     df_new['ServiceDateTime'] = pd.to_datetime(df_new['ServiceDateTime'])
     df_new = df_new.groupby(['Date', 'Vehicle'])[['Energy', 'dist']].sum().reset_index()
 
