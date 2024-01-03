@@ -172,7 +172,7 @@ def calibrate_parameter_parallel(args):
     validation = df_validation.copy()  # Assuming df_validation is pre-defined
     validation.reset_index(inplace=True)
 
-    decimal_places = 5
+    decimal_places =3 
     gamma_values = np.around(np.linspace(start_gamma, stop_gamma, n_points_gamma), decimals=decimal_places)
     eta_m_values = np.around(np.linspace(start_eta_m, stop_eta_m, n_points_eta_m), decimals=decimal_places)
     eta_d_beb_values = np.around(np.linspace(start_eta_d_beb, stop_eta_d_beb, n_points_eta_d_beb), decimals=decimal_places)
@@ -187,7 +187,7 @@ def calibrate_parameter_parallel(args):
         MAPE_Energy_train_current = mean_absolute_percentage_error(df_train['trip'], df_train['Energy'])
         return gamma, eta_m, RMSE_Energy_train_current, MAPE_Energy_train_current
 
-    with ProcessPoolExecutor(max_workers=64) as executor:
+    with ProcessPoolExecutor(max_workers=32) as executor:
         results = list(tqdm(executor.map(process_combination, all_combinations), total=len(all_combinations), desc="Calibrating Parameters"))
 
     results_df = pd.DataFrame(results, columns=['parameter1_values', 'parameter2_values', 'RMSE_Energy_train', 'MAPE_Energy_train'])
@@ -195,5 +195,5 @@ def calibrate_parameter_parallel(args):
     print("--- %s seconds ---" % (time.time() - start_time))
 
 # call to the function
-calibrate_parameter_parallel((0.00001,5, 5000, 0.9,0.99, 10, 0.9,0.99, 10))
+calibrate_parameter_parallel((0.001,5, 2000, 0.9,0.99, 10, 0.9,0.99, 10))
 
