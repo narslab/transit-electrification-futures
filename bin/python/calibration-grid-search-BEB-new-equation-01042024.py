@@ -111,6 +111,7 @@ df_beb=df_trajectories.loc[df_trajectories['Powertrain'] == 'electric'].copy()
 del df_trajectories
 
 # Trimming the data
+df_beb.rename(columns={"acc": "Acceleration"}, inplace=True)
 quantile_1 = df_beb['Acceleration'].quantile(0.0001)
 quantile_99 = df_beb['Acceleration'].quantile(0.9999)
 df_beb = df_beb[(df_beb['Acceleration'] >= quantile_1) & (df_beb['Acceleration'] <= quantile_99)]
