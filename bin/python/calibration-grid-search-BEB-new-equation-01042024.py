@@ -39,7 +39,7 @@ a2_heb = p.alpha_2_heb
 gamma_beb=p.gamma
 
 # Define power function for diesel vehicle
-def power(df_input, hybrid=False, electric=False):
+def power(df_input, eta_d_beb, hybrid=False, electric=False):
     if hybrid == True:
        A=A_f_heb
        eta_d = eta_d_heb
@@ -89,7 +89,7 @@ def energyConsumption_d(df_input, hybrid=False):
 
 
 # Define Energy consumption function for electric vehicle
-def energyConsumption_e(df_input, electric=True):
+def energyConsumption_e(df_input, gamma_beb, eta_m, eta_d_beb, electric=True):
 	# Estimates energy consumed (KWh)     
     df = df_input
     t = df.time_delta_in_seconds
