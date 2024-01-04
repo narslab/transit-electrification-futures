@@ -20,12 +20,26 @@ df.rename(columns={"speed": "Speed", "acc": "Acceleration", "VehiclWeight(lb)": 
 df = df.fillna(0)
 
 # Remove accelerations other than -5 to 3 m/s^2
-total_rows = len(df)
-df = df[(df['Acceleration'] >= -5) & (df['Acceleration'] <= 3)]
-remaining_rows = len(df)
-removed_rows = total_rows - remaining_rows
-removed_percentage = (removed_rows / total_rows) * 100
-print(f"Percentage of removed data: {removed_percentage:.2f}%")
+#total_rows = len(df)
+#df = df[(df['Acceleration'] >= -5) & (df['Acceleration'] <= 3)]
+# Calculating the 1st and 99th percentiles
+quantile_1 = df['Acceleration'].quantile(0.0001)
+quantile_99 = df['Acceleration'].quantile(0.9999)
+#quantile_1 = df['Acceleration'].quantile(0.01)
+#quantile_99 = df['Acceleration'].quantile(0.99)
+
+# Printing only the 1st and 99th percentile values
+print("quantile_1",quantile_1)
+print("quantile_99",quantile_99)
+
+# Trimming the data
+df = df[(df['Acceleration'] >= quantile_1) & (df['Acceleration'] <= quantile_99)]
+
+
+#remaining_rows = len(df)
+#removed_rows = total_rows - remaining_rows
+#removed_percentage = (removed_rows / total_rows) * 100
+#print(f"Percentage of removed data: {removed_percentage:.2f}%")
 
 
 # Subsetting data frame for "Conventional", "hybrid", and "electric" buses
