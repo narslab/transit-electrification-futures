@@ -133,6 +133,7 @@ def calibrate_parameter(args):
       eta_rbs = []
       parameter1_values = []
       parameter2_values = []
+      parameter3_values = []
       RMSE_Energy_train = []
       MAPE_Energy_train = []
 
@@ -155,12 +156,13 @@ def calibrate_parameter(args):
                   eta_rbs.append(eta_rb)
                   parameter1_values.append(gamma)
                   parameter2_values.append(eta_m)
+                  parameter2_values.append(eta_d_beb)
                   RMSE_Energy_train.append(RMSE_Energy_train_current)
                   MAPE_Energy_train.append(MAPE_Energy_train_current)
 
 
-      results = pd.DataFrame(list(zip(parameter1_values,parameter2_values,eta_rbs,RMSE_Energy_train, MAPE_Energy_train)),
-                             columns=['parameter1_values','parameter2_values','eta_rbs', 'parameter3_values', 'RMSE_Energy_train', 'MAPE_Energy_train'])
+      results = pd.DataFrame(list(zip(parameter1_values, parameter2_values, parameter3_values, eta_rbs,RMSE_Energy_train, MAPE_Energy_train)),
+                             columns=['parameter1_values','parameter2_values','parameter3_values', 'eta_rbs', 'RMSE_Energy_train', 'MAPE_Energy_train'])
       results.to_csv((r'../../results/calibration-grid-search-BEB-oct2021-sep2022_01052024.csv'))
       print("--- %s seconds ---" % (time.time() - start_time))
 
