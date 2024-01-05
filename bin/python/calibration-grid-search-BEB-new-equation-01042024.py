@@ -62,38 +62,13 @@ def power(df_input, eta_d_beb, hybrid=False, electric=False):
 
     return P_t
 
-# Define fuel rate function for diesel vehicle
-def fuelRate_d(df_input, hybrid=False):
-	# Estimates fuel consumed (liters per second) 
-    if hybrid == True:
-        a0 = a0_heb 
-        a1 = a1_heb 
-        a2 = a2_heb 
-    else:
-        a0 = a0_cdb
-        a1 = a1_cdb
-        a2 = a2_cdb
-    P_t = power(df_input, hybrid)
-    FC_t = P_t.apply(lambda x: a0 + a1*x +a2*x*x if x >= 0 else a0)  
-    return FC_t
-
-
-# Define Energy consumption function for diesel vehicle
-def energyConsumption_d(df_input, hybrid=False):
-	# Estimates energy consumed (gallons)     
-    df = df_input
-    t = df.time_delta_in_seconds
-    FC_t = fuelRate_d(df_input, hybrid)
-    E_t = (FC_t * t)/3.78541 # to convert liters to gals
-    return E_t
-
 
 # Define Energy consumption function for electric vehicle
 def energyConsumption_e(df_input, gamma_beb, eta_m, eta_d_beb, electric=True):
 	# Estimates energy consumed (KWh)     
     df = df_input
     t = df.time_delta_in_seconds
-    P_t = power(df_input, electric)
+    P_t = power(df_input, eta_m, electric)
     print("gamma_beb", gamma_beb)
     eta_rb = df.Acceleration.apply(lambda a: 1 if a >= 0 else np.exp(-(gamma_beb/abs(a))))
     E_t = t * P_t * eta_rb * eta_batt /(eta_m*3600)
@@ -111,7 +86,7 @@ df_beb=df_trajectories.loc[df_trajectories['Powertrain'] == 'electric'].copy()
 del df_trajectories
 
 # Trimming the data
-df_beb.rename(columns={"acc": "Acceleration"}, inplace=True)
+df_beb.rename(columns={"speed": "Speed", "acc": "Acceleration"}, inplace=True)
 quantile_1 = df_beb['Acceleration'].quantile(0.0001)
 quantile_99 = df_beb['Acceleration'].quantile(0.9999)
 df_beb = df_beb[(df_beb['Acceleration'] >= quantile_1) & (df_beb['Acceleration'] <= quantile_99)]
