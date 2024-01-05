@@ -130,7 +130,7 @@ def process_dataframe(df, validation, gamma_beb, eta_m, eta_d_beb):
 def calibrate_parameter(args):
       start_gamma, stop_gamma, n_points_gamma, start_eta_m, stop_eta_m, n_points_eta_m, start_eta_d_beb, stop_eta_d_beb, n_points_eta_d_beb = args
       start_time = time.time()
-      eta_rbs = []
+      #eta_rbs = []
       parameter1_values = []
       parameter2_values = []
       parameter3_values = []
@@ -148,12 +148,13 @@ def calibrate_parameter(args):
       for gamma in tqdm(gamma_values, desc="Processing gamma values"):
           for eta_m in tqdm(eta_m_values, desc="Processing eta_m values"):
               for eta_d_beb in tqdm(eta_d_beb_values, desc="Processing eta_d_beb values"):
-                  eta_rb,df_integrated = process_dataframe(df, validation, gamma, eta_m, eta_d_beb)
+                  eta_rb, df_integrated = process_dataframe(df, validation, gamma, eta_m, eta_d_beb)
+                  print(eta_rb)
                   df_train, df_test = train_test_split(df_integrated, test_size=0.2, random_state=42)
                 
                   RMSE_Energy_train_current = np.sqrt(mean_squared_error(df_train['trip'], df_train['Energy']))
                   MAPE_Energy_train_current = mean_absolute_percentage_error(df_train['trip'] , df_train['Energy'])
-                  eta_rbs.append(eta_rb)
+                  #eta_rbs.append(eta_rb)
                   parameter1_values.append(gamma)
                   parameter2_values.append(eta_m)
                   parameter2_values.append(eta_d_beb)
@@ -161,11 +162,11 @@ def calibrate_parameter(args):
                   MAPE_Energy_train.append(MAPE_Energy_train_current)
 
 
-      results = pd.DataFrame(list(zip(parameter1_values, parameter2_values, parameter3_values, eta_rbs,RMSE_Energy_train, MAPE_Energy_train)),
-                             columns=['parameter1_values','parameter2_values','parameter3_values', 'eta_rbs', 'RMSE_Energy_train', 'MAPE_Energy_train'])
+      results = pd.DataFrame(list(zip(parameter1_values, parameter2_values, parameter3_values, RMSE_Energy_train, MAPE_Energy_train)),
+                             columns=['parameter1_values','parameter2_values','parameter3_values', 'RMSE_Energy_train', 'MAPE_Energy_train'])
       results.to_csv((r'../../results/calibration-grid-search-BEB-oct2021-sep2022_01052024.csv'))
       print("--- %s seconds ---" % (time.time() - start_time))
 
     
-calibrate_parameter((0.001,2, 100, 0.9,0.99, 5, 0.9,0.99, 5))
+calibrate_parameter((0.001,2, 10, 0.9,0.99, 5, 0.9,0.99, 5))
 
