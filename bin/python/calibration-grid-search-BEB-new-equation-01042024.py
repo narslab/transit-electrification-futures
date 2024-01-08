@@ -6,6 +6,8 @@ import time
 from sklearn.metrics import mean_absolute_percentage_error, mean_squared_error
 from sklearn.model_selection import train_test_split
 from concurrent.futures import ProcessPoolExecutor
+import matplotlib.pyplot as plt
+
 
 f = open('params-oct2021-sep2022-new-equation-12212023.yaml')
 parameters = yaml.safe_load(f)
@@ -27,16 +29,16 @@ C_r1 = p.rolling_resistance_coef1
 C_r2 = p.rolling_resistance_coef2
 eta_d_cdb = p.driveline_efficiency_d_dis
 eta_d_heb = p.driveline_efficiency_d_dis
-eta_d_beb = p.driveline_efficiency_d_beb
-eta_batt = p.battery_efficiency
-eta_m = p.motor_efficiency
+#eta_d_beb = p.driveline_efficiency_d_beb
+#eta_batt = p.battery_efficiency
+#eta_m = p.motor_efficiency
 a0_cdb = p.alpha_0_cdb
 a1_cdb = p.alpha_1_cdb
 a2_cdb = p.alpha_2_cdb
 a0_heb = p.alpha_0_heb
 a1_heb = p.alpha_1_heb
 a2_heb = p.alpha_2_heb
-gamma_beb=p.gamma
+#gamma_beb=p.gamma
 
 # Define power function for diesel vehicle
 def power(df_input, eta_d_beb, hybrid=False, electric=False):
@@ -64,7 +66,7 @@ def power(df_input, eta_d_beb, hybrid=False, electric=False):
 
 
 # Define Energy consumption function for electric vehicle
-def energyConsumption_e(df_input, gamma_beb, eta_m, eta_d_beb, electric=True):
+def energyConsumption_e(df_input, gamma_beb, eta_m, eta_d_beb,eta_batt, electric=True):
 	# Estimates energy consumed (KWh)     
     df = df_input
     t = df.time_delta_in_seconds
@@ -128,12 +130,13 @@ def process_dataframe(df, validation, gamma_beb, eta_m, eta_d_beb):
 
 # ## Not parallel version
 def calibrate_parameter(args):
-      start_gamma, stop_gamma, n_points_gamma, start_eta_m, stop_eta_m, n_points_eta_m, start_eta_d_beb, stop_eta_d_beb, n_points_eta_d_beb = args
+      start_gamma, stop_gamma, n_points_gamma, start_eta_m, stop_eta_m, n_points_eta_m, start_eta_d_beb, stop_eta_d_beb, n_points_eta_d_beb, start_eta_batt, stop_eta_batt, n_points_eta_batt = args
       start_time = time.time()
-      #eta_rbs = []
+      eta_rbs = []
       parameter1_values = []
       parameter2_values = []
       parameter3_values = []
+      parameter4_values = []
       RMSE_Energy_train = []
       MAPE_Energy_train = []
 
@@ -144,29 +147,41 @@ def calibrate_parameter(args):
       gamma_values = np.around(np.linspace(start_gamma, stop_gamma, n_points_gamma), decimals=decimal_places)
       eta_m_values = np.around(np.linspace(start_eta_m, stop_eta_m, n_points_eta_m), decimals=decimal_places)
       eta_d_beb_values = np.around(np.linspace(start_eta_d_beb, stop_eta_d_beb, n_points_eta_d_beb), decimals=decimal_places)
+      eta_batt_values = np.around(np.linspace(start_eta_batt, stop_eta_batt, n_points_eta_batt), decimals=decimal_places)
 
       for gamma in tqdm(gamma_values, desc="Processing gamma values"):
           for eta_m in tqdm(eta_m_values, desc="Processing eta_m values"):
               for eta_d_beb in tqdm(eta_d_beb_values, desc="Processing eta_d_beb values"):
-                  eta_rb, df_integrated = process_dataframe(df, validation, gamma, eta_m, eta_d_beb)
-                  #print(eta_rb)
-                  df_train, df_test = train_test_split(df_integrated, test_size=0.2, random_state=42)
-                  print(df_train)
-                  RMSE_Energy_train_current = np.sqrt(mean_squared_error(df_train['trip'], df_train['Energy']))
-                  MAPE_Energy_train_current = mean_absolute_percentage_error(df_train['trip'] , df_train['Energy'])
-                  #eta_rbs.append(eta_rb)
-                  parameter1_values.append(gamma)
-                  parameter2_values.append(eta_m)
-                  parameter3_values.append(eta_d_beb)
-                  RMSE_Energy_train.append(RMSE_Energy_train_current)
-                  MAPE_Energy_train.append(MAPE_Energy_train_current)
+                  for eta_batt in tqdm(eta_batt_values, desc="Processing eta_batt values"):
+                      eta_rb, df_integrated = process_dataframe(df, validation, gamma, eta_m, eta_d_beb)
+                      print(eta_rb)
+                      df_train, df_test = train_test_split(df_integrated, test_size=0.2, random_state=42)
+                      #print(df_train)
+                      RMSE_Energy_train_current = np.sqrt(mean_squared_error(df_train['trip'], df_train['Energy']))
+                      MAPE_Energy_train_current = mean_absolute_percentage_error(df_train['trip'] , df_train['Energy'])
+                      eta_rbs.append(eta_rb)
+                      parameter1_values.append(gamma)
+                      parameter2_values.append(eta_m)
+                      parameter3_values.append(eta_d_beb)
+                      parameter4_values.append(eta_batt)
+
+                      RMSE_Energy_train.append(RMSE_Energy_train_current)
+                      MAPE_Energy_train.append(MAPE_Energy_train_current)
 
 
-      results = pd.DataFrame(list(zip(parameter1_values, parameter2_values, parameter3_values, RMSE_Energy_train, MAPE_Energy_train)),
-                             columns=['parameter1_values','parameter2_values','parameter3_values', 'RMSE_Energy_train', 'MAPE_Energy_train'])
-      results.to_csv((r'../../results/calibration-grid-search-BEB-oct2021-sep2022_01062024.csv'))
+      results = pd.DataFrame(list(zip(parameter1_values, parameter2_values, parameter3_values, eta_rbs, RMSE_Energy_train, MAPE_Energy_train)),
+                             columns=['parameter1_values','parameter2_values','parameter3_values', 'eta_rb', 'RMSE_Energy_train', 'MAPE_Energy_train'])
+      results.to_csv((r'../../results/calibration-grid-search-BEB-oct2021-sep2022_01082024.csv'))
       print("--- %s seconds ---" % (time.time() - start_time))
+      
+      print("eta_rb list is:",eta_rb)
+      plt.hist(eta_rbs, bins='auto')  # 'auto' lets matplotlib decide the number of bins
+      plt.title('Histogram of eta_rb for gamma=0.00001')
+      plt.xlabel('eta_rb values')
+      plt.ylabel('Frequency')
+      plt.show()
 
     
-calibrate_parameter((0.00001,1, 500, 0.9,0.99, 5, 0.9,0.99, 5))
+#calibrate_parameter((0.00001,1, 500, 0.9,0.99, 5, 0.9,0.99, 5))
+calibrate_parameter((0.00001,0.00001, 1, 0.70,1, 30,  0.70,1, 30, 0.70,1, 30))
 

@@ -20,27 +20,27 @@ frontal_area_cdb:           6.99         # m^2
 
 
 #Parameters specific to HEB
-alpha_0_heb:                 0.001321       # unitless
-alpha_1_heb:                 0.000089   # unitless
-alpha_2_heb:                 0.00000001  # unitless
-frontal_area_heb:            7.44        # m^2
-
+alpha_0_heb:                0.001321       # unitless
+alpha_1_heb:                0.000089   # unitless
+alpha_2_heb:                0.00000001  # unitless
+frontal_area_heb:           7.44        # m^2
 
 
 
 #Parameters specific to BEB
-#driveline_efficiency_d_beb: 0.92        # unitless
-driveline_efficiency_d_beb: 0.99        # unitless
-#battery_efficiency:         0.95        # unitless
-battery_efficiency:         0.99        # unitless
-motor_efficiency:           0.91        # unitless
+driveline_efficiency_d_beb: 0.92        # unitless
+battery_efficiency:        0.95        # unitless
+#motor_efficiency:          0.91        # unitless
+motor_efficiency:           0.75        # unitless
 frontal_area_beb:           7.44        # m^2
+#frontal_area_beb:          6.99        # m^2
 #gamma:                     0.00001      # unitless # 0.015115
 #gamma:                     0.015115      # unitless 
 #gamma:                     0.045      # unitless 
 #gamma:                     0.0045      # unitless 
 #gamma:                     0.00001      # unitless 
-#gamma:                      0.000001      # unitless 
-#gamma:                      5     # unitless
-gamma:                     0.015115      # unitless  
-
+#gamma:                     0.000001      # unitless 
+#gamma:                     5     # unitless
+#gamma:                     0.015115      # unitless  
+gamma:                      0.00001      # unitless  
+#gamma:                     0.0411       # unitless  

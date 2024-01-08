@@ -31,7 +31,7 @@ print('Done with reading dataframes for CDB, HEB, and BEB')
 p = vehicleParams(**parameters)
 rho = p.air_density
 C_D = p.drag_coefficient
-#C_h= p.altitude_correction_factor
+C_h= p.altitude_correction_factor
 A_f_cdb = p.frontal_area_cdb
 A_f_heb = p.frontal_area_heb
 A_f_beb = p.frontal_area_beb
@@ -75,8 +75,10 @@ def power_d(df_input, hybrid=False):
     gr = df.grade
     m = (df.Vehicle_mass+df.Onboard*179)*0.453592 # converts lb to kg
     H = df.elevation/1000 # df.elevation is in meters and we need to convert it to km 
-    C_h = 1 - (0.085*H)
+    #C_h = 1 - (0.085*H)
     P_t = (1/float(3600*eta_d_dis))*((1./25.92)*rho*C_D*C_h*A_f_d*v*v + m*g*C_r*(c1*v + c2)/1000 + 1.1*m*a+m*g*gr)*v
+    P_t = factor*(eta_batt/(eta_m*eta_d_beb))*(1/float(3600*eta_d_beb))*((1./25.92)*rho*C_D*C_h*A_f_beb*v*v + m*g*C_r*(c1*v + c2)/1000 + 1.2*m*a+m*g*gr)*v
+
     return P_t
 
 # Define fuel rate function for diesel vehicle
@@ -119,7 +121,7 @@ def power_e(df_input):
     gr = df.grade
     m = df.Vehicle_mass+(df.Onboard*179)*0.453592 # converts lb to kg
     H = df.elevation/1000 # df.elevation is in meters and we need to convert it to km 
-    C_h = 1 - (0.085*H)
+    #C_h = 1 - (0.085*H)
     factor = df.Acceleration.apply(lambda a: 1 if a >= 0 else np.exp(-(gamma_beb/abs(a))))
     P_t = factor*(eta_batt/(eta_m*eta_d_beb))*(1/float(3600*eta_d_beb))*((1./25.92)*rho*C_D*C_h*A_f_beb*v*v + m*g*C_r*(c1*v + c2)/1000 + 1.2*m*a+m*g*gr)*v
     return P_t
@@ -155,6 +157,7 @@ gc.collect()
 df_final.sort_values(by=['Vehicle','ServiceDateTime'], ascending=True, inplace=True)
 print('Done sorting')
 
-df_final.to_csv(r'../../results/computed-fuel-rates-oct2021-sep2022-test-10222023.csv')
+#df_final.to_csv(r'../../results/computed-fuel-rates-oct2021-sep2022-test-10222023.csv')
+df_final.to_csv(r'../../results/computed-fuel-rates-oct2021-sep2022-test-10222023-v02.csv')
 
 
