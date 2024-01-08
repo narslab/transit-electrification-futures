@@ -31,7 +31,7 @@ frontal_area_heb:           7.44        # m^2
 driveline_efficiency_d_beb: 0.92        # unitless
 battery_efficiency:        0.95        # unitless
 #motor_efficiency:          0.91        # unitless
-motor_efficiency:           0.75        # unitless
+motor_efficiency:           0.72        # unitless
 frontal_area_beb:           7.44        # m^2
 #frontal_area_beb:          6.99        # m^2
 #gamma:                     0.00001      # unitless # 0.015115

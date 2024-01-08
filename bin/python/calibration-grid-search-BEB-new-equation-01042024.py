@@ -98,11 +98,11 @@ df_validation = pd.read_excel(r'../../data/tidy/BEB-validation.xlsx')
 df_validation.rename(columns={"Transaction Date": "ServiceDateTime","Equipment ID":"Vehicle"}, inplace=True)
 df_validation['ServiceDateTime'] = pd.to_datetime(df_validation['ServiceDateTime'])
 
-def process_dataframe(df, validation, gamma_beb, eta_m, eta_d_beb):
+def process_dataframe(df, validation, gamma_beb, eta_m, eta_d_beb, eta_batt):
     df_new = df.copy()
     validation_new = validation.copy()
 
-    eta_rb,df_new['Energy'] = energyConsumption_e(df, gamma_beb, eta_m, eta_d_beb)
+    eta_rb,df_new['Energy'] = energyConsumption_e(df, gamma_beb, eta_m, eta_d_beb, eta_batt)
     df_new['ServiceDateTime'] = pd.to_datetime(df_new['ServiceDateTime'])
     df_new = df_new.groupby(['Date', 'Vehicle'])[['Energy', 'dist']].sum().reset_index()
 
