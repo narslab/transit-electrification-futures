@@ -153,7 +153,7 @@ def calibrate_parameter(args):
           for eta_m in tqdm(eta_m_values, desc="Processing eta_m values"):
               for eta_d_beb in tqdm(eta_d_beb_values, desc="Processing eta_d_beb values"):
                   for eta_batt in tqdm(eta_batt_values, desc="Processing eta_batt values"):
-                      eta_rb, df_integrated = process_dataframe(df, validation, gamma, eta_m, eta_d_beb)
+                      eta_rb, df_integrated = process_dataframe(df, validation, gamma, eta_m, eta_d_beb, eta_batt)
                       print(eta_rb)
                       df_train, df_test = train_test_split(df_integrated, test_size=0.2, random_state=42)
                       #print(df_train)
