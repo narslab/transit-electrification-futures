@@ -64,14 +64,27 @@ def power(df_input, eta_d_beb, hybrid=False, electric=False):
     return P_t
 
 
-# Define Energy consumption function for electric vehicle
 def energyConsumption_e(df_input, gamma_beb, eta_m, eta_d_beb, electric=True):
-	# Estimates energy consumed (KWh)     
+    # Estimates energy consumed (KWh)
     df = df_input
     t = df.time_delta_in_seconds
-    P_t = power(df_input, eta_m, electric)
-    eta_rb = df.acc.apply(lambda a: 1 if a >= 0 else np.exp(-(gamma_beb/abs(a))))
-    E_t = t * P_t * eta_rb * eta_batt /(eta_m*3600)
+    P_t = power(df_input, electric) # Assuming this returns a Series of the same length as df
+
+    # Ensure P_t is in the DataFrame for easy access
+    df['P_t'] = P_t
+
+    # Updated eta_rb calculation
+    def calculate_eta_rb(row):
+        if row['P_t'] >= 0 and row['Acceleration'] >= 0:
+            return 1
+        elif row['P_t'] < 0 and row['Acceleration'] >= 0:
+            return 0
+        else:
+            return np.exp(-(gamma_beb / abs(row['Acceleration'])))
+
+    eta_rb = df.apply(calculate_eta_rb, axis=1)
+
+    E_t = t * df['P_t'] * eta_rb * eta_batt / (eta_m * 3600)
     return E_t
 
 # Read computed fuel rates

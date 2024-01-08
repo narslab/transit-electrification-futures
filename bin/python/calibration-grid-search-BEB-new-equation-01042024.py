@@ -65,15 +65,27 @@ def power(df_input, eta_d_beb, hybrid=False, electric=False):
     return P_t
 
 
-# Define Energy consumption function for electric vehicle
 def energyConsumption_e(df_input, gamma_beb, eta_m, eta_d_beb,eta_batt, electric=True):
-	# Estimates energy consumed (KWh)     
+    # Estimates energy consumed (KWh)
     df = df_input
     t = df.time_delta_in_seconds
-    P_t = power(df_input, eta_m, electric)
-    print("gamma_beb", gamma_beb)
-    eta_rb = df.Acceleration.apply(lambda a: 1 if a >= 0 else np.exp(-(gamma_beb/abs(a))))
-    E_t = t * P_t * eta_rb * eta_batt /(eta_m*3600)
+    P_t = power(df_input, electric) # Assuming this returns a Series of the same length as df
+
+    # Ensure P_t is in the DataFrame for easy access
+    df['P_t'] = P_t
+
+    # Updated eta_rb calculation
+    def calculate_eta_rb(row):
+        if row['P_t'] >= 0:
+            return 1
+        elif row['P_t'] < 0 and row['Acceleration'] >= 0:
+            return 0
+        else:
+            return np.exp(-(gamma_beb / abs(row['Acceleration'])))
+
+    eta_rb = df.apply(calculate_eta_rb, axis=1)
+
+    E_t = t * df['P_t'] * eta_rb * eta_batt / (eta_m * 3600)
     return eta_rb,E_t
 
 # Read computed fuel rates
@@ -169,8 +181,8 @@ def calibrate_parameter(args):
                       MAPE_Energy_train.append(MAPE_Energy_train_current)
 
 
-      results = pd.DataFrame(list(zip(parameter1_values, parameter2_values, parameter3_values, eta_rbs, RMSE_Energy_train, MAPE_Energy_train)),
-                             columns=['parameter1_values','parameter2_values','parameter3_values', 'eta_rb', 'RMSE_Energy_train', 'MAPE_Energy_train'])
+      results = pd.DataFrame(list(zip(parameter1_values, parameter2_values, parameter3_values, parameter3_values, eta_rbs, RMSE_Energy_train, MAPE_Energy_train)),
+                             columns=['parameter1_values','parameter2_values','parameter3_values','parameter4_values', 'eta_rb', 'RMSE_Energy_train', 'MAPE_Energy_train'])
       results.to_csv((r'../../results/calibration-grid-search-BEB-oct2021-sep2022_01082024.csv'))
       print("--- %s seconds ---" % (time.time() - start_time))
       
@@ -183,5 +195,5 @@ def calibrate_parameter(args):
 
     
 #calibrate_parameter((0.00001,1, 500, 0.9,0.99, 5, 0.9,0.99, 5))
-calibrate_parameter((0.00001,0.00001, 1, 0.70,1, 30,  0.70,1, 30, 0.70,1, 30))
+calibrate_parameter((0.00000001,0.01, 100, 0.70,1, 15,  0.70,1, 15, 0.70,1, 15))
 
