@@ -183,7 +183,7 @@ def calibrate_parameter(args):
 
       results = pd.DataFrame(list(zip(parameter1_values, parameter2_values, parameter3_values, parameter3_values, eta_rbs, RMSE_Energy_train, MAPE_Energy_train)),
                              columns=['parameter1_values','parameter2_values','parameter3_values','parameter4_values', 'eta_rb', 'RMSE_Energy_train', 'MAPE_Energy_train'])
-      results.to_csv((r'../../results/calibration-grid-search-BEB-oct2021-sep2022_01082024.csv'))
+      results.to_csv((r'../../results/calibration-grid-search-BEB-oct2021-sep2022_01092024.csv'))
       print("--- %s seconds ---" % (time.time() - start_time))
       
       print("eta_rb list is:",eta_rb)
