@@ -137,18 +137,99 @@ def energyConsumption_d(df_input, hybrid=False):
 #      E_t = t * P_t * eta_rb * eta_batt /(eta_m*3600)
 #      return E_t
 
+# def energyConsumption_e(df_input, electric=True):
+#       # Estimates energy consumed (KWh)
+#       df = df_input
+#       t = df.time_delta_in_seconds
+#       P_t = power(df_input, electric) # Assuming this returns a Series of the same length as df
+
+#       # Ensure P_t is in the DataFrame for easy access
+#       df['P_t'] = P_t
+
+#       # Updated eta_rb calculation
+#       def calculate_eta_rb(row):
+#           if row['P_t'] >= 0 and row['Acceleration'] >= 0:
+#               return 1
+#           elif row['P_t'] < 0 and row['Acceleration'] >= 0:
+#               return 0
+#           else:
+#               return np.exp(-(gamma_beb / abs(row['Acceleration'])))
+
+#       eta_rb = df.apply(calculate_eta_rb, axis=1)
+
+#       E_t = t * df['P_t'] * eta_rb * eta_batt / (eta_m * 3600)
+#       return E_t
+
+# def energyConsumption_e(df_input, electric=True):
+#     """
+#     Refine the function to calculate energy consumption according to the provided LaTeX equation.
+    
+#     Parameters:
+#     df_input (DataFrame): Input data containing time, power, and acceleration.
+#     eta_m (float): Efficiency of the motor.
+#     eta_batt (float): Efficiency of the battery.
+#     gamma (float): A constant used in the exponential term.
+#     eta_d_B (float): Another efficiency parameter used in the second case.
+
+#     Returns:
+#     Series: Computed energy consumption values.
+#     """
+
+#     # Extract necessary columns
+#     t = df_input.time_delta_in_seconds
+#     P_t = power(df_input)  # Assuming this returns a Series of the same length as df_input
+#     a_i = df_input.Acceleration  # Assuming Acceleration is a column in df_input
+
+#     # Initialize an empty series for E_t
+#     E_t = pd.Series(index=df_input.index)
+
+#     # First case: P_t >= 0
+#     E_t[P_t >= 0] = (1 / (3600 * eta_m * eta_batt)) * P_t[P_t >= 0]
+
+#     # Second case: P_t < 0 and a_i < 0
+#     condition = (P_t < 0) & (a_i < 0)
+#     exp_term = np.exp(-gamma_beb / np.abs(a_i[condition]))
+#     E_t[condition] = (eta_batt * eta_m * eta_d_beb**2 / 3600) * exp_term * P_t[condition]
+
+#     # Third case: Otherwise (implicitly set to 0)
+
+#     return E_t
+
+
+
+# def energyConsumption_e(df_input, electric=True):
+#       # Estimates energy consumed (KWh)
+#       df = df_input
+#       t = df.time_delta_in_seconds
+#       P_t = power(df_input, electric) # Assuming this returns a Series of the same length as df
+
+#       # Ensure P_t is in the DataFrame for easy access
+#       df['P_t'] = P_t
+#       # Updated eta_rb calculation
+#       def calculate_eta_rb(row):
+#           if row['P_t'] >= 0:
+#               return 1
+#           elif row['P_t'] < 0 and row['Acceleration'] >= 0:
+#               return 0
+#           else:
+#               return np.exp(-(gamma_beb / abs(row['Acceleration'])))
+
+#       eta_rb = df.apply(calculate_eta_rb, axis=1)
+
+#       E_t = t * df['P_t'] * eta_rb * eta_batt / (eta_m * 3600)
+#       return E_t
+
 def energyConsumption_e(df_input, electric=True):
      # Estimates energy consumed (KWh)
      df = df_input
-     t = df.time_delta_in_seconds
-     P_t = power(df_input, electric) # Assuming this returns a Series of the same length as df
 
      # Ensure P_t is in the DataFrame for easy access
-     df['P_t'] = P_t
+     df = df_input.copy()
+     df['P_t'] = power(df, electric)  # Assuming this returns a Series
 
      # Updated eta_rb calculation
      def calculate_eta_rb(row):
-         if row['P_t'] >= 0 and row['Acceleration'] >= 0:
+         if row['P_t'] >= 0:
              return 1
          elif row['P_t'] < 0 and row['Acceleration'] >= 0:
              return 0
@@ -157,60 +238,15 @@ def energyConsumption_e(df_input, electric=True):
 
      eta_rb = df.apply(calculate_eta_rb, axis=1)
 
-     E_t = t * df['P_t'] * eta_rb * eta_batt / (eta_m * 3600)
+     # Calculate E_t based on the updated cases
+     E_t = df['time_delta_in_seconds'] * df['P_t'] * eta_rb / (eta_m * eta_batt * 3600)
+
+     # Specific handling for the negative P_t and negative Acceleration case
+     negative_mask = (df['P_t'] < 0) & (df['Acceleration'] < 0)
+     E_t[negative_mask] *= eta_d_beb**2 * eta_batt**2 * eta_m**2
+
+     # Return the energy consumption values
      return E_t
-
-# def energyConsumption_e(df_input, electric=True):
-#     # Estimates energy consumed (KWh)
-#     df = df_input
-#     t = df.time_delta_in_seconds
-#     P_t = power(df_input, electric) # Assuming this returns a Series of the same length as df
-
-#     # Ensure P_t is in the DataFrame for easy access
-#     df['P_t'] = P_t
-
-#     # Updated eta_rb calculation
-#     def calculate_eta_rb(row):
-#         if row['P_t'] >= 0:
-#             return 1
-#         elif row['P_t'] < 0 and row['Acceleration'] >= 0:
-#             return 0
-#         else:
-#             return np.exp(-(gamma_beb / abs(row['Acceleration'])))
-
-#     eta_rb = df.apply(calculate_eta_rb, axis=1)
-
-#     E_t = t * df['P_t'] * eta_rb * eta_batt / (eta_m * 3600)
-#     return E_t
-
-# def energyConsumption_e(df_input, electric=True):
-#     # Estimates energy consumed (KWh)
-#     df = df_input
-
-#     # Ensure P_t is in the DataFrame for easy access
-#     df = df_input.copy()
-#     df['P_t'] = power(df, electric)  # Assuming this returns a Series
-
-#     # Updated eta_rb calculation
-#     def calculate_eta_rb(row):
-#         if row['P_t'] >= 0:
-#             return 1
-#         elif row['P_t'] < 0 and row['Acceleration'] >= 0:
-#             return 0
-#         else:
-#             return np.exp(-(gamma_beb / abs(row['Acceleration'])))
-
-#     eta_rb = df.apply(calculate_eta_rb, axis=1)
-
-#     # Calculate E_t based on the updated cases
-#     E_t = df['time_delta_in_seconds'] * df['P_t'] * eta_rb / (eta_m * 3600)
-
-#     # Specific handling for the negative P_t and negative Acceleration case
-#     negative_mask = (df['P_t'] < 0) & (df['Acceleration'] < 0)
-#     E_t[negative_mask] *= eta_d_beb**2 * eta_batt
-
-#     # Return the energy consumption values
-#     return E_t
 
 # Compute energy consumption for "Conventional", "hybrid" and "electric" buses
 df_conventional['power']=power(df_conventional, hybrid=False, electric=False)
