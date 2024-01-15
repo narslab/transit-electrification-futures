@@ -194,7 +194,7 @@ def calibrate_parameter_parallel(start_gamma, stop_gamma, n_points_gamma, start_
             results.append(result)
 
     results_df = pd.DataFrame(results, columns=['parameter1_values', 'parameter2_values', 'parameter3_values', 'parameter4_values', 'eta_rb', 'RMSE_Energy_train', 'MAPE_Energy_train'])
-    results_df.to_csv((r'../../results/calibration-grid-search-BEB-oct2021-sep2022_01122024_parallel.csv'))
+    results_df.to_csv((r'../../results/calibration-grid-search-BEB-oct2021-sep2022_01142024_parallel.csv'))
 
 
     
