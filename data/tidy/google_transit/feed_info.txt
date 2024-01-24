@@ -1,2 +1,0 @@
-feed_publisher_name,feed_publisher_url,feed_lang,feed_start_date,feed_end_date,feed_contact_url
-PVTA,https://www.pvta.com,EN,20230616,20230826,https://www.pvta.com/contactUs.php
