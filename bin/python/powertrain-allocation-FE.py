@@ -466,7 +466,7 @@ print("optimal_value:",optimal_value)
 df = pd.DataFrame({"Variable": [v.varName for v in vars], "Value": [v.X for v in vars]})
 
 # Save the DataFrame to a CSV file
-df.to_csv(r'../../results/highcap-FE-optimized-variables-with-replacement-40percentBEBcharging.csv', index=False)
+#df.to_csv(r'../../results/highcap-FE-optimized-variables-with-replacement-40percentBEBcharging.csv', index=False)
 #coeff_df.to_csv(r'../../results/optimization-coefficients.csv', index=False)
 
 end = time.time()

@@ -1,0 +1,44 @@
+route_id,route_short_name,route_long_name,route_desc,route_type,route_url,route_color,route_text_color,network_id
+30,30,"North Amherst / Old Belchertown Rd",,3,,FBB033,000000,UM
+31,31,"Sunderland / South Amherst",,3,,EF4E91,000000,UM
+33,33,"Puffers Pond / Stop and Shop",,3,,00AEEC,000000,UM
+36,36,"Olympia Dr / Atkins Corner",,3,,00A94E,000000,UM
+45,45,"Belchertown Center / UMass",,3,,00A94E,000000,UM
+46,46,"Whately via S. Deerfield Center / UMass",,3,,00A94E,000000,UM
+801,T1,"Tripper 1 Helper Service",,3,,E1E444,000000,F
+802,T2,"Tripper 2 Helper Service",,3,,E1E444,000000,F
+803,T3,"Tripper 3 Helper Service",,3,,E1E444,000000,F
+804,T4,"Tripper 4 Helper Service",,3,,E1E444,000000,F
+805,T5,"Tripper 5 Helper Service",,3,,E1E444,000000,F
+806,T6,"Tripper 6 Helper Service",,3,,E1E444,000000,F
+820,T20,"Tripper 20 Helper Service",,3,,E1E444,000000,F
+821,T21,"Tripper 21 Helper Service",,3,,E1E444,000000,F
+823,T23,"Tripper 23 Helper Service",,3,,E1E444,000000,F
+824,T24,"Tripper 24 Helper Service",,3,,E1E444,000000,F
+892,T92,"Tripper 92 Helper Service",,3,,E1E444,000000,F
+921,P21E,"Holyoke-Springfield Express via I-391",,3,,7E0A6D,FFFFFF,F
+B12,B12,"Stonybrook Express",,3,,00467E,FFFFFF,F
+B17,B17,"Eastfield Mall-Worthington St-Wilbraham Rd",,3,,00467E,FFFFFF,F
+B23,B23,"Holyoke-Westfield via HCC",,3,,00467E,FFFFFF,F
+B4,B4,"Plainfield Street",,3,,00467E,FFFFFF,F
+B43,B43,"Northampton/Hadley/Amherst",,3,,00467E,FFFFFF,F
+B48,B48,"Northampton/Holyoke via Route 5",,3,,00467E,FFFFFF,F
+B6,B6,"Ludlow via Bay St",,3,,00467E,FFFFFF,F
+B7,B7,"Eastfield Mall via State St-Boston Rd",,3,,00467E,FFFFFF,F
+B79,B79,"Amherst-Worcester Intercity Service",,3,,00467E,FFFFFF,B79
+G1,G1,"Chicopee / Sumner-Allen-Canon Circle",,3,,00A94E,000000,F
+G2,G2,"Carew-East Springfield / Belmont-Dwight Rd",,3,,00A94E,000000,F
+G3,G3,"Spfld Plaza via Liberty / King-Westford",,3,,00A94E,000000,F
+G5,G5,"Dickinson-Jewish Home-Longmeadow",,3,,00A94E,000000,F
+G73,G73E,"Springfield-Northampton Express",,3,,00A94E,000000,F
+P20,P20,"Holyoke-Springfield via Holyoke Mall",,3,,7E0A6D,FFFFFF,F
+P21,P21,"Holyoke-Springfield via Chicopee",,3,,7E0A6D,FFFFFF,F
+R10,R10,"Westfield/West Springfield via Route 20",,3,,EE3B32,000000,F
+R14,R14,"Feeding Hills-Springfield",,3,,EE3B32,000000,F
+R24,R24,"HTC-Holyoke Hospital-Holyoke Mall",,3,,EE3B32,000000,F
+R29,R29,"Springfield-Amherst via Holyoke",,3,,EE3B32,000000,F
+R41,R41,"Northampton/Easthampton/HCC",,3,,EE3B32,000000,F
+R42,R42,"Northampton/Williamsburg",,3,,EE3B32,000000,F
+R44,R44,"Florence Heights via King St & Bridge Rd",,3,,EE3B32,000000,F
+X90,X90,"Inner Crosstown",,3,,000000,FFFFFF,F
+X92,X92,"Mid City Crosstown",,3,,000000,FFFFFF,F
