@@ -44,7 +44,7 @@ In this reasearch we focuse on developing an optimization and energy modeling fr
    Use the energy models provided to estimate fuel consumption and energy usage for each powertrain type:
 
    ```bash
-   python energy_model.py
+   python energy-model.py
 
 3.  **Optimization:**  Run the optimization framework to assign powertrains to bus trips and minimize diesel consumption:
    
