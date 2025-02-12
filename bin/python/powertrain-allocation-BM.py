@@ -120,7 +120,9 @@ battery_cap=350 #kWh
 
 # Maximum daily charging capacity in year y
 #M_cap = [23, 23, 27, 38, 42, 52, 62, 74, 89, 107, 128, 154, 185]
-M_cap = [23, 23, 27, 38, 42, 52, 73, 102, 143, 200, 280, 392, 548]
+#M_cap = [23, 23, 27, 38, 42, 52, 73, 102, 143, 200, 280, 392, 548]
+M_cap = [18, 18, 21, 30, 33, 41, 58, 81, 114, 160, 224, 313, 438] # Sensitivity analysis of -20% variation of charging capacity
+#M_cap = [27, 27, 32, 45, 50, 62, 87, 122, 171, 240, 336, 470, 657] # Sensitivity analysis of +20% variation of charging capacity
 
 
 # Set of scenarios
@@ -464,6 +466,12 @@ df = pd.DataFrame({"Variable": [v.varName for v in vars], "Value": [v.X for v in
 # Save the DataFrame to a CSV file
 df.to_csv(r'../../results/highcap-BM-optimized-variables-with-replacement-40percentBEBcharging.csv', index=False)
 #coeff_df.to_csv(r'../../results/optimization-coefficients.csv', index=False)
+
+
+#df.to_csv(r'../../results/highcap-FE-optimized-variables-with-replacement-40percentBEBcharging.csv', index=False)
+#coeff_df.to_csv(r'../../results/optimization-coefficients.csv', index=False)
+df.to_csv(r'../../results/highcap-FE-optimized-variables-with-replacement-40percentBEBcharging-sensitivity-minus-20.csv', index=False) # Sensitivity: -20% Charging Cap
+#df.to_csv(r'../../results/highcap-FE-optimized-variables-with-replacement-40percentBEBcharging-sensitivity-plus-20.csv', index=False) # Sensitivity: +20% Charging Cap
 
 end = time.time()
 report_usage()
