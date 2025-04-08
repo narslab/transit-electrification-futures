@@ -125,6 +125,8 @@ battery_cap=350 #kWh
 
 M_cap = [23, 23, 27, 38, 42, 52, 73, 102, 143, 200, 280, 392, 548, 548, 548, 548, 548, 548]
 #M_cap = [12, 12, 14, 19, 21, 26, 37, 51, 72, 100, 140, 196, 292, 292, 292, 292, 292, 292] # Sensitivity analysis of -50% variation of charging capacity
+#M_cap = [35, 35, 41, 57, 63, 78, 110, 153, 215, 300, 420, 588, 876, 876, 876, 876, 876, 876] # Sensitivity analysis of +50% variation of charging capacity
+#M_cap = [46, 46, 54, 76, 84, 104, 146, 204, 286, 400, 560, 784, 1168, 1168, 1168, 1168, 1168, 1168] # Sensitivity analysis of +100% variation of charging capacity
 
 
 #M_cap = [12, 12, 14, 19, 21, 26, 37, 51, 72, 100, 140, 196, 292] # Sensitivity analysis of -50% variation of charging capacity
