@@ -113,7 +113,8 @@ df_BEB = df_BEB.rename(columns={'Powertrain_first': 'Powertrain'})
 
 # Define parameters
 #D = len(set(df_CDB['Date'].unique()))  # Create a set of unique dates
-Y = 13  # Years in simulation (including year 0)
+#Y = 13  # Years in simulation (including year 0)
+Y = 18
 max_number_of_buses = 1000 # 213*4 (current numnumber of fleet*4, assuming buses are going to be replaced with electric at most with ratio of 1:4)
 
 # Batery capacity of an electric bus
@@ -122,8 +123,17 @@ battery_cap=350 #kWh
 # Maximum daily charging capacity in year y
 #M_cap = [23, 23, 27, 38, 42, 52, 62, 74, 89, 107, 128, 154, 185]
 #M_cap = [23, 23, 27, 38, 42, 52, 73, 102, 143, 200, 280, 392, 548]
-M_cap = [18, 18, 21, 30, 33, 41, 58, 81, 114, 160, 224, 313, 438] # Sensitivity analysis of -20% variation of charging capacity
+#M_cap = [23, 23, 27, 38, 42, 52, 73, 102, 143, 200, 280, 392, 548, 548, 548, 548, 548, 548]
+M_cap = [12, 12, 14, 19, 21, 26, 37, 51, 72, 100, 140, 196, 292, 292, 292, 292, 292, 292] # Sensitivity analysis of -50% variation of charging capacity
+
+
+#M_cap = [12, 12, 14, 19, 21, 26, 37, 51, 72, 100, 140, 196, 292] # Sensitivity analysis of -50% variation of charging capacity
+#M_cap = [18, 18, 21, 30, 33, 41, 58, 81, 114, 160, 224, 313, 438] # Sensitivity analysis of -20% variation of charging capacity
 #M_cap = [27, 27, 32, 45, 50, 62, 87, 122, 171, 240, 336, 470, 657] # Sensitivity analysis of +20% variation of charging capacity
+#M_cap = [35, 35, 41, 57, 63, 78, 110, 153, 215, 300, 420, 588, 876] # Sensitivity analysis of +50% variation of charging capacity
+#M_cap = [46, 46, 54, 76, 84, 104, 146, 204, 286, 400, 560, 784, 1168] # Sensitivity analysis of +100% variation of charging capacity
+#M_cap = [69, 69, 81, 114, 126, 156, 219, 306, 429, 600, 840, 1176, 1752] # Sensitivity analysis of +200% variation of charging capacity
+
 
 
 # Set of scenarios
@@ -159,6 +169,11 @@ M_inv = {
 range_CDB= 93-10 # mean actual values in miles 
 range_HEB= 110-10 # mean actual values in miles 
 range_BEB= 55-10 # mean actual values in miles 
+#range_BEB= 23-10 # Sensitivity analysis of -50% variation of charging capacity
+#range_BEB= 44-10 # Sensitivity analysis of -20% variation of charging capacity
+#range_BEB= 66-10 # Sensitivity analysis of +20% variation of charging capacity
+#range_BEB= 110-10 # Sensitivity analysis of +100% variation of charging capacity
+
 #range_CDB= 129 # 3rd quantile actual values in miles 
 #range_HEB= 133 # 3rd quantile actual values in miles 
 #range_BEB= 85 # 3rd quantile actual values in miles 
@@ -271,6 +286,7 @@ model.setObjective(
      GRB.MINIMIZE
  )
 
+
 print("Done setting objective function")
 report_usage()
 
@@ -283,6 +299,7 @@ for s in S:
     for y in year_keys:
         total_distance_CDB = quicksum(energy_CDB_dict[key]['dist'] * x_CDB[s, y, key] for key in keys_CDB)
         
+        ## Must cover assigned distance
         model.addConstr(
             y_CDB[s, y] * range_CDB >= total_distance_CDB, 
             name=f"C1_numberofCDB_ge_{s}_{y}"
@@ -291,6 +308,14 @@ for s in S:
             y_CDB[s, y] * range_CDB <= total_distance_CDB + range_CDB,
             name=f"C1_numberofCDBs_le_{s}_{y}"
         )
+        
+        ## Prevents idle buses when no trips assigned
+        epsilon = 1e-6
+        model.addConstr(
+            y_CDB[s, y] <= quicksum(x_CDB[s, y, key] for key in keys_CDB) + epsilon,
+            name=f"C1_yCDB_active_only_if_used_{s}_{y}"
+        )
+
 
 # For HEB buses
 for s in S:
@@ -303,8 +328,15 @@ for s in S:
         )
         model.addConstr(
             y_HEB[s, y] * range_HEB <= total_distance_HEB + range_HEB,
-            name=f"C1_numberofHEBs_le_{s}_{y}"
+           name=f"C1_numberofHEBs_le_{s}_{y}"
         )
+        epsilon = 1e-6
+        model.addConstr(
+            y_HEB[s, y] <= quicksum(x_HEB[s, y, key] for key in keys_HEB) + epsilon,
+            name=f"C1_yHEB_active_only_if_used_{s}_{y}"
+        )
+
+
 
 # For BEB buses
 for s in S:
@@ -319,10 +351,15 @@ for s in S:
             y_BEB[s, y] * range_BEB <= total_distance_BEB + range_BEB,
             name=f"C1_numberofBEBs_le_{s}_{y}"
         )
+        epsilon = 1e-6
+        model.addConstr(
+            y_BEB[s, y] <= quicksum(x_BEB[s, y, key] for key in keys_BEB) + epsilon,
+            name=f"C1_yBEB_active_only_if_used_{s}_{y}"
+        )
+
 
 print("Done defining constraint 1")
-report_usage()
-
+report_usage()  
 
 # Constraint 2: Each trip is assigned to exactly one bus powertrain
 for s in S:
@@ -424,7 +461,9 @@ print(model)
         
 # Tuning and Optimization
 model.tune()
+
 model.optimize()
+
 report_usage()
 
 
@@ -470,8 +509,24 @@ df = pd.DataFrame({"Variable": [v.varName for v in vars], "Value": [v.X for v in
 # Save the DataFrame to a CSV file
 #df.to_csv(r'../../results/highcap-FE-optimized-variables-with-replacement-40percentBEBcharging.csv', index=False)
 #coeff_df.to_csv(r'../../results/optimization-coefficients.csv', index=False)
-df.to_csv(r'../../results/highcap-FE-optimized-variables-with-replacement-40percentBEBcharging-sensitivity-minus-20.csv', index=False) # Sensitivity: -20% Charging Cap
-#df.to_csv(r'../../results/highcap-FE-optimized-variables-with-replacement-40percentBEBcharging-sensitivity-plus-20.csv', index=False) # Sensitivity: +20% Charging Cap
+#df.to_csv(r'../../results/highcap-FE-optimized-variables-with-replacement-40percentBEBcharging-ContiniuedTo2040.csv', index=False)
+
+df.to_csv(r'../../results/highcap-FE-optimized-variables-with-replacement-40percentBEBcharging-ContiniuedTo2040-charging-minus-50.csv', index=False) # Sensitivity: -50% Charging Cap
+#df.to_csv(r'../../results/midcap-FE-optimized-variables-with-replacement-40percentBEBcharging-ContiniuedTo2040-range-minus-50.csv', index=False) # Sensitivity: -50% Charging Cap
+
+
+#df.to_csv(r'../../results/highcap-FE-optimized-variables-with-replacement-40percentBEBcharging-sensitivity-charging-minus-50.csv', index=False) # Sensitivity: -50% Charging Cap
+#df.to_csv(r'../../results/lowcap-FE-optimized-variables-with-replacement-40percentBEBcharging-sensitivity-charging-minus-20.csv', index=False) # Sensitivity: -20% Charging Cap
+#df.to_csv(r'../../results/lowcap-FE-optimized-variables-with-replacement-40percentBEBcharging-sensitivity-charging-plus-20.csv', index=False) # Sensitivity: +20% Charging Cap
+#df.to_csv(r'../../results/lowcap-FE-optimized-variables-with-replacement-40percentBEBcharging-sensitivity-charging-plus-50.csv', index=False) # Sensitivity: +50% Charging Cap
+#df.to_csv(r'../../results/lowcap-FE-optimized-variables-with-replacement-40percentBEBcharging-sensitivity-charging-plus-100.csv', index=False) # Sensitivity: +100% Charging Cap
+#df.to_csv(r'../../results/hicap-FE-optimized-variables-with-replacement-40percentBEBcharging-sensitivity-charging-plus-200.csv', index=False) # Sensitivity: +200% Charging Cap
+
+
+#df.to_csv(r'../../results/highcap-FE-optimized-variables-with-replacement-40percentBEBcharging-sensitivity-range-minus-50.csv', index=False) # Sensitivity: -50% Electric Bus Range
+#df.to_csv(r'../../results/lowcap-FE-optimized-variables-with-replacement-40percentBEBcharging-sensitivity-range-minus-20.csv', index=False) # Sensitivity: -20% Electric Bus Range
+#df.to_csv(r'../../results/lowcap-FE-optimized-variables-with-replacement-40percentBEBcharging-sensitivity-range-plus-20.csv', index=False) # Sensitivity: +20% Electric Bus Range
+#df.to_csv(r'../../results/lowcap-FE-optimized-variables-with-replacement-40percentBEBcharging-sensitivity-range-plus-100.csv', index=False) # Sensitivity: -50% Electric Bus Range
 
 end = time.time()
 report_usage()

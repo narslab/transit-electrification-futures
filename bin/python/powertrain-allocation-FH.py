@@ -115,14 +115,16 @@ df_BEB = df_BEB.rename(columns={'dist_sum': 'dist'})
 df_BEB = df_BEB.rename(columns={'Powertrain_first': 'Powertrain'})
 
 # Define parameters
-Y = 13  # Years in simulation (including year 0)
+#Y = 13  # Years in simulation (including year 0)
+Y = 18
 max_number_of_buses = 1000 # 213*4 (current numnumber of fleet*4, assuming buses are going to be replaced with electric at most with ratio of 1:4)
 
 # Batery capacity of an electric bus
 battery_cap=350 #kWh 
 
 # Maximum daily charging capacity in year y
-M_cap = [23, 23, 27, 38, 42, 52, 62, 74, 89, 107, 128, 154, 185]
+#M_cap = [23, 23, 27, 38, 42, 52, 62, 74, 89, 107, 128, 154, 185]
+M_cap = [23, 23, 27, 38, 42, 52, 73, 102, 143, 200, 280, 392, 548, 548, 548, 548, 548, 548]
 
 # Set of scenarios
 #S = {'low-cap', 'mid-cap', 'high-cap'}
@@ -281,6 +283,7 @@ for s in S:
     for y in year_keys:
         total_distance_CDB = quicksum(energy_CDB_dict[key]['dist'] * x_CDB[s, y, key] for key in keys_CDB)
         
+        ## Must cover assigned distance
         model.addConstr(
             y_CDB[s, y] * range_CDB >= total_distance_CDB, 
             name=f"C1_numberofCDB_ge_{s}_{y}"
@@ -289,6 +292,14 @@ for s in S:
             y_CDB[s, y] * range_CDB <= total_distance_CDB + range_CDB,
             name=f"C1_numberofCDBs_le_{s}_{y}"
         )
+        
+        ## Prevents idle buses when no trips assigned
+        epsilon = 1e-6
+        model.addConstr(
+            y_CDB[s, y] <= quicksum(x_CDB[s, y, key] for key in keys_CDB) + epsilon,
+            name=f"C1_yCDB_active_only_if_used_{s}_{y}"
+        )
+
 
 # For HEB buses
 for s in S:
@@ -301,8 +312,15 @@ for s in S:
         )
         model.addConstr(
             y_HEB[s, y] * range_HEB <= total_distance_HEB + range_HEB,
-            name=f"C1_numberofHEBs_le_{s}_{y}"
+           name=f"C1_numberofHEBs_le_{s}_{y}"
         )
+        epsilon = 1e-6
+        model.addConstr(
+            y_HEB[s, y] <= quicksum(x_HEB[s, y, key] for key in keys_HEB) + epsilon,
+            name=f"C1_yHEB_active_only_if_used_{s}_{y}"
+        )
+
+
 
 # For BEB buses
 for s in S:
@@ -317,9 +335,15 @@ for s in S:
             y_BEB[s, y] * range_BEB <= total_distance_BEB + range_BEB,
             name=f"C1_numberofBEBs_le_{s}_{y}"
         )
+        epsilon = 1e-6
+        model.addConstr(
+            y_BEB[s, y] <= quicksum(x_BEB[s, y, key] for key in keys_BEB) + epsilon,
+            name=f"C1_yBEB_active_only_if_used_{s}_{y}"
+        )
+
 
 print("Done defining constraint 1")
-report_usage()
+report_usage()  
 
 
 # Constraint 2: Each trip is assigned to exactly one bus powertrain
@@ -466,8 +490,10 @@ print("optimal_value:",optimal_value)
 df = pd.DataFrame({"Variable": [v.varName for v in vars], "Value": [v.X for v in vars]})
 
 # Save the DataFrame to a CSV file
-df.to_csv(r'../../results/highcap-FH-optimized-variables-with-replacement.csv', index=False)
+#df.to_csv(r'../../results/highcap-FH-optimized-variables-with-replacement.csv', index=False)
 #coeff_df.to_csv(r'../../results/optimization-coefficients.csv', index=False)
+df.to_csv(r'../../results/highcap-FH-optimized-variables-with-replacement-ContiniuedTo2040.csv', index=False)
+
 
 end = time.time()
 report_usage()
